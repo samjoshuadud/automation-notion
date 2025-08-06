@@ -5,7 +5,7 @@ Test script to verify regex patterns work with the provided email example
 
 import sys
 import os
-sys.path.append(os.path.dirname(os.path.abspath(__file__)))
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from moodle_fetcher import MoodleEmailFetcher
 import logging

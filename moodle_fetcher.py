@@ -23,8 +23,8 @@ class MoodleEmailFetcher:
             raise ValueError("Gmail credentials not found. Please check your .env file.")
         
         # File paths
-        self.json_file = 'assignments.json'
-        self.md_file = 'assignments.md'
+        self.json_file = 'data/assignments.json'
+        self.md_file = 'data/assignments.md'
         
         # Initialize files if they don't exist
         self._initialize_files()

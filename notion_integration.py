@@ -397,3 +397,92 @@ class NotionIntegration:
         except Exception as e:
             logger.warning(f"Unexpected error checking Notion: {e}")
             return False
+
+    def get_all_assignments_from_notion(self) -> List[Dict]:
+        """Get all assignments from Notion database for status syncing"""
+        if not self.enabled:
+            return []
+        try:
+            url = f'https://api.notion.com/v1/databases/{self.database_id}/query'
+            all_assignments = []
+            has_more = True
+            start_cursor = None
+            while has_more:
+                payload = {'page_size': 100}
+                if start_cursor:
+                    payload['start_cursor'] = start_cursor
+                response = requests.post(url, headers=self.headers, json=payload, timeout=30)
+                if response.status_code == 200:
+                    data = response.json()
+                    results = data.get('results', [])
+                    for page in results:
+                        try:
+                            properties = page.get('properties', {})
+                            # Extract title
+                            title = ""
+                            for title_prop in ['Assignment', 'Title', 'Name']:
+                                if title_prop in properties:
+                                    title_data = properties[title_prop]
+                                    if title_data.get('type') == 'title':
+                                        title_array = title_data.get('title', [])
+                                        if title_array:
+                                            title = title_array[0].get('plain_text', '').strip()
+                                            break
+                            # Extract status
+                            status = "Pending"  # default
+                            for status_prop in ['Status', 'State']:
+                                if status_prop in properties:
+                                    status_data = properties[status_prop]
+                                    if status_data.get('type') == 'select':
+                                        select_data = status_data.get('select')
+                                        if select_data:
+                                            status = select_data.get('name', 'Pending')
+                                            break
+                            # Extract due date
+                            due_date = ""
+                            for date_prop in ['Due Date', 'Due', 'Date']:
+                                if date_prop in properties:
+                                    date_data = properties[date_prop]
+                                    if date_data.get('type') == 'date':
+                                        date_value = date_data.get('date')
+                                        if date_value:
+                                            due_date = date_value.get('start', '').strip()
+                                            break
+                            # Extract course code
+                            course_code = ""
+                            for course_prop in ['Course Code', 'Course', 'Subject']:
+                                if course_prop in properties:
+                                    course_data = properties[course_prop]
+                                    if course_data.get('type') == 'rich_text':
+                                        text_array = course_data.get('rich_text', [])
+                                        if text_array:
+                                            course_code = text_array[0].get('plain_text', '').strip()
+                                            break
+                            if title:  # Only add if we have a title
+                                assignment = {
+                                    'title': title,
+                                    'status': status,
+                                    'due_date': due_date,
+                                    'course_code': course_code,
+                                    'notion_id': page.get('id', '')
+                                }
+                                all_assignments.append(assignment)
+                        except Exception as e:
+                            logger.warning(f"Error parsing Notion page: {e}")
+                            continue
+                    has_more = data.get('has_more', False)
+                    start_cursor = data.get('next_cursor')
+                else:
+                    logger.error(f"Failed to fetch assignments from Notion: {response.status_code} - {response.text}")
+                    break
+            logger.info(f"Retrieved {len(all_assignments)} assignments from Notion")
+            return all_assignments
+        except requests.exceptions.Timeout:
+            logger.warning("Notion API request timed out while fetching all assignments")
+            return []
+        except requests.exceptions.RequestException as e:
+            logger.warning(f"Notion API request failed while fetching all assignments: {e}")
+            return []
+        except Exception as e:
+            logger.error(f"Unexpected error fetching assignments from Notion: {e}")
+            return []

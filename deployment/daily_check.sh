@@ -13,7 +13,7 @@
 set -euo pipefail  # Exit on any error, undefined variable, or pipe failure
 
 # Configuration
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+SCRIPT_DIR="$(cd "$(dirname "$(dirname "${BASH_SOURCE[0]}")")" && pwd)"
 VENV_DIR="$SCRIPT_DIR/venv"
 PYTHON_CMD="$VENV_DIR/bin/python"
 LOG_FILE="$SCRIPT_DIR/cron_execution.log"
