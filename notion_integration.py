@@ -261,25 +261,139 @@ class NotionIntegration:
         try:
             url = f'https://api.notion.com/v1/databases/{self.database_id}/query'
             
-            # Search for existing assignment with same title
+            # Get all entries since we can't rely on specific property names yet
             query_data = {
-                "filter": {
-                    "property": "Assignment",
-                    "title": {
-                        "equals": assignment.get('title', '')
-                    }
-                }
+                "page_size": 100
             }
             
             response = requests.post(url, headers=self.headers, json=query_data, timeout=15)
             
             if response.status_code == 200:
                 results = response.json().get('results', [])
-                return len(results) > 0
+                assignment_title = assignment.get('title', '').strip().lower()
+                
+                if not assignment_title:
+                    return False
+                
+                # Check each result for a matching title
+                for result in results:
+                    properties = result.get('properties', {})
+                    
+                    # Try different possible title property names
+                    existing_title = None
+                    for title_prop in ['Assignment', 'Task name', 'Title', 'Name']:
+                        if title_prop in properties:
+                            title_data = properties[title_prop]
+                            if title_data.get('type') == 'title':
+                                title_array = title_data.get('title', [])
+                                if title_array:
+                                    existing_title = title_array[0].get('plain_text', '').strip().lower()
+                                    break
+                    
+                    if existing_title and existing_title == assignment_title:
+                        logger.debug(f"Assignment '{assignment.get('title')}' already exists in Notion")
+                        return True
+                
+                logger.debug(f"Assignment '{assignment.get('title')}' not found in Notion")
+                return False
             else:
                 logger.warning(f"Could not check for existing assignments: {response.status_code}")
+                # If we can't check, assume it doesn't exist to avoid missing assignments
                 return False
                 
         except Exception as e:
             logger.warning(f"Error checking for existing assignment: {e}")
+            # If we can't check, assume it doesn't exist to avoid missing assignments
+            return False
+    
+    def assignment_exists_in_notion(self, assignment: Dict) -> bool:
+        """
+        Check if a specific assignment exists in Notion database
+        This is a more robust version of check_assignment_exists with better error handling
+        """
+        if not self.enabled:
+            logger.debug("Notion integration not enabled")
+            return False
+        
+        if not assignment or not assignment.get('title'):
+            logger.warning("Invalid assignment data provided")
+            return False
+        
+        try:
+            url = f'https://api.notion.com/v1/databases/{self.database_id}/query'
+            
+            assignment_title = assignment.get('title', '').strip().lower()
+            assignment_due_date = assignment.get('due_date', '').strip()
+            
+            logger.debug(f"Checking Notion for assignment: '{assignment_title}'")
+            
+            # Get all entries to check against
+            query_data = {
+                "page_size": 100
+            }
+            
+            response = requests.post(url, headers=self.headers, json=query_data, timeout=15)
+            
+            if response.status_code == 200:
+                results = response.json().get('results', [])
+                logger.debug(f"Found {len(results)} entries in Notion database")
+                
+                # Check each result for a matching assignment
+                for result in results:
+                    properties = result.get('properties', {})
+                    
+                    # Try to find title in various property names
+                    existing_title = None
+                    for title_prop in ['Assignment', 'Task name', 'Title', 'Name']:
+                        if title_prop in properties:
+                            title_data = properties[title_prop]
+                            if title_data.get('type') == 'title':
+                                title_array = title_data.get('title', [])
+                                if title_array:
+                                    existing_title = title_array[0].get('plain_text', '').strip().lower()
+                                    break
+                    
+                    # If we found a matching title, check due date for extra confirmation
+                    if existing_title and existing_title == assignment_title:
+                        logger.debug(f"Found matching title: '{existing_title}'")
+                        
+                        # Try to get due date for extra verification
+                        existing_due_date = None
+                        for date_prop in ['Due Date', 'Due', 'Date']:
+                            if date_prop in properties:
+                                date_data = properties[date_prop]
+                                if date_data.get('type') == 'date':
+                                    date_value = date_data.get('date')
+                                    if date_value:
+                                        existing_due_date = date_value.get('start', '').strip()
+                                        break
+                        
+                        # If both title and due date match, it's definitely the same assignment
+                        if assignment_due_date and existing_due_date and assignment_due_date == existing_due_date:
+                            logger.debug(f"Assignment '{assignment_title}' exists with matching due date")
+                            return True
+                        # If only title matches but no due date info, assume it's the same
+                        elif not assignment_due_date or not existing_due_date:
+                            logger.debug(f"Assignment '{assignment_title}' exists (title match only)")
+                            return True
+                
+                logger.debug(f"Assignment '{assignment_title}' not found in Notion")
+                return False
+                
+            elif response.status_code == 404:
+                logger.error("Notion database not found or integration not shared with database")
+                return False
+            else:
+                logger.warning(f"Could not check Notion database: {response.status_code} - {response.text}")
+                # If we can't check due to API issues, assume it doesn't exist
+                return False
+                
+        except requests.exceptions.Timeout:
+            logger.warning("Notion API request timed out")
+            return False
+        except requests.exceptions.RequestException as e:
+            logger.warning(f"Notion API request failed: {e}")
+            return False
+        except Exception as e:
+            logger.warning(f"Unexpected error checking Notion: {e}")
             return False

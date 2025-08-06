@@ -91,7 +91,7 @@ def main():
                         assignments = fetcher.load_existing_assignments()
                         # Only sync recent assignments (avoid duplicates)
                         recent_assignments = assignments[-new_count:] if new_count <= len(assignments) else assignments
-                        logger.info(f"Syncing {len(recent_assignments)} assignments to Notion...")
+                        logger.info(f"Syncing {len(recent_assignments)} new assignments to Notion...")
                         notion_count = notion.sync_assignments(recent_assignments)
                         print(f"📝 Synced {notion_count} assignments to Notion!")
                         logger.info(f"Successfully synced {notion_count} assignments to Notion")
@@ -106,6 +106,53 @@ def main():
         elif new_count == 0:
             print("ℹ️ No new assignments found.")
             logger.info("No new assignments found")
+            
+            # Even if no new assignments, check if existing ones need to be synced to Notion
+            if args.notion and not args.skip_notion:
+                try:
+                    logger.info("Checking existing assignments for Notion sync...")
+                    notion = NotionIntegration()
+                    if notion.enabled:
+                        assignments = fetcher.load_existing_assignments()
+                        if assignments:
+                            logger.info(f"Checking {len(assignments)} existing assignments against Notion...")
+                            print(f"🔍 Checking {len(assignments)} assignments against Notion database...")
+                            
+                            # Check each assignment to see if it exists in Notion
+                            assignments_to_sync = []
+                            
+                            for assignment in assignments:
+                                try:
+                                    # Check if this specific assignment exists in Notion
+                                    if not notion.assignment_exists_in_notion(assignment):
+                                        assignments_to_sync.append(assignment)
+                                        logger.info(f"Missing from Notion: {assignment.get('title')}")
+                                    else:
+                                        logger.debug(f"Already in Notion: {assignment.get('title')}")
+                                except Exception as e:
+                                    logger.warning(f"Could not check Notion for '{assignment.get('title')}': {e}")
+                                    # If we can't check, assume it needs to be synced
+                                    assignments_to_sync.append(assignment)
+                            
+                            if assignments_to_sync:
+                                logger.info(f"Found {len(assignments_to_sync)} assignments missing from Notion")
+                                print(f"📝 Syncing {len(assignments_to_sync)} missing assignments to Notion...")
+                                notion_count = notion.sync_assignments(assignments_to_sync)
+                                print(f"✅ Successfully synced {notion_count} assignments to Notion!")
+                                logger.info(f"Successfully synced {notion_count} assignments to Notion")
+                            else:
+                                print("✅ All assignments already exist in Notion")
+                                logger.info("All assignments already exist in Notion")
+                        else:
+                            print("📄 No assignments found in local database")
+                            logger.info("No assignments found in local database")
+                    else:
+                        print("⚠️ Notion integration not configured")
+                        logger.warning("Notion integration not available")
+                except Exception as e:
+                    print(f"⚠️ Notion sync failed: {e}")
+                    logger.error(f"Notion integration failed: {e}")
+                    logger.info("Continuing without Notion integration...")
         else:
             print("❌ Error occurred during check.")
             logger.error("Error occurred during assignment check")
