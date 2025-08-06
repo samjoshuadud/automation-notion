@@ -1,1 +1,77 @@
-[]
+[
+  {
+    "title": "HCI - Activity 1 (User Story [1])",
+    "title_normalized": "hci - activity 1 (user story [1])",
+    "due_date": "2025-09-05",
+    "course": "HCI -\r\nHUMAN COMPUTER INTERACTION (III-ACSAD)",
+    "course_code": "HCI",
+    "status": "Pending",
+    "source": "email",
+    "raw_title": "ACTIVITY 1 - USER STORY [1]",
+    "email_id": "756",
+    "email_date": "Tue, 5 Aug 2025 15:34:53 +0000",
+    "email_subject": "HCI - HUMAN COMPUTER INTERACTION (III-ACSAD) content change",
+    "added_date": "2025-08-07 00:46:03",
+    "last_updated": "2025-08-07 00:46:03"
+  },
+  {
+    "title": "HCI - Activity 2 (Mid Fidelity [1])",
+    "title_normalized": "hci - activity 2 (mid fidelity [1])",
+    "due_date": "2025-09-19",
+    "course": "HCI\r\n- HUMAN COMPUTER INTERACTION (III-ACSAD)",
+    "course_code": "HCI",
+    "status": "Pending",
+    "source": "email",
+    "raw_title": "ACTIVITY 2 - MID FIDELITY [1]",
+    "email_id": "758",
+    "email_date": "Tue, 5 Aug 2025 15:52:45 +0000",
+    "email_subject": "HCI - HUMAN COMPUTER INTERACTION (III-ACSAD) content change",
+    "added_date": "2025-08-07 00:46:03",
+    "last_updated": "2025-08-07 00:46:03"
+  },
+  {
+    "title": "HCI - Activity 3 (High Fidelity Prototype [1])",
+    "title_normalized": "hci - activity 3 (high fidelity prototype [1])",
+    "due_date": "2025-10-17",
+    "course": "HCI - HUMAN COMPUTER INTERACTION (III-ACSAD)",
+    "course_code": "HCI",
+    "status": "Pending",
+    "source": "email",
+    "raw_title": "ACTIVITY 3 - HIGH FIDELITY PROTOTYPE [1]",
+    "email_id": "759",
+    "email_date": "Tue, 5 Aug 2025 15:53:41 +0000",
+    "email_subject": "HCI - HUMAN COMPUTER INTERACTION (III-ACSAD) content change",
+    "added_date": "2025-08-07 00:46:04",
+    "last_updated": "2025-08-07 00:46:04"
+  },
+  {
+    "title": "HCI - Activity 4 (Usability Assessment [1])",
+    "title_normalized": "hci - activity 4 (usability assessment [1])",
+    "due_date": "2025-10-31",
+    "course": "HCI - HUMAN COMPUTER INTERACTION (III-ACSAD)",
+    "course_code": "HCI",
+    "status": "Pending",
+    "source": "email",
+    "raw_title": "ACTIVITY 4 - USABILITY ASSESSMENT [1]",
+    "email_id": "760",
+    "email_date": "Tue, 5 Aug 2025 15:57:15 +0000",
+    "email_subject": "HCI - HUMAN COMPUTER INTERACTION (III-ACSAD) content change",
+    "added_date": "2025-08-07 00:46:04",
+    "last_updated": "2025-08-07 00:46:04"
+  },
+  {
+    "title": "III - Activity 1 (#1)",
+    "title_normalized": "iii - activity 1 (#1)",
+    "due_date": "2025-08-08",
+    "course": "III-ACSAD",
+    "course_code": "III",
+    "status": "Pending",
+    "source": "email",
+    "raw_title": "#1",
+    "email_id": "769",
+    "email_date": "Wed, 6 Aug 2025 16:26:03 +0000",
+    "email_subject": "Due on Friday, 8 August 2025, 11:59 PM: Midterm Assignment #1",
+    "added_date": "2025-08-07 00:46:05",
+    "last_updated": "2025-08-07 00:46:05"
+  }
+]

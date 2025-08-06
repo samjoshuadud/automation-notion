@@ -52,16 +52,17 @@ class MoodleEmailFetcher:
             logger.error(f"Failed to connect to Gmail: {e}")
             raise
     
-    def search_moodle_emails(self, mail: imaplib.IMAP4_SSL, days_back: int = 14) -> List[bytes]:
-        """Search for ALL Moodle emails from the past 14 days (read + unread)"""
+    def search_moodle_emails(self, mail: imaplib.IMAP4_SSL, days_back: int = 7) -> List[bytes]:
+        """Search for ALL Moodle emails from the past 7 days (read + unread)"""
         try:
             mail.select('inbox')
             
-            # Calculate date range (default 14 days for comprehensive coverage)
+            # Calculate date range (default 7 days for comprehensive coverage)
             since_date = (datetime.now() - timedelta(days=days_back)).strftime("%d-%b-%Y")
             
             # Search criteria for ALL Moodle emails (read + unread)
-            search_criteria = f'(FROM "noreply@moodle.{self.school_domain}" SINCE "{since_date}")'
+            # Updated to use the correct UMak TBL email address
+            search_criteria = f'(FROM "noreply-tbl@{self.school_domain}" SINCE "{since_date}")'
             
             logger.info(f"Searching for emails: {search_criteria}")
             status, message_ids = mail.search(None, search_criteria)
@@ -583,8 +584,8 @@ class MoodleEmailFetcher:
                 
                 f.write(f"| {title} | {due_date} | {course} | {status} | {added_date} |\n")
     
-    def run_check(self, days_back: int = 14) -> int:
-        """Main method to check for new assignments (default: last 14 days)"""
+    def run_check(self, days_back: int = 7) -> int:
+        """Main method to check for new assignments (default: last 7 days)"""
         logger.info("=" * 60)
         logger.info("STARTING MOODLE ASSIGNMENT CHECK")
         logger.info(f"Checking emails from last {days_back} days")

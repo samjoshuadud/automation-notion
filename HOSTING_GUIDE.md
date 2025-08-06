@@ -31,7 +31,7 @@ systemctl status moodle-fetcher.timer
 ## 📋 Features
 
 ### ✅ Enhanced Email Processing
-- **14-day lookback** - comprehensive assignment coverage
+- **7-day lookback** - comprehensive assignment coverage
 - **All emails processed** - read + unread for reliability
 - **Smart duplicate detection** - fuzzy matching with 85% similarity threshold
 - **Email ID tracking** - prevents reprocessing exact same emails

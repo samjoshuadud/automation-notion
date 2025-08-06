@@ -89,11 +89,11 @@ fi
 CURRENT_HOUR=$(date +%H)
 if (( CURRENT_HOUR >= 8 && CURRENT_HOUR <= 22 )); then
     RUN_TYPE="active"
-    DAYS_BACK=14
+    DAYS_BACK=7
     log "Active hours detected - checking last $DAYS_BACK days"
 else
     RUN_TYPE="night"
-    DAYS_BACK=14
+    DAYS_BACK=7
     log "Night hours detected - checking last $DAYS_BACK days"
 fi
 
