@@ -1,0 +1,19 @@
+[Unit]
+Description=Run Moodle Assignment Fetcher periodically
+Requires=moodle-fetcher.service
+
+[Timer]
+# Every 2 hours during active time (8 AM - 10 PM)
+OnCalendar=08,10,12,14,16,18,20,22:00:00
+
+# Once at night (2 AM)
+OnCalendar=02:00:00
+
+# Run immediately if missed (e.g., server was down)
+Persistent=true
+
+# Add some randomization to avoid exact simultaneous runs
+RandomizedDelaySec=300
+
+[Install]
+WantedBy=timers.target

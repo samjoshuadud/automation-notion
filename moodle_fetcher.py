@@ -52,34 +52,38 @@ class MoodleEmailFetcher:
             logger.error(f"Failed to connect to Gmail: {e}")
             raise
     
-    def search_moodle_emails(self, mail: imaplib.IMAP4_SSL, days_back: int = 7) -> List[bytes]:
-        """Search for Moodle emails from the past few days"""
-        mail.select('inbox')
-        
-        # Calculate date range
-        since_date = (datetime.now() - timedelta(days=days_back)).strftime("%d-%b-%Y")
-        
-        # Search criteria for Moodle emails
-        search_criteria = f'(FROM "noreply@moodle.{self.school_domain}" SINCE "{since_date}")'
-        
+    def search_moodle_emails(self, mail: imaplib.IMAP4_SSL, days_back: int = 14) -> List[bytes]:
+        """Search for ALL Moodle emails from the past 14 days (read + unread)"""
         try:
+            mail.select('inbox')
+            
+            # Calculate date range (default 14 days for comprehensive coverage)
+            since_date = (datetime.now() - timedelta(days=days_back)).strftime("%d-%b-%Y")
+            
+            # Search criteria for ALL Moodle emails (read + unread)
+            search_criteria = f'(FROM "noreply@moodle.{self.school_domain}" SINCE "{since_date}")'
+            
+            logger.info(f"Searching for emails: {search_criteria}")
             status, message_ids = mail.search(None, search_criteria)
-            if status == 'OK':
+            
+            if status == 'OK' and message_ids[0]:
                 email_ids = message_ids[0].split()
-                logger.info(f"Found {len(email_ids)} Moodle emails")
+                logger.info(f"Found {len(email_ids)} Moodle emails from last {days_back} days")
                 return email_ids
             else:
-                logger.warning("No emails found matching criteria")
+                logger.info("No Moodle emails found in the specified date range")
                 return []
+                
         except Exception as e:
             logger.error(f"Error searching emails: {e}")
             return []
     
     def parse_email_content(self, mail: imaplib.IMAP4_SSL, email_id: bytes) -> Optional[Dict]:
-        """Parse email content to extract assignment information"""
+        """Parse email content to extract assignment information with email ID tracking"""
         try:
             status, msg_data = mail.fetch(email_id, '(RFC822)')
             if status != 'OK':
+                logger.warning(f"Failed to fetch email {email_id}")
                 return None
             
             email_body = msg_data[0][1]
@@ -93,9 +97,14 @@ class MoodleEmailFetcher:
             assignment_info = self._extract_assignment_info(subject, body)
             
             if assignment_info:
-                # Add email metadata
+                # Add email metadata for tracking
+                assignment_info['email_id'] = email_id.decode('utf-8') if isinstance(email_id, bytes) else str(email_id)
                 assignment_info['email_date'] = email_message['Date']
+                assignment_info['email_subject'] = subject
                 assignment_info['added_date'] = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+                assignment_info['last_updated'] = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+                
+                logger.debug(f"Successfully parsed assignment: {assignment_info.get('title', 'Unknown')}")
                 
             return assignment_info
             
@@ -251,12 +260,16 @@ class MoodleEmailFetcher:
                 if course_name:
                     break
             
-            # Format the title according to requirements: coursecode - activity no. (name)
-            formatted_title = self._format_assignment_title(assignment_title, course_code)
+            # Format the title according to requirements
+            formatted_titles = self._format_assignment_title(assignment_title, course_code)
             
             # Apply fallbacks if extraction failed
-            if not formatted_title:
-                formatted_title = assignment_title or "Unknown Assignment"
+            if not formatted_titles["display"]:
+                display_title = assignment_title or "Unknown Assignment"
+                normalized_title = (assignment_title or "unknown assignment").lower()
+            else:
+                display_title = formatted_titles["display"]
+                normalized_title = formatted_titles["normalized"]
             
             if not due_date:
                 due_date = "No due date"
@@ -265,9 +278,10 @@ class MoodleEmailFetcher:
                 course_name = "Unknown Course"
             
             # If we found at least a title, return the info
-            if assignment_title or formatted_title != "Unknown Assignment":
+            if assignment_title or display_title != "Unknown Assignment":
                 return {
-                    'title': formatted_title,
+                    'title': display_title,  # Properly capitalized for display/Notion
+                    'title_normalized': normalized_title,  # Lowercase for duplicate checking
                     'due_date': due_date,
                     'course': course_name,
                     'course_code': course_code,
@@ -290,10 +304,10 @@ class MoodleEmailFetcher:
         
         return None
     
-    def _format_assignment_title(self, title: str, course_code: str) -> str:
-        """Format assignment title according to requirements: coursecode - activity no. (name)"""
+    def _format_assignment_title(self, title: str, course_code: str) -> Dict[str, str]:
+        """Format assignment title with proper capitalization for display and normalized for matching"""
         if not title:
-            return ""
+            return {"display": "", "normalized": ""}
         
         try:
             # Clean the title
@@ -301,11 +315,13 @@ class MoodleEmailFetcher:
             title = re.sub(r'\s+', ' ', title)
             
             # Extract activity number and name from title
-            # Pattern: "ACTIVITY 1 - USER STORY" -> "activity 1" and "user story"
+            # Pattern: "ACTIVITY 1 - USER STORY" -> "Activity 1" and "User Story"
             activity_match = re.search(r'(ACTIVITY\s+\d+)', title, re.IGNORECASE)
             
             if activity_match and course_code:
-                activity_part = activity_match.group(1).lower()
+                activity_part = activity_match.group(1)
+                activity_display = activity_part.title()  # "Activity 1"
+                activity_normalized = activity_part.lower()  # "activity 1"
                 
                 # Extract the remaining part as the activity name
                 remaining = title.replace(activity_match.group(1), '', 1)
@@ -313,10 +329,26 @@ class MoodleEmailFetcher:
                 remaining = remaining.strip()
                 
                 if remaining:
-                    # Format: "hci - activity 1 (user story)"
-                    return f"{course_code.lower()} - {activity_part} ({remaining.lower()})"
+                    # Proper title case for display
+                    remaining_display = remaining.title()
+                    remaining_normalized = remaining.lower()
+                    
+                    # Format with proper capitalization
+                    display_title = f"{course_code.upper()} - {activity_display} ({remaining_display})"
+                    normalized_title = f"{course_code.lower()} - {activity_normalized} ({remaining_normalized})"
+                    
+                    return {
+                        "display": display_title,
+                        "normalized": normalized_title
+                    }
                 else:
-                    return f"{course_code.lower()} - {activity_part}"
+                    display_title = f"{course_code.upper()} - {activity_display}"
+                    normalized_title = f"{course_code.lower()} - {activity_normalized}"
+                    
+                    return {
+                        "display": display_title,
+                        "normalized": normalized_title
+                    }
             
             # Fallback: try to extract any number pattern
             number_match = re.search(r'(\d+)', title)
@@ -327,19 +359,46 @@ class MoodleEmailFetcher:
                 name_part = re.sub(r'[-\s]+', ' ', name_part).strip()
                 
                 if name_part:
-                    return f"{course_code.lower()} - activity {activity_num} ({name_part.lower()})"
+                    name_display = name_part.title()
+                    name_normalized = name_part.lower()
+                    
+                    display_title = f"{course_code.upper()} - Activity {activity_num} ({name_display})"
+                    normalized_title = f"{course_code.lower()} - activity {activity_num} ({name_normalized})"
+                    
+                    return {
+                        "display": display_title,
+                        "normalized": normalized_title
+                    }
                 else:
-                    return f"{course_code.lower()} - activity {activity_num}"
+                    display_title = f"{course_code.upper()} - Activity {activity_num}"
+                    normalized_title = f"{course_code.lower()} - activity {activity_num}"
+                    
+                    return {
+                        "display": display_title,
+                        "normalized": normalized_title
+                    }
             
-            # If no course code, return cleaned title
+            # If no course code, return cleaned title with proper capitalization
             if course_code:
-                return f"{course_code.lower()} - {title.lower()}"
+                display_title = f"{course_code.upper()} - {title.title()}"
+                normalized_title = f"{course_code.lower()} - {title.lower()}"
+                
+                return {
+                    "display": display_title,
+                    "normalized": normalized_title
+                }
             else:
-                return title.lower()
+                return {
+                    "display": title.title(),
+                    "normalized": title.lower()
+                }
                 
         except Exception as e:
             logger.warning(f"Error formatting title '{title}': {e}")
-            return title or "Unknown Assignment"
+            return {
+                "display": title or "Unknown Assignment",
+                "normalized": (title or "unknown assignment").lower()
+            }
 
     def _parse_date(self, date_string: str) -> Optional[str]:
         """Parse various date formats into ISO format with enhanced error handling"""
@@ -408,12 +467,95 @@ class MoodleEmailFetcher:
             return []
     
     def is_duplicate(self, new_assignment: Dict, existing_assignments: List[Dict]) -> bool:
-        """Check if assignment already exists"""
+        """Enhanced duplicate checking with fuzzy matching and multiple criteria"""
+        if not existing_assignments:
+            return False
+        
+        # Use normalized title for comparison, fallback to regular title
+        new_title = new_assignment.get('title_normalized', new_assignment.get('title', '')).lower().strip()
+        new_course = new_assignment.get('course', '').lower().strip()
+        new_due_date = new_assignment.get('due_date', '')
+        new_email_id = new_assignment.get('email_id', '')
+        
+        # Quick exact match check first
         for existing in existing_assignments:
-            if (existing.get('title', '').lower() == new_assignment.get('title', '').lower() and
-                existing.get('course', '').lower() == new_assignment.get('course', '').lower()):
+            # Use normalized title if available, fallback to regular title
+            existing_title = existing.get('title_normalized', existing.get('title', '')).lower().strip()
+            existing_course = existing.get('course', '').lower().strip()
+            existing_due_date = existing.get('due_date', '')
+            existing_email_id = existing.get('email_id', '')
+            
+            # Check for exact email ID match (most reliable)
+            if new_email_id and existing_email_id and new_email_id == existing_email_id:
+                logger.debug(f"Duplicate found by email ID: {new_email_id}")
                 return True
+            
+            # Check for exact title + course match
+            if new_title and existing_title and new_title == existing_title:
+                if new_course and existing_course and new_course == existing_course:
+                    logger.debug(f"Duplicate found by title+course: {new_title}")
+                    return True
+            
+            # Check for fuzzy title match with same course
+            if self._fuzzy_match(new_title, existing_title, threshold=0.85):
+                if new_course and existing_course and new_course == existing_course:
+                    logger.debug(f"Duplicate found by fuzzy match: {new_title} ≈ {existing_title}")
+                    return True
+            
+            # Check for same assignment with updated due date
+            if self._fuzzy_match(new_title, existing_title, threshold=0.90):
+                if new_course == existing_course and new_due_date != existing_due_date:
+                    logger.info(f"Assignment update detected: {new_assignment.get('title', 'Unknown')} - due date changed from {existing_due_date} to {new_due_date}")
+                    # This is an update, not a duplicate - allow it through
+                    return False
+        
         return False
+    
+    def _fuzzy_match(self, str1: str, str2: str, threshold: float = 0.85) -> bool:
+        """Simple fuzzy string matching using character similarity"""
+        if not str1 or not str2:
+            return False
+        
+        # Remove common variations
+        str1 = self._normalize_title(str1)
+        str2 = self._normalize_title(str2)
+        
+        if str1 == str2:
+            return True
+        
+        # Calculate similarity using Jaccard similarity with character bigrams
+        def get_bigrams(s):
+            return set(s[i:i+2] for i in range(len(s)-1))
+        
+        bigrams1 = get_bigrams(str1)
+        bigrams2 = get_bigrams(str2)
+        
+        if not bigrams1 and not bigrams2:
+            return True
+        if not bigrams1 or not bigrams2:
+            return False
+        
+        intersection = len(bigrams1.intersection(bigrams2))
+        union = len(bigrams1.union(bigrams2))
+        
+        similarity = intersection / union if union > 0 else 0
+        return similarity >= threshold
+    
+    def _normalize_title(self, title: str) -> str:
+        """Normalize title for better matching"""
+        if not title:
+            return ""
+        
+        # Convert to lowercase and strip
+        title = title.lower().strip()
+        
+        # Remove common variations
+        title = re.sub(r'\s+', ' ', title)  # Multiple spaces to single
+        title = re.sub(r'[^\w\s-]', '', title)  # Remove special chars except hyphens
+        title = re.sub(r'\b(activity|assignment|task|project)\s*', '', title)  # Remove common prefixes
+        title = re.sub(r'\s*-\s*', ' ', title)  # Normalize dashes
+        
+        return title.strip()
     
     def save_assignments(self, assignments: List[Dict]):
         """Save assignments to both JSON and Markdown files"""
@@ -441,51 +583,77 @@ class MoodleEmailFetcher:
                 
                 f.write(f"| {title} | {due_date} | {course} | {status} | {added_date} |\n")
     
-    def run_check(self, days_back: int = 7) -> int:
-        """Main method to check for new assignments"""
-        logger.info("Starting Moodle assignment check...")
+    def run_check(self, days_back: int = 14) -> int:
+        """Main method to check for new assignments (default: last 14 days)"""
+        logger.info("=" * 60)
+        logger.info("STARTING MOODLE ASSIGNMENT CHECK")
+        logger.info(f"Checking emails from last {days_back} days")
+        logger.info("=" * 60)
         
         try:
             # Connect to Gmail
             mail = self.connect_to_gmail()
             
-            # Search for Moodle emails
+            # Search for Moodle emails (all emails, read + unread)
             email_ids = self.search_moodle_emails(mail, days_back)
             
             if not email_ids:
-                logger.info("No new Moodle emails found")
+                logger.info("No Moodle emails found in the specified date range")
                 mail.logout()
                 return 0
             
-            # Load existing assignments
+            # Load existing assignments for duplicate checking
             existing_assignments = self.load_existing_assignments()
             new_assignments_count = 0
+            updated_assignments_count = 0
+            skipped_duplicates = 0
+            
+            logger.info(f"Processing {len(email_ids)} emails...")
+            logger.info(f"Existing assignments in database: {len(existing_assignments)}")
             
             # Process each email
-            for email_id in email_ids:
-                assignment_info = self.parse_email_content(mail, email_id)
-                
-                if assignment_info:
-                    # Check for duplicates
-                    if not self.is_duplicate(assignment_info, existing_assignments):
-                        existing_assignments.append(assignment_info)
-                        new_assignments_count += 1
-                        logger.info(f"Added new assignment: {assignment_info['title']}")
+            for i, email_id in enumerate(email_ids, 1):
+                try:
+                    logger.debug(f"Processing email {i}/{len(email_ids)}: {email_id}")
+                    assignment_info = self.parse_email_content(mail, email_id)
+                    
+                    if assignment_info:
+                        # Enhanced duplicate checking
+                        if not self.is_duplicate(assignment_info, existing_assignments):
+                            existing_assignments.append(assignment_info)
+                            new_assignments_count += 1
+                            logger.info(f"✅ New assignment: {assignment_info['title']}")
+                        else:
+                            skipped_duplicates += 1
+                            logger.debug(f"⏭️  Skipped duplicate: {assignment_info.get('title', 'Unknown')}")
                     else:
-                        logger.info(f"Skipped duplicate assignment: {assignment_info['title']}")
+                        logger.debug(f"❌ Failed to parse email {email_id}")
+                        
+                except Exception as e:
+                    logger.error(f"Error processing email {email_id}: {e}")
+                    continue
             
-            # Save updated assignments
+            # Save updated assignments if there are new ones
             if new_assignments_count > 0:
                 self.save_assignments(existing_assignments)
-                logger.info(f"Added {new_assignments_count} new assignments")
-            else:
-                logger.info("No new assignments to add")
+                logger.info(f"💾 Saved {new_assignments_count} new assignments to files")
+            
+            # Summary
+            logger.info("=" * 60)
+            logger.info("ASSIGNMENT CHECK COMPLETED")
+            logger.info(f"📧 Emails processed: {len(email_ids)}")
+            logger.info(f"✅ New assignments: {new_assignments_count}")
+            logger.info(f"⏭️  Duplicates skipped: {skipped_duplicates}")
+            logger.info(f"📊 Total assignments: {len(existing_assignments)}")
+            logger.info("=" * 60)
             
             mail.logout()
             return new_assignments_count
             
         except Exception as e:
-            logger.error(f"Error during assignment check: {e}")
+            logger.error(f"Fatal error during assignment check: {e}")
+            import traceback
+            logger.error(traceback.format_exc())
             return -1
 
 def main():

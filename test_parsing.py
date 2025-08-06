@@ -49,7 +49,8 @@ Are you reading this in an email? Download the mobile app and receive notificati
         
         if result:
             print("✅ EXTRACTION SUCCESSFUL!")
-            print(f"Title: {result.get('title')}")
+            print(f"Title (Display): {result.get('title')}")
+            print(f"Title (Normalized): {result.get('title_normalized')}")
             print(f"Raw Title: {result.get('raw_title')}")
             print(f"Due Date: {result.get('due_date')}")
             print(f"Course: {result.get('course')}")
@@ -90,7 +91,7 @@ def test_date_parsing():
         print(f"'{test_date}' → '{result}'")
 
 def test_title_formatting():
-    """Test title formatting"""
+    """Test title formatting with proper capitalization"""
     
     print("\nTESTING TITLE FORMATTING")
     print("-" * 30)
@@ -110,7 +111,10 @@ def test_title_formatting():
     
     for title, course_code in test_cases:
         result = fetcher._format_assignment_title(title, course_code)
-        print(f"'{title}' + '{course_code}' → '{result}'")
+        print(f"'{title}' + '{course_code}':")
+        print(f"  Display: '{result['display']}'")
+        print(f"  Normalized: '{result['normalized']}'")
+        print()
 
 if __name__ == "__main__":
     test_email_parsing()

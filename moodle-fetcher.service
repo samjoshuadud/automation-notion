@@ -1,0 +1,31 @@
+[Unit]
+Description=Moodle Assignment Fetcher
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+User=punisher
+Group=punisher
+WorkingDirectory=/home/punisher/Documents/automate
+Environment=PATH=/home/punisher/Documents/automate/venv/bin:/usr/local/bin:/usr/bin:/bin
+Environment=PYTHONPATH=/home/punisher/Documents/automate
+ExecStart=/home/punisher/Documents/automate/daily_check.sh
+StandardOutput=journal
+StandardError=journal
+TimeoutStartSec=600
+TimeoutStopSec=30
+
+# Security settings
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/home/punisher/Documents/automate
+PrivateDevices=true
+ProtectKernelTunables=true
+ProtectKernelModules=true
+ProtectControlGroups=true
+
+[Install]
+WantedBy=multi-user.target
