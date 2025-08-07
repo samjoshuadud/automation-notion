@@ -2,7 +2,7 @@ import requests
 import json
 import os
 import re
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, date
 from dotenv import load_dotenv
 from typing import List, Dict, Optional
 import logging
@@ -122,16 +122,25 @@ class NotionIntegration:
             today = datetime.now().date()
             days_until_due = (due_date.date() - today).days
             
-            # If we have opening date, use it; otherwise assume assignment is already open
+            # If we have opening date, use it; otherwise use email date as fallback
             if opening_date_str and opening_date_str != 'No opening date':
                 try:
                     opening_date = datetime.strptime(opening_date_str, '%Y-%m-%d').date()
                 except ValueError:
-                    # If opening date can't be parsed, assume assignment is open
-                    opening_date = today
+                    # If opening date can't be parsed, use email date as fallback
+                    email_date_str = assignment.get('email_date')
+                    if email_date_str:
+                        opening_date = self._parse_email_date_for_reminder(email_date_str)
+                    else:
+                        opening_date = today
             else:
-                # No opening date info, assume assignment is open
-                opening_date = today
+                # No opening date info, use email date as fallback for when assignment became available
+                email_date_str = assignment.get('email_date')
+                if email_date_str:
+                    opening_date = self._parse_email_date_for_reminder(email_date_str)
+                else:
+                    # Final fallback: assume assignment is open today
+                    opening_date = today
             
             # Calculate days until assignment opens
             days_until_opens = (opening_date - today).days
@@ -723,3 +732,46 @@ class NotionIntegration:
         except Exception as e:
             logger.error(f"Error finding page: {e}")
             return None
+    
+    def _parse_email_date_for_reminder(self, email_date_str: str) -> date:
+        """Parse email date string to date object for reminder calculation"""
+        try:
+            # Email dates are typically in RFC 2822 format like:
+            # "Tue, 5 Aug 2025 15:34:53 +0000"
+            # "Wed, 6 Aug 2025 16:26:03 +0000"
+            
+            # Try multiple common email date formats
+            formats = [
+                '%a, %d %b %Y %H:%M:%S %z',  # Standard RFC 2822
+                '%a, %d %b %Y %H:%M:%S +0000',  # Common variant
+                '%d %b %Y %H:%M:%S %z',  # Without day name
+                '%Y-%m-%d %H:%M:%S',  # ISO format
+                '%Y-%m-%d',  # Simple date
+            ]
+            
+            for fmt in formats:
+                try:
+                    parsed_date = datetime.strptime(email_date_str, fmt)
+                    return parsed_date.date()
+                except ValueError:
+                    continue
+            
+            # If all formats fail, try parsing just the date part
+            # Extract date from strings like "Tue, 5 Aug 2025 15:34:53 +0000"
+            import re
+            date_match = re.search(r'(\d{1,2})\s+([A-Za-z]{3})\s+(\d{4})', email_date_str)
+            if date_match:
+                day, month_name, year = date_match.groups()
+                month_map = {
+                    'Jan': 1, 'Feb': 2, 'Mar': 3, 'Apr': 4, 'May': 5, 'Jun': 6,
+                    'Jul': 7, 'Aug': 8, 'Sep': 9, 'Oct': 10, 'Nov': 11, 'Dec': 12
+                }
+                if month_name in month_map:
+                    return date(int(year), month_map[month_name], int(day))
+            
+            logger.warning(f"Could not parse email date: {email_date_str}, using today as fallback")
+            return datetime.now().date()
+            
+        except Exception as e:
+            logger.warning(f"Error parsing email date {email_date_str}: {e}, using today as fallback")
+            return datetime.now().date()
