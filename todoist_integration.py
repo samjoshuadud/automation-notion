@@ -472,6 +472,10 @@ class TodoistIntegration:
             logger.error(f"Error getting assignments from Todoist: {e}")
             return []
     
+    def get_school_assignments(self) -> List[Dict]:
+        """Alias for get_all_assignments_from_todoist for interactive deletion"""
+        return self.get_all_assignments_from_todoist()
+    
     def sync_status_from_todoist(self, local_assignments: List[Dict]) -> Dict:
         """Sync completion status from Todoist back to local storage"""
         if not self.enabled:
