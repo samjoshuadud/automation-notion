@@ -9,6 +9,7 @@ A production-ready automation system that fetches Moodle assignment emails from 
 - **Robust Duplicate Detection**: Uses email ID, normalized titles, and fuzzy matching
 - **Local Storage**: Maintains assignments in JSON format with append-only logic
 - **Notion Integration**: Two-way sync with Notion database including status updates
+- **Todoist Integration**: Sync assignments to Todoist as tasks with smart reminders and bidirectional status sync
 - **Status-Based Archiving**: Automatically archives completed assignments after 30 days
 - **Smart Restore**: Restores archived assignments if status changes in Notion
 - **Comprehensive Error Handling**: Graceful failure recovery and detailed logging
@@ -22,6 +23,7 @@ moodle-assignment-automation/
 │   ├── run_fetcher.py           # Main entry point
 │   ├── moodle_fetcher.py        # Gmail fetching and parsing
 │   ├── notion_integration.py    # Notion API integration
+│   ├── todoist_integration.py   # Todoist API integration
 │   └── assignment_archive.py    # Archive management system
 │
 ├── 📂 data/                     # Data storage
@@ -78,10 +80,15 @@ moodle-assignment-automation/
    # Fetches assignments from last 7 days into data/assignments.json
    ```
 
-5. **Optional: Setup Notion**
+5. **Optional: Setup Notion or Todoist**
    ```bash
+   # For Notion integration
    python tests/setup_notion_db.py
-   # Follow the guide to sync with Notion database
+   
+   # For Todoist integration  
+   python tests/setup_todoist.py
+   
+   # Follow the guides to sync with your preferred task manager
    ```
 
 **That's it! Your assignments are now in `data/assignments.json`** 📋
@@ -192,6 +199,9 @@ SCHOOL_DOMAIN=umak.edu.ph
 # Notion Integration (Optional)
 NOTION_TOKEN=secret_xyz123...
 NOTION_DATABASE_ID=your_database_id
+
+# Todoist Integration (Optional)
+TODOIST_TOKEN=your_todoist_api_token
 ```
 
 ### Step 3: Setup Notion Database (Optional)
@@ -206,6 +216,25 @@ Follow the instructions to:
 2. Create a database with required properties
 3. Share the database with your integration
 4. Add credentials to `.env` file
+
+### Step 3b: Setup Todoist Integration (Optional)
+
+```bash
+# Run the Todoist setup helper
+python tests/setup_todoist.py
+```
+
+Follow the instructions to:
+1. Get your Todoist API token from https://todoist.com/prefs/integrations
+2. Add TODOIST_TOKEN to your `.env` file
+3. Test the integration
+
+**Todoist Free Tier Features:**
+- ✅ Works with free Todoist account
+- ✅ Assignments become tasks with due dates
+- ✅ Course codes become task labels
+- ✅ Cross-platform sync (mobile, web, desktop)
+- ✅ No premium subscription required
 
 ### Step 4: Test Your Setup
 
@@ -242,14 +271,20 @@ python run_fetcher.py
 # Fetch with Notion synchronization
 python run_fetcher.py --notion
 
+# Fetch with Todoist synchronization
+python run_fetcher.py --todoist
+
+# Fetch with both Notion and Todoist synchronization
+python run_fetcher.py --notion --todoist
+
 # Fetch from specific time range (last 14 days)
-python run_fetcher.py --days 14 --notion
+python run_fetcher.py --days 14 --todoist
 
 # Test connections only (no fetching)
 python run_fetcher.py --test
 
 # Enable verbose logging for debugging
-python run_fetcher.py --verbose --notion
+python run_fetcher.py --verbose --todoist
 ```
 
 ### Archive Management
@@ -274,6 +309,9 @@ python run_fetcher.py --manual-archive "Assignment Title"
 # Setup Notion database properties
 python tests/setup_notion_db.py
 
+# Setup Todoist integration
+python tests/setup_todoist.py
+
 # Test email parsing with sample data
 python tests/test_parsing.py
 
@@ -282,6 +320,9 @@ python tests/test_real_parsing.py
 
 # Test Notion synchronization
 python tests/test_notion_sync.py
+
+# Test Todoist synchronization
+python tests/test_todoist_sync.py
 ```
 
 ### Production Deployment
@@ -300,6 +341,45 @@ sudo systemctl daemon-reload
 sudo systemctl enable moodle-fetcher.timer
 sudo systemctl start moodle-fetcher.timer
 ```
+
+## 🎯 Choosing Your Integration
+
+### Notion vs Todoist
+
+| Feature | Notion | Todoist |
+|---------|--------|---------|
+| **Free Tier** | Limited blocks | Full task management |
+| **Best For** | Detailed project tracking | Quick task management |
+| **Mobile App** | Good | Excellent |
+| **Offline Access** | Limited | Full offline sync |
+| **Due Date Alerts** | Basic | Advanced notifications |
+| **Learning Curve** | Moderate | Easy |
+| **Status Sync** | Two-way | One-way (to Todoist) |
+
+### Recommended Setups
+
+**🎓 Student (Free Tier Focus):**
+```bash
+python run_fetcher.py --todoist
+```
+- Use Todoist for daily task management
+- Great mobile app with notifications
+- Works perfectly with free account
+
+**📊 Advanced User:**
+```bash
+python run_fetcher.py --notion --todoist  
+```
+- Notion for detailed project tracking
+- Todoist for quick daily task management
+- Best of both worlds
+
+**💼 Simple Setup:**
+```bash
+python run_fetcher.py --notion
+```
+- Everything in one place
+- Good for desktop-focused workflow
 
 ## ⚙️ Configuration
 
@@ -324,6 +404,13 @@ NOTION_DATABASE_ID=your_database_id
 2. Go to [Google App Passwords](https://myaccount.google.com/apppasswords)
 3. Generate an app password for "Mail"
 4. Use the 16-character password in your `.env` file
+
+### Todoist API Token Setup
+
+1. Go to [Todoist Integrations](https://todoist.com/prefs/integrations)
+2. Find your API token (long string of characters)
+3. Copy the token and add it to your `.env` file as `TODOIST_TOKEN=your_token_here`
+4. No premium subscription required - works with free accounts!
 
 ### Notion Database Setup
 
@@ -401,11 +488,14 @@ python test_parsing.py
 
 ```bash
 # Morning: Check for new assignments
-python run_fetcher.py --notion
+python run_fetcher.py --todoist
+
+# Or sync to both systems
+python run_fetcher.py --notion --todoist
 
 # Output example:
 # ✅ Successfully found 2 new assignments!
-# 📝 Synced 2 assignments to Notion!
+# ✅ Synced 2 assignments to Todoist!
 # 🧹 No assignments need archiving
 # 🔄 Status sync: Updated 1, Restored 0 assignments
 ```
@@ -431,6 +521,9 @@ python tests/test_real_parsing.py
 
 # Debug Notion connection
 python tests/test_notion_sync.py
+
+# Debug Todoist connection
+python tests/test_todoist_sync.py
 
 # Verbose logging for debugging
 python run_fetcher.py --verbose --test

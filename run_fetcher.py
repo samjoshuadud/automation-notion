@@ -9,6 +9,7 @@ sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 
 from moodle_fetcher import MoodleEmailFetcher
 from notion_integration import NotionIntegration
+from todoist_integration import TodoistIntegration
 from assignment_archive import AssignmentArchiveManager
 import argparse
 import logging
@@ -31,12 +32,16 @@ def main():
                        help='Number of days back to search for emails (default: 7)')
     parser.add_argument('--notion', action='store_true', 
                        help='Sync to Notion (requires Notion credentials)')
+    parser.add_argument('--todoist', action='store_true', 
+                       help='Sync to Todoist (requires Todoist API token)')
     parser.add_argument('--verbose', '-v', action='store_true', 
                        help='Enable verbose logging')
     parser.add_argument('--test', action='store_true', 
                        help='Test mode - just check connection')
     parser.add_argument('--skip-notion', action='store_true',
                        help='Skip Notion integration even if configured')
+    parser.add_argument('--skip-todoist', action='store_true',
+                       help='Skip Todoist integration even if configured')
     parser.add_argument('--cleanup', action='store_true',
                        help='Run archive cleanup for completed assignments')
     parser.add_argument('--cleanup-days', type=int, default=30,
@@ -131,6 +136,17 @@ def main():
                         print("⚠️ Notion integration not configured")
                 except Exception as e:
                     print(f"❌ Notion connection failed: {e}")
+            
+            if args.todoist and not args.skip_todoist:
+                logger.info("Testing Todoist connection...")
+                try:
+                    todoist = TodoistIntegration()
+                    if todoist.enabled:
+                        print("✅ Todoist integration configured and connected!")
+                    else:
+                        print("⚠️ Todoist integration not configured")
+                except Exception as e:
+                    print(f"❌ Todoist connection failed: {e}")
             return 0
         
         # Run the main check
@@ -161,6 +177,27 @@ def main():
                     print(f"⚠️ Notion sync failed: {e}")
                     logger.error(f"Notion integration failed: {e}")
                     logger.info("Continuing without Notion integration...")
+            
+            # Sync to Todoist if requested and not skipped
+            if args.todoist and not args.skip_todoist:
+                try:
+                    logger.info("Initializing Todoist integration...")
+                    todoist = TodoistIntegration()
+                    if todoist.enabled:
+                        assignments = fetcher.load_existing_assignments()
+                        # Only sync recent assignments (avoid duplicates)
+                        recent_assignments = assignments[-new_count:] if new_count <= len(assignments) else assignments
+                        logger.info(f"Syncing {len(recent_assignments)} new assignments to Todoist...")
+                        todoist_count = todoist.sync_assignments(recent_assignments)
+                        print(f"✅ Synced {todoist_count} assignments to Todoist!")
+                        logger.info(f"Successfully synced {todoist_count} assignments to Todoist")
+                    else:
+                        print("⚠️ Todoist integration not configured")
+                        logger.warning("Todoist integration not available")
+                except Exception as e:
+                    print(f"⚠️ Todoist sync failed: {e}")
+                    logger.error(f"Todoist integration failed: {e}")
+                    logger.info("Continuing without Todoist integration...")
                     
         elif new_count == 0:
             print("ℹ️ No new assignments found.")
@@ -212,6 +249,53 @@ def main():
                     print(f"⚠️ Notion sync failed: {e}")
                     logger.error(f"Notion integration failed: {e}")
                     logger.info("Continuing without Notion integration...")
+            
+            # Even if no new assignments, check if existing ones need to be synced to Todoist
+            if args.todoist and not args.skip_todoist:
+                try:
+                    logger.info("Checking existing assignments for Todoist sync...")
+                    todoist = TodoistIntegration()
+                    if todoist.enabled:
+                        assignments = fetcher.load_existing_assignments()
+                        if assignments:
+                            logger.info(f"Checking {len(assignments)} existing assignments against Todoist...")
+                            print(f"🔍 Checking {len(assignments)} assignments against Todoist...")
+                            
+                            # Check each assignment to see if it exists in Todoist
+                            assignments_to_sync = []
+                            
+                            for assignment in assignments:
+                                try:
+                                    # Check if this specific assignment exists in Todoist
+                                    if not todoist.task_exists_in_todoist(assignment):
+                                        assignments_to_sync.append(assignment)
+                                        logger.info(f"Missing from Todoist: {assignment.get('title')}")
+                                    else:
+                                        logger.debug(f"Already in Todoist: {assignment.get('title')}")
+                                except Exception as e:
+                                    logger.warning(f"Could not check Todoist for '{assignment.get('title')}': {e}")
+                                    # If we can't check, assume it needs to be synced
+                                    assignments_to_sync.append(assignment)
+                            
+                            if assignments_to_sync:
+                                logger.info(f"Found {len(assignments_to_sync)} assignments missing from Todoist")
+                                print(f"✅ Syncing {len(assignments_to_sync)} missing assignments to Todoist...")
+                                todoist_count = todoist.sync_assignments(assignments_to_sync)
+                                print(f"✅ Successfully synced {todoist_count} assignments to Todoist!")
+                                logger.info(f"Successfully synced {todoist_count} assignments to Todoist")
+                            else:
+                                print("✅ All assignments already exist in Todoist")
+                                logger.info("All assignments already exist in Todoist")
+                        else:
+                            print("📄 No assignments found in local database")
+                            logger.info("No assignments found in local database")
+                    else:
+                        print("⚠️ Todoist integration not configured")
+                        logger.warning("Todoist integration not available")
+                except Exception as e:
+                    print(f"⚠️ Todoist sync failed: {e}")
+                    logger.error(f"Todoist integration failed: {e}")
+                    logger.info("Continuing without Todoist integration...")
         else:
             print("❌ Error occurred during check.")
             logger.error("Error occurred during assignment check")
@@ -245,16 +329,48 @@ def main():
                         sync_result = archive_manager.smart_status_sync(notion_assignments)
                         
                         if sync_result['updated_count'] > 0 or sync_result['restored_count'] > 0:
-                            print(f"🔄 Status sync: Updated {sync_result['updated_count']}, Restored {sync_result['restored_count']} assignments")
-                            logger.info(f"Status sync completed: {sync_result['updated_count']} updated, {sync_result['restored_count']} restored")
+                            print(f"🔄 Notion sync: Updated {sync_result['updated_count']}, Restored {sync_result['restored_count']} assignments")
+                            logger.info(f"Notion status sync completed: {sync_result['updated_count']} updated, {sync_result['restored_count']} restored")
                         else:
-                            logger.debug("Status sync: No changes needed")
+                            logger.debug("Notion status sync: No changes needed")
                     else:
                         logger.debug("No assignments found in Notion for status sync")
                         
             except Exception as e:
                 logger.warning(f"Status sync from Notion failed: {e}")
-                print(f"⚠️ Status sync warning: {e}")
+                print(f"⚠️ Notion status sync warning: {e}")
+
+        # Status sync from Todoist (if Todoist is enabled and available)
+        if args.todoist and not args.skip_todoist:
+            try:
+                logger.info("Syncing assignment status from Todoist...")
+                todoist = TodoistIntegration()
+                if todoist.enabled:
+                    # Get current local assignments
+                    fetcher = MoodleEmailFetcher()
+                    local_assignments = fetcher.load_existing_assignments()
+                    
+                    if local_assignments:
+                        # Sync status from Todoist
+                        todoist_sync_result = todoist.sync_status_from_todoist(local_assignments)
+                        
+                        if todoist_sync_result['updated'] > 0:
+                            # Save updated assignments back to file
+                            fetcher.save_assignments(local_assignments)
+                            print(f"🔄 Todoist sync: Updated {todoist_sync_result['updated']} assignments to Completed")
+                            logger.info(f"Todoist status sync: Updated {todoist_sync_result['updated']} assignments")
+                            
+                            # Log which assignments were marked as completed
+                            for assignment_title in todoist_sync_result['completed_in_todoist']:
+                                logger.info(f"Marked as completed (from Todoist): {assignment_title}")
+                        else:
+                            logger.debug("Todoist status sync: No changes needed")
+                    else:
+                        logger.debug("No local assignments found for Todoist status sync")
+                        
+            except Exception as e:
+                logger.warning(f"Status sync from Todoist failed: {e}")
+                print(f"⚠️ Todoist status sync warning: {e}")
         
         logger.info("=" * 50)
         logger.info("MOODLE ASSIGNMENT FETCHER COMPLETED")
