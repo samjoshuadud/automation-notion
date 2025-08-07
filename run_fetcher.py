@@ -73,6 +73,243 @@ def setup_logging(verbose: bool = False, debug: bool = False):
         handlers=[file_handler, console_handler]
     )
 
+def check_remaining_assignments_after_deletion(delete_from, include_local, args):
+    """Check for remaining assignments after deletion and return them"""
+    remaining = {"todoist": [], "notion": [], "local": []}
+    
+    try:
+        # Check local database (if it wasn't deleted)
+        if not include_local and delete_from != 'both':
+            fetcher = MoodleEmailFetcher()
+            local_assignments = fetcher.load_existing_assignments()
+            if local_assignments:
+                remaining["local"] = local_assignments
+        
+        # Check Todoist (if it wasn't cleared or was only partially cleared)
+        if not args.skip_todoist:
+            try:
+                todoist = TodoistIntegration()
+                if todoist.enabled:
+                    todoist_tasks = todoist.get_school_assignments()
+                    if todoist_tasks:
+                        remaining["todoist"] = todoist_tasks
+            except Exception as e:
+                if args.verbose:
+                    print(f"⚠️ Could not check remaining Todoist tasks: {e}")
+        
+        # Check Notion (if it wasn't cleared or was only partially cleared)
+        if not args.skip_notion:
+            try:
+                notion = NotionIntegration()
+                if notion.enabled:
+                    notion_assignments = notion.get_all_assignments_from_notion()
+                    if notion_assignments:
+                        remaining["notion"] = notion_assignments
+            except Exception as e:
+                if args.verbose:
+                    print(f"⚠️ Could not check remaining Notion assignments: {e}")
+        
+        # Return all remaining assignments combined
+        all_remaining = []
+        for platform, assignments in remaining.items():
+            for assignment in assignments:
+                assignment['_platform'] = platform  # Tag with platform info
+                all_remaining.append(assignment)
+        
+        return all_remaining
+        
+    except Exception as e:
+        if args.verbose:
+            print(f"⚠️ Error checking remaining assignments: {e}")
+        return []
+
+def interactive_deletion_menu(remaining_assignments, args):
+    """Interactive menu for deleting remaining assignments"""
+    if not remaining_assignments:
+        return
+    
+    print(f"\n🔍 FOUND {len(remaining_assignments)} REMAINING ASSIGNMENTS")
+    print("=" * 50)
+    print("Some assignments may still exist on the platforms.")
+    print("This could happen if:")
+    print("  • Assignment titles don't match exactly")
+    print("  • Network issues during deletion")
+    print("  • Different formatting between platforms")
+    print()
+    
+    while True:
+        print("📋 REMAINING ASSIGNMENTS:")
+        print("-" * 30)
+        
+        for i, assignment in enumerate(remaining_assignments, 1):
+            platform = assignment.get('_platform', 'unknown')
+            title = assignment.get('title', 'Unknown Assignment')
+            course = assignment.get('course_code', assignment.get('course', 'Unknown'))
+            due_date = assignment.get('due_date', 'No due date')
+            
+            # Format title for display (truncate if too long)
+            display_title = title[:60] + "..." if len(title) > 60 else title
+            
+            platform_icon = {"notion": "📝", "todoist": "✅", "local": "📄"}.get(platform, "❓")
+            print(f"  {i:2d}. [{platform_icon} {platform.upper()}] {display_title}")
+            print(f"      Course: {course} | Due: {due_date}")
+        
+        print()
+        print("🎯 OPTIONS:")
+        print("  [1-N]     Delete specific assignment by number")
+        print("  all       Delete ALL remaining assignments")
+        print("  notion    Delete all from Notion only")
+        print("  todoist   Delete all from Todoist only")
+        print("  local     Delete all from local database only")
+        print("  show      Show full details of all assignments")
+        print("  quit      Exit interactive mode")
+        print()
+        
+        try:
+            choice = input("👉 Choose action: ").strip().lower()
+            
+            if choice == 'quit' or choice == 'q':
+                print("👋 Exiting interactive deletion mode")
+                break
+            
+            elif choice == 'show':
+                show_detailed_assignments(remaining_assignments)
+                continue
+            
+            elif choice == 'all':
+                if confirm_deletion("ALL remaining assignments"):
+                    deleted_count = delete_assignments_interactive(remaining_assignments, 'all', args)
+                    remaining_assignments = [a for a in remaining_assignments if not a.get('_deleted')]
+                    print(f"✅ Deleted {deleted_count} assignments")
+                    if not remaining_assignments:
+                        print("🎉 No more assignments remaining!")
+                        break
+            
+            elif choice in ['notion', 'todoist', 'local']:
+                platform_assignments = [a for a in remaining_assignments if a.get('_platform') == choice]
+                if platform_assignments:
+                    if confirm_deletion(f"all assignments from {choice.upper()}"):
+                        deleted_count = delete_assignments_interactive(platform_assignments, choice, args)
+                        # Remove deleted assignments from the list
+                        remaining_assignments = [a for a in remaining_assignments if not a.get('_deleted')]
+                        print(f"✅ Deleted {deleted_count} assignments from {choice.upper()}")
+                        if not remaining_assignments:
+                            print("🎉 No more assignments remaining!")
+                            break
+                else:
+                    print(f"❌ No assignments found on {choice.upper()}")
+            
+            elif choice.isdigit():
+                index = int(choice) - 1
+                if 0 <= index < len(remaining_assignments):
+                    assignment = remaining_assignments[index]
+                    platform = assignment.get('_platform', 'unknown')
+                    title = assignment.get('title', 'Unknown')
+                    
+                    if confirm_deletion(f"'{title[:40]}...' from {platform.upper()}"):
+                        deleted_count = delete_assignments_interactive([assignment], platform, args)
+                        if deleted_count > 0:
+                            assignment['_deleted'] = True
+                            remaining_assignments = [a for a in remaining_assignments if not a.get('_deleted')]
+                            print(f"✅ Deleted assignment from {platform.upper()}")
+                            if not remaining_assignments:
+                                print("🎉 No more assignments remaining!")
+                                break
+                        else:
+                            print(f"❌ Failed to delete assignment from {platform.upper()}")
+                else:
+                    print(f"❌ Invalid number. Please choose 1-{len(remaining_assignments)}")
+            
+            else:
+                print("❌ Invalid choice. Please try again.")
+                
+        except KeyboardInterrupt:
+            print("\n👋 Exiting interactive deletion mode")
+            break
+        except Exception as e:
+            print(f"❌ Error: {e}")
+            continue
+
+def show_detailed_assignments(assignments):
+    """Show detailed view of assignments"""
+    print("\n📋 DETAILED ASSIGNMENT VIEW")
+    print("=" * 60)
+    
+    for i, assignment in enumerate(assignments, 1):
+        platform = assignment.get('_platform', 'unknown')
+        platform_icon = {"notion": "📝", "todoist": "✅", "local": "📄"}.get(platform, "❓")
+        
+        print(f"\n{i}. [{platform_icon} {platform.upper()}]")
+        print(f"   Title: {assignment.get('title', 'Unknown Assignment')}")
+        print(f"   Course: {assignment.get('course_code', assignment.get('course', 'Unknown'))}")
+        print(f"   Due Date: {assignment.get('due_date', 'No due date')}")
+        print(f"   Status: {assignment.get('status', 'Unknown')}")
+        if assignment.get('source'):
+            print(f"   Source: {assignment.get('source')}")
+        if assignment.get('email_id'):
+            print(f"   Email ID: {assignment.get('email_id')}")
+
+def confirm_deletion(target):
+    """Get user confirmation for deletion"""
+    try:
+        response = input(f"❓ Delete {target}? (y/N): ").strip().lower()
+        return response in ['y', 'yes']
+    except KeyboardInterrupt:
+        return False
+
+def delete_assignments_interactive(assignments, target_platform, args):
+    """Delete assignments interactively"""
+    deleted_count = 0
+    
+    for assignment in assignments:
+        platform = assignment.get('_platform', target_platform)
+        
+        try:
+            if platform == 'todoist' or target_platform == 'all':
+                if not args.skip_todoist and (platform == 'todoist' or target_platform in ['all', 'todoist']):
+                    todoist = TodoistIntegration()
+                    if todoist.enabled:
+                        if todoist.delete_assignment_task(assignment):
+                            deleted_count += 1
+                            assignment['_deleted'] = True
+                            if args.verbose:
+                                print(f"   ✅ Deleted from Todoist: {assignment.get('title', 'Unknown')[:50]}")
+            
+            if platform == 'notion' or target_platform == 'all':
+                if not args.skip_notion and (platform == 'notion' or target_platform in ['all', 'notion']):
+                    notion = NotionIntegration()
+                    if notion.enabled:
+                        if notion.delete_assignment_page(assignment):
+                            deleted_count += 1
+                            assignment['_deleted'] = True
+                            if args.verbose:
+                                print(f"   📝 Deleted from Notion: {assignment.get('title', 'Unknown')[:50]}")
+            
+            if platform == 'local' or target_platform == 'all':
+                if platform == 'local' or target_platform in ['all', 'local']:
+                    # For local deletion, we need to remove from the JSON file
+                    fetcher = MoodleEmailFetcher()
+                    local_assignments = fetcher.load_existing_assignments()
+                    
+                    # Find and remove the assignment
+                    title_to_remove = assignment.get('title', '')
+                    updated_assignments = [a for a in local_assignments if a.get('title') != title_to_remove]
+                    
+                    if len(updated_assignments) < len(local_assignments):
+                        import json
+                        with open('data/assignments.json', 'w') as f:
+                            json.dump(updated_assignments, f, indent=2)
+                        deleted_count += 1
+                        assignment['_deleted'] = True
+                        if args.verbose:
+                            print(f"   📄 Deleted from local: {assignment.get('title', 'Unknown')[:50]}")
+                            
+        except Exception as e:
+            if args.verbose:
+                print(f"   ⚠️ Error deleting {assignment.get('title', 'Unknown')[:30]}: {e}")
+    
+    return deleted_count
+
 def main():
     parser = argparse.ArgumentParser(description='Fetch Moodle assignments from Gmail')
     parser.add_argument('--days', type=int, default=7, 
@@ -505,6 +742,11 @@ def main():
                 print(f"✅ Assignments deleted from {mode_text} successfully!")
             print("💡 Your Gmail emails are completely untouched")
             print("🔄 Run './deployment/run.sh check' to fetch fresh assignments")
+            
+            # Check for remaining assignments and offer interactive deletion
+            remaining_assignments = check_remaining_assignments_after_deletion(delete_from, include_local, args)
+            if remaining_assignments:
+                interactive_deletion_menu(remaining_assignments, args)
             
         except Exception as e:
             print(f"❌ Error during deletion: {e}")
