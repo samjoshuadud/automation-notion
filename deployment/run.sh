@@ -48,6 +48,7 @@ show_usage() {
     echo "  debug [cmd]       Run any command with maximum debug output"
     echo "  duplicates        Show duplicate detection analysis"
     echo "  archive-stats     Show archive statistics"
+    echo "  fresh-start       Delete ALL data files and start completely fresh"
     echo "  delete-all [target] [--include-local]   Delete assignments - target: notion, todoist, both (default: both)"
     echo ""
     echo "Examples:"
@@ -60,6 +61,7 @@ show_usage() {
     echo "  ./run.sh debug both 14          # Debug mode with 14 days + both platforms"
     echo "  ./run.sh status                 # Detailed status report"
     echo "  ./run.sh duplicates             # Check for duplicate assignments"
+    echo "  ./run.sh fresh-start            # Complete reset - delete all data files"
     echo "  ./run.sh delete-all             # Delete all assignments (DEBUG)"
     echo "  ./run.sh delete-all notion      # Delete only from Notion"
     echo "  ./run.sh delete-all todoist     # Delete only from Todoist"
@@ -172,6 +174,14 @@ case "$1" in
     "archive-stats")
         echo -e "${YELLOW}📊 Archive Statistics...${NC}"
         $PYTHON_CMD run_fetcher.py --archive-stats
+        ;;
+    "fresh-start")
+        echo -e "${RED}🔥 FRESH START - Complete Data Reset...${NC}"
+        echo -e "${YELLOW}⚠️ This will delete ALL data files and start fresh${NC}"
+        echo -e "${YELLOW}Press Ctrl+C in the next 5 seconds to cancel...${NC}"
+        sleep 5
+        echo -e "${RED}🔥 Proceeding with fresh start...${NC}"
+        $PYTHON_CMD run_fetcher.py --fresh-start --verbose
         ;;
     "delete-all")
         TARGET=${2:-both}

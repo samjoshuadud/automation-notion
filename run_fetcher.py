@@ -350,6 +350,8 @@ def main():
                        help='Choose where to delete assignments from: notion, todoist, or both (default: both)')
     parser.add_argument('--include-local', action='store_true',
                        help='Also delete assignments from local database when using selective deletion')
+    parser.add_argument('--fresh-start', action='store_true',
+                       help='DELETE ALL data files and start fresh (clears assignments.json, assignments.md, archive, backups - emails are NOT touched)')
     
     args = parser.parse_args()
     
@@ -566,6 +568,111 @@ def main():
             return 1
         return 0
     
+    if args.fresh_start:
+        print("\n🔥 FRESH START - DELETING ALL DATA FILES")
+        print("=" * 50)
+        print("⚠️ WARNING: This will permanently delete:")
+        print("  📄 All assignment data (assignments.json)")
+        print("  📋 Assignment markdown file (assignments.md)")
+        print("  📦 Archive files (assignments_archive.json)")
+        print("  💾 All backup files")
+        print("  📊 Any other data files in the data/ folder")
+        print()
+        print("✅ Your Gmail emails will NOT be touched!")
+        print("✅ Your .env configuration will NOT be touched!")
+        print()
+        
+        # Double confirmation for fresh start
+        try:
+            response = input("⚠️ Type 'FRESH START' to confirm total reset: ")
+            if response != 'FRESH START':
+                print("❌ Fresh start cancelled.")
+                return 0
+        except KeyboardInterrupt:
+            print("\n❌ Fresh start cancelled.")
+            return 0
+        
+        try:
+            import os
+            import glob
+            
+            # Create data directory if it doesn't exist
+            if not os.path.exists('data'):
+                os.makedirs('data')
+                print("📁 Created data directory")
+            
+            # List all files in data directory before deletion
+            data_files = glob.glob('data/*')
+            
+            if data_files:
+                print(f"\n🗑️ Deleting {len(data_files)} files from data/ folder:")
+                for file_path in data_files:
+                    try:
+                        if os.path.isfile(file_path):
+                            filename = os.path.basename(file_path)
+                            os.remove(file_path)
+                            print(f"   ✅ Deleted: {filename}")
+                        elif os.path.isdir(file_path):
+                            import shutil
+                            dirname = os.path.basename(file_path)
+                            shutil.rmtree(file_path)
+                            print(f"   ✅ Deleted directory: {dirname}")
+                    except Exception as e:
+                        print(f"   ⚠️ Could not delete {os.path.basename(file_path)}: {e}")
+            else:
+                print("📄 Data folder was already empty")
+            
+            # Create fresh empty files
+            print(f"\n🆕 Creating fresh data files:")
+            
+            # Empty assignments.json
+            import json
+            with open('data/assignments.json', 'w') as f:
+                json.dump([], f, indent=2)
+            print("   ✅ Created empty assignments.json")
+            
+            # Empty assignments.md
+            with open('data/assignments.md', 'w') as f:
+                f.write("# Moodle Assignments\n\n")
+                f.write("| Assignment | Due Date | Course | Status | Added Date |\n")
+                f.write("|------------|----------|--------|--------|-----------|\n")
+            print("   ✅ Created empty assignments.md")
+            
+            # Empty archive file
+            archive_data = {
+                "archived_assignments": [],
+                "archive_metadata": {
+                    "created": time.strftime('%Y-%m-%d %H:%M:%S'),
+                    "last_cleanup": None,
+                    "total_archived": 0
+                }
+            }
+            with open('data/assignments_archive.json', 'w') as f:
+                json.dump(archive_data, f, indent=2)
+            print("   ✅ Created empty assignments_archive.json")
+            
+            print(f"\n🎉 FRESH START COMPLETED!")
+            print("=" * 30)
+            print("✅ All data files have been reset")
+            print("✅ Ready for a completely fresh start")
+            print("📧 Your Gmail emails are completely untouched")
+            print("⚙️ Your .env configuration is preserved")
+            print()
+            print("💡 Next steps:")
+            print("  1. Run './deployment/run.sh check' to fetch assignments")
+            print("  2. Run './deployment/run.sh notion' to sync to Notion")
+            print("  3. Run './deployment/run.sh todoist' to sync to Todoist")
+            print()
+            
+        except Exception as e:
+            print(f"❌ Error during fresh start: {e}")
+            if args.debug:
+                import traceback
+                traceback.print_exc()
+            return 1
+        
+        return 0
+    
     if args.delete_all_assignments:
         print("\n🗑️ DELETING ALL ASSIGNMENTS")
         print("=" * 40)
@@ -581,6 +688,7 @@ def main():
         if delete_from in ['notion', 'both']:
             print("  📝 Notion (if configured)")
         print("  ✅ Your Gmail emails will NOT be touched!")
+        print("  ✅ Your .env configuration will NOT be touched!")
         print()
         
         if delete_from != 'both':
