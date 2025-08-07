@@ -109,6 +109,72 @@ class NotionIntegration:
             
         return formatted_title
     
+    def calculate_smart_reminder_date(self, assignment: Dict) -> Optional[str]:
+        """Calculate smart reminder date based on opening date and due date"""
+        due_date_str = assignment.get('due_date')
+        opening_date_str = assignment.get('opening_date')
+        
+        if not due_date_str or due_date_str == 'No due date':
+            return None
+            
+        try:
+            due_date = datetime.strptime(due_date_str, '%Y-%m-%d')
+            today = datetime.now().date()
+            days_until_due = (due_date.date() - today).days
+            
+            # If we have opening date, use it; otherwise assume assignment is already open
+            if opening_date_str and opening_date_str != 'No opening date':
+                try:
+                    opening_date = datetime.strptime(opening_date_str, '%Y-%m-%d').date()
+                except ValueError:
+                    # If opening date can't be parsed, assume assignment is open
+                    opening_date = today
+            else:
+                # No opening date info, assume assignment is open
+                opening_date = today
+            
+            # Calculate days until assignment opens
+            days_until_opens = (opening_date - today).days
+            
+            # Smart reminder logic based on days until due date
+            if days_until_due <= 0:
+                # Assignment already due or overdue
+                return None
+            elif days_until_due <= 3:
+                # Very short time (≤3 days): remind tomorrow or today if opening soon
+                reminder_days_before = 1
+            elif days_until_due <= 7:
+                # Short time (4-7 days): remind 3-4 days before due
+                reminder_days_before = min(3, days_until_due - 1)
+            elif days_until_due <= 14:
+                # Medium time (8-14 days): remind 4-7 days before due
+                reminder_days_before = min(7, days_until_due // 2)
+            else:
+                # Long time (>14 days): remind 7 days before due
+                reminder_days_before = 7
+            
+            # Calculate reminder date
+            reminder_date = due_date.date() - timedelta(days=reminder_days_before)
+            
+            # Critical: Ensure reminder is not before opening date
+            if reminder_date < opening_date:
+                # If calculated reminder is before opening, set reminder for opening day
+                # But add 1 day buffer if opening day is today (so user has time to see it)
+                if opening_date == today:
+                    reminder_date = today
+                else:
+                    reminder_date = opening_date
+            
+            # Ensure reminder is not in the past (but allow today)
+            if reminder_date < today:
+                return None
+            
+            return reminder_date.strftime('%Y-%m-%d')
+            
+        except ValueError as e:
+            logger.warning(f"Could not parse dates for smart reminder calculation: {e}")
+            return None
+    
     def create_assignment_page(self, assignment: Dict) -> bool:
         """Create a new page in Notion database for the assignment with reminder"""
         if not self.enabled:
@@ -118,18 +184,11 @@ class NotionIntegration:
         try:
             url = 'https://api.notion.com/v1/pages'
             
-            # Parse due date for reminder calculation
+            # Get due date from assignment
             due_date_str = assignment.get('due_date')
-            reminder_date = None
             
-            if due_date_str and due_date_str != 'No due date':
-                try:
-                    # Try to parse the due date
-                    due_date = datetime.strptime(due_date_str, '%Y-%m-%d')
-                    # Set reminder 3 days before
-                    reminder_date = (due_date - timedelta(days=3)).strftime('%Y-%m-%d')
-                except ValueError:
-                    logger.warning(f"Could not parse due date for reminder: {due_date_str}")
+            # Calculate smart reminder date based on opening and due dates
+            reminder_date = self.calculate_smart_reminder_date(assignment)
             
             # Prepare the page data with enhanced properties
             formatted_title = self.format_task_content(assignment)

@@ -160,6 +160,17 @@ class MoodleEmailFetcher:
                     r'(?:Due:|due)\s*([A-Za-z]+,\s*\d+\s+[A-Za-z]+\s+\d{4},?\s*\d{1,2}:\d{2}\s*[AP]M)',
                     r'([A-Za-z]+,\s*\d+\s+[A-Za-z]+\s+\d{4},?\s*\d{1,2}:\d{2}\s*[AP]M)'
                 ],
+                'opening_patterns': [
+                    # Opening date patterns based on email example
+                    r'Opens:\s*([A-Za-z]+,\s*\d+\s+[A-Za-z]+\s+\d{4},?\s*\d{1,2}:\d{2}\s*[AP]M)',
+                    r'Opening:\s*([A-Za-z]+,\s*\d+\s+[A-Za-z]+\s+\d{4},?\s*\d{1,2}:\d{2}\s*[AP]M)',
+                    r'Available from:\s*([A-Za-z]+,\s*\d+\s+[A-Za-z]+\s+\d{4},?\s*\d{1,2}:\d{2}\s*[AP]M)',
+                    r'Starts:\s*([A-Za-z]+,\s*\d+\s+[A-Za-z]+\s+\d{4},?\s*\d{1,2}:\d{2}\s*[AP]M)',
+                    r'Opens:\s*([^,\n]+(?:,\s*\d+\s*\w+\s*\d{4}[^,\n]*)?)',
+                    r'Available from:\s*([^,\n]+(?:,\s*\d+\s*\w+\s*\d{4}[^,\n]*)?)',
+                    r'Opening date:\s*([^,\n]+(?:,\s*\d+\s*\w+\s*\d{4}[^,\n]*)?)',
+                    r'Start date:\s*([^,\n]+(?:,\s*\d+\s*\w+\s*\d{4}[^,\n]*)?)'
+                ],
                 'course_patterns': [
                     # Based on course code pattern: "HCI - HUMAN COMPUTER INTERACTION (III-ACSAD)"
                     r'course\s+([A-Z]{2,5}\s*-\s*[^(]+(?:\([^)]+\))?)',
@@ -187,6 +198,7 @@ class MoodleEmailFetcher:
         # Try to extract information with fallbacks
         assignment_title = None
         due_date = None
+        opening_date = None
         course_name = None
         course_code = None
         
@@ -243,6 +255,22 @@ class MoodleEmailFetcher:
                 if due_date:
                     break
             
+            # Extract opening date with multiple fallbacks
+            for pattern_type in patterns.values():
+                for pattern in pattern_type.get('opening_patterns', []):
+                    try:
+                        match = re.search(pattern, full_text, re.IGNORECASE | re.MULTILINE)
+                        if match:
+                            opening_date_raw = match.group(1).strip()
+                            opening_date = self._parse_date(opening_date_raw)
+                            if opening_date and opening_date != opening_date_raw:  # Successfully parsed
+                                break
+                    except Exception as e:
+                        logger.warning(f"Error in opening date pattern matching: {e}")
+                        continue
+                if opening_date:
+                    break
+            
             # Extract course name and code
             for pattern_type in patterns.values():
                 for pattern in pattern_type.get('course_patterns', []):
@@ -275,6 +303,9 @@ class MoodleEmailFetcher:
             if not due_date:
                 due_date = "No due date"
                 
+            if not opening_date:
+                opening_date = "No opening date"
+                
             if not course_name:
                 course_name = "Unknown Course"
             
@@ -284,6 +315,7 @@ class MoodleEmailFetcher:
                     'title': display_title,  # Properly capitalized for display/Notion
                     'title_normalized': normalized_title,  # Lowercase for duplicate checking
                     'due_date': due_date,
+                    'opening_date': opening_date,  # When assignment becomes available
                     'course': course_name,
                     'course_code': course_code,
                     'status': 'Pending',
@@ -298,6 +330,7 @@ class MoodleEmailFetcher:
                 return {
                     'title': assignment_title,
                     'due_date': "No due date",
+                    'opening_date': "No opening date",
                     'course': "Unknown Course",
                     'status': 'Pending',
                     'source': 'email'
@@ -553,7 +586,7 @@ class MoodleEmailFetcher:
         # Remove common variations
         title = re.sub(r'\s+', ' ', title)  # Multiple spaces to single
         title = re.sub(r'[^\w\s-]', '', title)  # Remove special chars except hyphens
-        title = re.sub(r'\b(activity|assignment|task|project)\s*', '', title)  # Remove common prefixes
+        title = re.sub(r'\b(activity|assignment|task|project)\s*', '', title, flags=re.IGNORECASE)  # Remove common prefixes
         title = re.sub(r'\s*-\s*', ' ', title)  # Normalize dashes
         
         return title.strip()

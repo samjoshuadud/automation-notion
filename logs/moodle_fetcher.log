@@ -1227,3 +1227,314 @@
 2025-08-07 16:45:20,406 - __main__ - INFO - ==================================================
 2025-08-07 16:45:20,406 - __main__ - INFO - MOODLE ASSIGNMENT FETCHER COMPLETED
 2025-08-07 16:45:20,406 - __main__ - INFO - ==================================================
+2025-08-07 17:04:49,189 - urllib3.connectionpool - DEBUG - Starting new HTTPS connection (1): api.notion.com:443
+2025-08-07 17:04:50,224 - urllib3.connectionpool - DEBUG - https://api.notion.com:443 "GET /v1/databases/2476d3f4f60f8036b8ebd0c45a3fefae HTTP/1.1" 200 None
+2025-08-07 17:04:50,226 - notion_integration - INFO - Notion integration initialized successfully
+2025-08-07 17:04:50,227 - urllib3.connectionpool - DEBUG - Starting new HTTPS connection (1): api.notion.com:443
+2025-08-07 17:04:51,174 - urllib3.connectionpool - DEBUG - https://api.notion.com:443 "POST /v1/databases/2476d3f4f60f8036b8ebd0c45a3fefae/query HTTP/1.1" 200 None
+2025-08-07 17:04:51,176 - notion_integration - INFO - Retrieved 5 assignments from Notion
+2025-08-07 17:04:51,179 - urllib3.connectionpool - DEBUG - Starting new HTTPS connection (1): api.todoist.com:443
+2025-08-07 17:04:51,948 - urllib3.connectionpool - DEBUG - https://api.todoist.com:443 "GET /rest/v2/projects HTTP/1.1" 200 None
+2025-08-07 17:04:51,949 - todoist_integration - INFO - Todoist connection test successful
+2025-08-07 17:04:51,949 - todoist_integration - INFO - Todoist integration initialized successfully
+2025-08-07 17:08:08,333 - urllib3.connectionpool - DEBUG - Starting new HTTPS connection (1): api.todoist.com:443
+2025-08-07 17:08:09,184 - urllib3.connectionpool - DEBUG - https://api.todoist.com:443 "GET /rest/v2/projects HTTP/1.1" 200 None
+2025-08-07 17:08:09,185 - todoist_integration - INFO - Todoist connection test successful
+2025-08-07 17:08:09,185 - todoist_integration - INFO - Todoist integration initialized successfully
+2025-08-07 17:08:09,186 - urllib3.connectionpool - DEBUG - Starting new HTTPS connection (1): api.todoist.com:443
+2025-08-07 17:08:09,900 - urllib3.connectionpool - DEBUG - https://api.todoist.com:443 "GET /rest/v2/projects HTTP/1.1" 200 None
+2025-08-07 17:08:09,901 - todoist_integration - INFO - Found existing project: School Assignments
+2025-08-07 17:08:09,903 - urllib3.connectionpool - DEBUG - Starting new HTTPS connection (1): api.todoist.com:443
+2025-08-07 17:08:10,339 - urllib3.connectionpool - DEBUG - https://api.todoist.com:443 "GET /rest/v2/tasks?project_id=2358015760 HTTP/1.1" 200 None
+2025-08-07 17:08:10,340 - todoist_integration - DEBUG - Looking for task with title: 'HCI - Activity 1 (USER STORY)'
+2025-08-07 17:08:10,340 - todoist_integration - DEBUG - Comparing with task: 'HCI - Activity 1 (USER STORY)'
+2025-08-07 17:08:10,340 - todoist_integration - DEBUG - Found exact match: 9421491966
+2025-08-07 17:08:10,341 - urllib3.connectionpool - DEBUG - Starting new HTTPS connection (1): api.todoist.com:443
+2025-08-07 17:08:11,596 - urllib3.connectionpool - DEBUG - https://api.todoist.com:443 "DELETE /rest/v2/tasks/9421491966 HTTP/1.1" 204 0
+2025-08-07 17:08:11,597 - todoist_integration - INFO - Successfully deleted task from Todoist: HCI - Activity 1 (User Story [1])
+2025-08-07 17:08:11,599 - urllib3.connectionpool - DEBUG - Starting new HTTPS connection (1): api.todoist.com:443
+2025-08-07 17:08:12,164 - urllib3.connectionpool - DEBUG - https://api.todoist.com:443 "GET /rest/v2/projects HTTP/1.1" 200 None
+2025-08-07 17:08:12,165 - todoist_integration - INFO - Found existing project: School Assignments
+2025-08-07 17:08:12,167 - urllib3.connectionpool - DEBUG - Starting new HTTPS connection (1): api.todoist.com:443
+2025-08-07 17:08:12,591 - urllib3.connectionpool - DEBUG - https://api.todoist.com:443 "GET /rest/v2/tasks?project_id=2358015760 HTTP/1.1" 200 None
+2025-08-07 17:08:12,592 - todoist_integration - DEBUG - Looking for task with title: 'HCI - Activity 2 (MID FIDELITY)'
+2025-08-07 17:08:12,592 - todoist_integration - DEBUG - Comparing with task: 'HCI - Activity 2 (MID FIDELITY)'
+2025-08-07 17:08:12,592 - todoist_integration - DEBUG - Found exact match: 9421492048
+2025-08-07 17:08:12,593 - urllib3.connectionpool - DEBUG - Starting new HTTPS connection (1): api.todoist.com:443
+2025-08-07 17:08:13,381 - urllib3.connectionpool - DEBUG - https://api.todoist.com:443 "DELETE /rest/v2/tasks/9421492048 HTTP/1.1" 204 0
+2025-08-07 17:08:13,383 - todoist_integration - INFO - Successfully deleted task from Todoist: HCI - Activity 2 (Mid Fidelity [1])
+2025-08-07 17:08:13,385 - urllib3.connectionpool - DEBUG - Starting new HTTPS connection (1): api.todoist.com:443
+2025-08-07 17:08:14,306 - urllib3.connectionpool - DEBUG - https://api.todoist.com:443 "GET /rest/v2/projects HTTP/1.1" 200 None
+2025-08-07 17:08:14,307 - todoist_integration - INFO - Found existing project: School Assignments
+2025-08-07 17:08:14,308 - urllib3.connectionpool - DEBUG - Starting new HTTPS connection (1): api.todoist.com:443
+2025-08-07 17:08:14,773 - urllib3.connectionpool - DEBUG - https://api.todoist.com:443 "GET /rest/v2/tasks?project_id=2358015760 HTTP/1.1" 200 None
+2025-08-07 17:08:14,774 - todoist_integration - DEBUG - Looking for task with title: 'HCI - Activity 3 (HIGH FIDELITY PROTOTYPE)'
+2025-08-07 17:08:14,774 - todoist_integration - DEBUG - Comparing with task: 'HCI - Activity 3 (HIGH FIDELITY PROTOTYPE)'
+2025-08-07 17:08:14,775 - todoist_integration - DEBUG - Found exact match: 9421492112
+2025-08-07 17:08:14,776 - urllib3.connectionpool - DEBUG - Starting new HTTPS connection (1): api.todoist.com:443
+2025-08-07 17:08:15,502 - urllib3.connectionpool - DEBUG - https://api.todoist.com:443 "DELETE /rest/v2/tasks/9421492112 HTTP/1.1" 204 0
+2025-08-07 17:08:15,503 - todoist_integration - INFO - Successfully deleted task from Todoist: HCI - Activity 3 (High Fidelity Prototype [1])
+2025-08-07 17:08:15,505 - urllib3.connectionpool - DEBUG - Starting new HTTPS connection (1): api.todoist.com:443
+2025-08-07 17:08:16,036 - urllib3.connectionpool - DEBUG - https://api.todoist.com:443 "GET /rest/v2/projects HTTP/1.1" 200 None
+2025-08-07 17:08:16,037 - todoist_integration - INFO - Found existing project: School Assignments
+2025-08-07 17:08:16,038 - urllib3.connectionpool - DEBUG - Starting new HTTPS connection (1): api.todoist.com:443
+2025-08-07 17:08:16,457 - urllib3.connectionpool - DEBUG - https://api.todoist.com:443 "GET /rest/v2/tasks?project_id=2358015760 HTTP/1.1" 200 None
+2025-08-07 17:08:16,458 - todoist_integration - DEBUG - Looking for task with title: 'HCI - Activity 4 (USABILITY ASSESSMENT)'
+2025-08-07 17:08:16,458 - todoist_integration - DEBUG - Comparing with task: 'HCI - Activity 4 (USABILITY ASSESSMENT)'
+2025-08-07 17:08:16,458 - todoist_integration - DEBUG - Found exact match: 9421492159
+2025-08-07 17:08:16,460 - urllib3.connectionpool - DEBUG - Starting new HTTPS connection (1): api.todoist.com:443
+2025-08-07 17:08:17,140 - urllib3.connectionpool - DEBUG - https://api.todoist.com:443 "DELETE /rest/v2/tasks/9421492159 HTTP/1.1" 204 0
+2025-08-07 17:08:17,142 - todoist_integration - INFO - Successfully deleted task from Todoist: HCI - Activity 4 (Usability Assessment [1])
+2025-08-07 17:08:17,143 - urllib3.connectionpool - DEBUG - Starting new HTTPS connection (1): api.todoist.com:443
+2025-08-07 17:08:17,655 - urllib3.connectionpool - DEBUG - https://api.todoist.com:443 "GET /rest/v2/projects HTTP/1.1" 200 None
+2025-08-07 17:08:17,656 - todoist_integration - INFO - Found existing project: School Assignments
+2025-08-07 17:08:17,657 - urllib3.connectionpool - DEBUG - Starting new HTTPS connection (1): api.todoist.com:443
+2025-08-07 17:08:18,086 - urllib3.connectionpool - DEBUG - https://api.todoist.com:443 "GET /rest/v2/tasks?project_id=2358015760 HTTP/1.1" 200 None
+2025-08-07 17:08:18,091 - todoist_integration - DEBUG - Looking for task with title: 'III - Activity 1 (#1)'
+2025-08-07 17:08:18,091 - todoist_integration - DEBUG - Comparing with task: 'III - Activity 1 (#1)'
+2025-08-07 17:08:18,091 - todoist_integration - DEBUG - Found exact match: 9421492228
+2025-08-07 17:08:18,093 - urllib3.connectionpool - DEBUG - Starting new HTTPS connection (1): api.todoist.com:443
+2025-08-07 17:08:19,171 - urllib3.connectionpool - DEBUG - https://api.todoist.com:443 "DELETE /rest/v2/tasks/9421492228 HTTP/1.1" 204 0
+2025-08-07 17:08:19,171 - todoist_integration - INFO - Successfully deleted task from Todoist: III - Activity 1 (#1)
+2025-08-07 17:08:19,174 - urllib3.connectionpool - DEBUG - Starting new HTTPS connection (1): api.notion.com:443
+2025-08-07 17:08:20,243 - urllib3.connectionpool - DEBUG - https://api.notion.com:443 "GET /v1/databases/2476d3f4f60f8036b8ebd0c45a3fefae HTTP/1.1" 200 None
+2025-08-07 17:08:20,245 - notion_integration - INFO - Notion integration initialized successfully
+2025-08-07 17:08:20,246 - urllib3.connectionpool - DEBUG - Starting new HTTPS connection (1): api.notion.com:443
+2025-08-07 17:08:21,201 - urllib3.connectionpool - DEBUG - https://api.notion.com:443 "POST /v1/databases/2476d3f4f60f8036b8ebd0c45a3fefae/query HTTP/1.1" 400 171
+2025-08-07 17:08:21,203 - urllib3.connectionpool - DEBUG - Starting new HTTPS connection (1): api.notion.com:443
+2025-08-07 17:08:22,962 - urllib3.connectionpool - DEBUG - https://api.notion.com:443 "POST /v1/databases/2476d3f4f60f8036b8ebd0c45a3fefae/query HTTP/1.1" 200 None
+2025-08-07 17:08:22,966 - urllib3.connectionpool - DEBUG - Starting new HTTPS connection (1): api.notion.com:443
+2025-08-07 17:08:24,133 - urllib3.connectionpool - DEBUG - https://api.notion.com:443 "PATCH /v1/pages/2486d3f4-f60f-8159-b228-da6c326905ee HTTP/1.1" 200 None
+2025-08-07 17:08:24,134 - notion_integration - INFO - Successfully archived page in Notion: HCI - Activity 1 (USER STORY)
+2025-08-07 17:08:24,135 - urllib3.connectionpool - DEBUG - Starting new HTTPS connection (1): api.notion.com:443
+2025-08-07 17:08:24,806 - urllib3.connectionpool - DEBUG - https://api.notion.com:443 "POST /v1/databases/2476d3f4f60f8036b8ebd0c45a3fefae/query HTTP/1.1" 400 171
+2025-08-07 17:08:24,808 - urllib3.connectionpool - DEBUG - Starting new HTTPS connection (1): api.notion.com:443
+2025-08-07 17:08:25,260 - urllib3.connectionpool - DEBUG - https://api.notion.com:443 "POST /v1/databases/2476d3f4f60f8036b8ebd0c45a3fefae/query HTTP/1.1" 200 None
+2025-08-07 17:08:25,262 - urllib3.connectionpool - DEBUG - Starting new HTTPS connection (1): api.notion.com:443
+2025-08-07 17:08:28,905 - urllib3.connectionpool - DEBUG - https://api.notion.com:443 "PATCH /v1/pages/2486d3f4-f60f-8191-a2e5-def2a35c0e8e HTTP/1.1" 200 None
+2025-08-07 17:08:28,906 - notion_integration - INFO - Successfully archived page in Notion: HCI - Activity 2 (MID FIDELITY)
+2025-08-07 17:08:28,908 - urllib3.connectionpool - DEBUG - Starting new HTTPS connection (1): api.notion.com:443
+2025-08-07 17:08:29,253 - urllib3.connectionpool - DEBUG - https://api.notion.com:443 "POST /v1/databases/2476d3f4f60f8036b8ebd0c45a3fefae/query HTTP/1.1" 400 171
+2025-08-07 17:08:29,255 - urllib3.connectionpool - DEBUG - Starting new HTTPS connection (1): api.notion.com:443
+2025-08-07 17:08:29,681 - urllib3.connectionpool - DEBUG - https://api.notion.com:443 "POST /v1/databases/2476d3f4f60f8036b8ebd0c45a3fefae/query HTTP/1.1" 200 None
+2025-08-07 17:08:29,684 - urllib3.connectionpool - DEBUG - Starting new HTTPS connection (1): api.notion.com:443
+2025-08-07 17:08:30,870 - urllib3.connectionpool - DEBUG - https://api.notion.com:443 "PATCH /v1/pages/2486d3f4-f60f-8192-869c-c0456c51b438 HTTP/1.1" 200 None
+2025-08-07 17:08:30,871 - notion_integration - INFO - Successfully archived page in Notion: HCI - Activity 3 (HIGH FIDELITY PROTOTYPE)
+2025-08-07 17:08:30,872 - urllib3.connectionpool - DEBUG - Starting new HTTPS connection (1): api.notion.com:443
+2025-08-07 17:08:31,301 - urllib3.connectionpool - DEBUG - https://api.notion.com:443 "POST /v1/databases/2476d3f4f60f8036b8ebd0c45a3fefae/query HTTP/1.1" 400 171
+2025-08-07 17:08:31,303 - urllib3.connectionpool - DEBUG - Starting new HTTPS connection (1): api.notion.com:443
+2025-08-07 17:08:31,642 - urllib3.connectionpool - DEBUG - https://api.notion.com:443 "POST /v1/databases/2476d3f4f60f8036b8ebd0c45a3fefae/query HTTP/1.1" 200 None
+2025-08-07 17:08:31,645 - urllib3.connectionpool - DEBUG - Starting new HTTPS connection (1): api.notion.com:443
+2025-08-07 17:08:32,224 - urllib3.connectionpool - DEBUG - https://api.notion.com:443 "PATCH /v1/pages/2486d3f4-f60f-81f7-b1f9-ce3383f9cdf6 HTTP/1.1" 200 None
+2025-08-07 17:08:32,225 - notion_integration - INFO - Successfully archived page in Notion: HCI - Activity 4 (USABILITY ASSESSMENT)
+2025-08-07 17:08:32,227 - urllib3.connectionpool - DEBUG - Starting new HTTPS connection (1): api.notion.com:443
+2025-08-07 17:08:32,632 - urllib3.connectionpool - DEBUG - https://api.notion.com:443 "POST /v1/databases/2476d3f4f60f8036b8ebd0c45a3fefae/query HTTP/1.1" 400 171
+2025-08-07 17:08:32,634 - urllib3.connectionpool - DEBUG - Starting new HTTPS connection (1): api.notion.com:443
+2025-08-07 17:08:33,075 - urllib3.connectionpool - DEBUG - https://api.notion.com:443 "POST /v1/databases/2476d3f4f60f8036b8ebd0c45a3fefae/query HTTP/1.1" 200 None
+2025-08-07 17:08:33,078 - urllib3.connectionpool - DEBUG - Starting new HTTPS connection (1): api.notion.com:443
+2025-08-07 17:08:33,498 - urllib3.connectionpool - DEBUG - https://api.notion.com:443 "PATCH /v1/pages/2486d3f4-f60f-81b1-b323-c8e1f99aebad HTTP/1.1" 200 None
+2025-08-07 17:08:33,499 - notion_integration - INFO - Successfully archived page in Notion: III - Activity 1 (#1)
+2025-08-07 17:08:33,503 - urllib3.connectionpool - DEBUG - Starting new HTTPS connection (1): api.todoist.com:443
+2025-08-07 17:08:34,169 - urllib3.connectionpool - DEBUG - https://api.todoist.com:443 "GET /rest/v2/projects HTTP/1.1" 200 None
+2025-08-07 17:08:34,170 - todoist_integration - INFO - Todoist connection test successful
+2025-08-07 17:08:34,171 - todoist_integration - INFO - Todoist integration initialized successfully
+2025-08-07 17:08:34,171 - urllib3.connectionpool - DEBUG - Starting new HTTPS connection (1): api.todoist.com:443
+2025-08-07 17:08:34,654 - urllib3.connectionpool - DEBUG - https://api.todoist.com:443 "GET /rest/v2/projects HTTP/1.1" 200 None
+2025-08-07 17:08:34,655 - todoist_integration - INFO - Found existing project: School Assignments
+2025-08-07 17:08:34,657 - urllib3.connectionpool - DEBUG - Starting new HTTPS connection (1): api.todoist.com:443
+2025-08-07 17:08:35,054 - urllib3.connectionpool - DEBUG - https://api.todoist.com:443 "GET /rest/v2/tasks?project_id=2358015760 HTTP/1.1" 200 3
+2025-08-07 17:08:35,055 - todoist_integration - INFO - Retrieved 0 assignments from Todoist
+2025-08-07 17:08:35,058 - urllib3.connectionpool - DEBUG - Starting new HTTPS connection (1): api.notion.com:443
+2025-08-07 17:08:35,344 - urllib3.connectionpool - DEBUG - https://api.notion.com:443 "GET /v1/databases/2476d3f4f60f8036b8ebd0c45a3fefae HTTP/1.1" 200 None
+2025-08-07 17:08:35,346 - notion_integration - INFO - Notion integration initialized successfully
+2025-08-07 17:08:35,348 - urllib3.connectionpool - DEBUG - Starting new HTTPS connection (1): api.notion.com:443
+2025-08-07 17:08:36,565 - urllib3.connectionpool - DEBUG - https://api.notion.com:443 "POST /v1/databases/2476d3f4f60f8036b8ebd0c45a3fefae/query HTTP/1.1" 200 None
+2025-08-07 17:08:36,566 - notion_integration - INFO - Retrieved 0 assignments from Notion
+2025-08-07 17:09:30,459 - __main__ - INFO - ==================================================
+2025-08-07 17:09:30,459 - __main__ - INFO - MOODLE ASSIGNMENT FETCHER STARTED
+2025-08-07 17:09:30,459 - __main__ - INFO - ==================================================
+2025-08-07 17:09:30,459 - __main__ - INFO - Initializing Moodle email fetcher...
+2025-08-07 17:09:30,461 - __main__ - INFO - Checking for assignments from the past 7 days...
+2025-08-07 17:09:30,461 - moodle_fetcher - INFO - ============================================================
+2025-08-07 17:09:30,461 - moodle_fetcher - INFO - STARTING MOODLE ASSIGNMENT CHECK
+2025-08-07 17:09:30,461 - moodle_fetcher - INFO - Checking emails from last 7 days
+2025-08-07 17:09:30,461 - moodle_fetcher - INFO - ============================================================
+2025-08-07 17:09:31,512 - moodle_fetcher - INFO - Successfully connected to Gmail
+2025-08-07 17:09:31,819 - moodle_fetcher - INFO - Searching for emails: (FROM "noreply-tbl@umak.edu.ph" SINCE "31-Jul-2025")
+2025-08-07 17:09:32,056 - moodle_fetcher - INFO - Found 20 Moodle emails from last 7 days
+2025-08-07 17:09:32,057 - moodle_fetcher - INFO - Processing 20 emails...
+2025-08-07 17:09:32,057 - moodle_fetcher - INFO - Existing assignments in database: 0
+2025-08-07 17:09:32,057 - moodle_fetcher - DEBUG - Processing email 1/20: b'742'
+2025-08-07 17:09:32,344 - moodle_fetcher - DEBUG - ❌ Failed to parse email b'742'
+2025-08-07 17:09:32,344 - moodle_fetcher - DEBUG - Processing email 2/20: b'743'
+2025-08-07 17:09:32,649 - moodle_fetcher - DEBUG - ❌ Failed to parse email b'743'
+2025-08-07 17:09:32,649 - moodle_fetcher - DEBUG - Processing email 3/20: b'744'
+2025-08-07 17:09:32,846 - moodle_fetcher - DEBUG - ❌ Failed to parse email b'744'
+2025-08-07 17:09:32,846 - moodle_fetcher - DEBUG - Processing email 4/20: b'747'
+2025-08-07 17:09:33,050 - moodle_fetcher - DEBUG - ❌ Failed to parse email b'747'
+2025-08-07 17:09:33,051 - moodle_fetcher - DEBUG - Processing email 5/20: b'748'
+2025-08-07 17:09:33,256 - moodle_fetcher - DEBUG - ❌ Failed to parse email b'748'
+2025-08-07 17:09:33,256 - moodle_fetcher - DEBUG - Processing email 6/20: b'749'
+2025-08-07 17:09:33,460 - moodle_fetcher - DEBUG - ❌ Failed to parse email b'749'
+2025-08-07 17:09:33,460 - moodle_fetcher - DEBUG - Processing email 7/20: b'750'
+2025-08-07 17:09:33,665 - moodle_fetcher - DEBUG - ❌ Failed to parse email b'750'
+2025-08-07 17:09:33,665 - moodle_fetcher - DEBUG - Processing email 8/20: b'751'
+2025-08-07 17:09:33,863 - moodle_fetcher - DEBUG - ❌ Failed to parse email b'751'
+2025-08-07 17:09:33,863 - moodle_fetcher - DEBUG - Processing email 9/20: b'752'
+2025-08-07 17:09:34,074 - moodle_fetcher - DEBUG - ❌ Failed to parse email b'752'
+2025-08-07 17:09:34,074 - moodle_fetcher - DEBUG - Processing email 10/20: b'753'
+2025-08-07 17:09:34,279 - moodle_fetcher - DEBUG - ❌ Failed to parse email b'753'
+2025-08-07 17:09:34,279 - moodle_fetcher - DEBUG - Processing email 11/20: b'754'
+2025-08-07 17:09:34,484 - moodle_fetcher - DEBUG - ❌ Failed to parse email b'754'
+2025-08-07 17:09:34,484 - moodle_fetcher - DEBUG - Processing email 12/20: b'755'
+2025-08-07 17:09:34,689 - moodle_fetcher - DEBUG - ❌ Failed to parse email b'755'
+2025-08-07 17:09:34,689 - moodle_fetcher - DEBUG - Processing email 13/20: b'756'
+2025-08-07 17:09:34,996 - moodle_fetcher - DEBUG - Successfully parsed assignment: HCI - Activity 1 (User Story [1])
+2025-08-07 17:09:34,997 - moodle_fetcher - INFO - ✅ New assignment: HCI - Activity 1 (User Story [1])
+2025-08-07 17:09:34,997 - moodle_fetcher - DEBUG - Processing email 14/20: b'757'
+2025-08-07 17:09:35,304 - moodle_fetcher - DEBUG - Successfully parsed assignment: HCI - Activity 1 (User Story [1])
+2025-08-07 17:09:35,304 - moodle_fetcher - DEBUG - Duplicate found by title+course: hci - activity 1 (user story [1])
+2025-08-07 17:09:35,304 - moodle_fetcher - DEBUG - ⏭️  Skipped duplicate: HCI - Activity 1 (User Story [1])
+2025-08-07 17:09:35,304 - moodle_fetcher - DEBUG - Processing email 15/20: b'758'
+2025-08-07 17:09:35,508 - moodle_fetcher - DEBUG - Successfully parsed assignment: HCI - Activity 2 (Mid Fidelity [1])
+2025-08-07 17:09:35,509 - moodle_fetcher - INFO - ✅ New assignment: HCI - Activity 2 (Mid Fidelity [1])
+2025-08-07 17:09:35,509 - moodle_fetcher - DEBUG - Processing email 16/20: b'759'
+2025-08-07 17:09:35,713 - moodle_fetcher - DEBUG - Successfully parsed assignment: HCI - Activity 3 (High Fidelity Prototype [1])
+2025-08-07 17:09:35,714 - moodle_fetcher - INFO - ✅ New assignment: HCI - Activity 3 (High Fidelity Prototype [1])
+2025-08-07 17:09:35,714 - moodle_fetcher - DEBUG - Processing email 17/20: b'760'
+2025-08-07 17:09:35,918 - moodle_fetcher - DEBUG - Successfully parsed assignment: HCI - Activity 4 (Usability Assessment [1])
+2025-08-07 17:09:35,918 - moodle_fetcher - INFO - ✅ New assignment: HCI - Activity 4 (Usability Assessment [1])
+2025-08-07 17:09:35,918 - moodle_fetcher - DEBUG - Processing email 18/20: b'761'
+2025-08-07 17:09:36,123 - moodle_fetcher - DEBUG - ❌ Failed to parse email b'761'
+2025-08-07 17:09:36,123 - moodle_fetcher - DEBUG - Processing email 19/20: b'762'
+2025-08-07 17:09:36,328 - moodle_fetcher - DEBUG - ❌ Failed to parse email b'762'
+2025-08-07 17:09:36,328 - moodle_fetcher - DEBUG - Processing email 20/20: b'769'
+2025-08-07 17:09:36,533 - moodle_fetcher - DEBUG - Successfully parsed assignment: III - Activity 1 (#1)
+2025-08-07 17:09:36,533 - moodle_fetcher - INFO - ✅ New assignment: III - Activity 1 (#1)
+2025-08-07 17:09:36,534 - moodle_fetcher - INFO - 💾 Saved 5 new assignments to files
+2025-08-07 17:09:36,534 - moodle_fetcher - INFO - ============================================================
+2025-08-07 17:09:36,534 - moodle_fetcher - INFO - ASSIGNMENT CHECK COMPLETED
+2025-08-07 17:09:36,534 - moodle_fetcher - INFO - 📧 Emails processed: 20
+2025-08-07 17:09:36,534 - moodle_fetcher - INFO - ✅ New assignments: 5
+2025-08-07 17:09:36,534 - moodle_fetcher - INFO - ⏭️  Duplicates skipped: 1
+2025-08-07 17:09:36,534 - moodle_fetcher - INFO - 📊 Total assignments: 5
+2025-08-07 17:09:36,534 - moodle_fetcher - INFO - ============================================================
+2025-08-07 17:09:36,735 - __main__ - INFO - Successfully added 5 new assignments!
+2025-08-07 17:09:36,735 - __main__ - INFO - Initializing Notion integration...
+2025-08-07 17:09:36,738 - urllib3.connectionpool - DEBUG - Starting new HTTPS connection (1): api.notion.com:443
+2025-08-07 17:09:37,900 - urllib3.connectionpool - DEBUG - https://api.notion.com:443 "GET /v1/databases/2476d3f4f60f8036b8ebd0c45a3fefae HTTP/1.1" 200 None
+2025-08-07 17:09:37,902 - notion_integration - INFO - Notion integration initialized successfully
+2025-08-07 17:09:37,902 - __main__ - INFO - Syncing 5 new assignments to Notion...
+2025-08-07 17:09:37,902 - notion_integration - INFO - Starting sync of 5 assignments to Notion
+2025-08-07 17:09:37,903 - notion_integration - INFO - Processing assignment 1/5: HCI - Activity 1 (USER STORY)
+2025-08-07 17:09:37,904 - urllib3.connectionpool - DEBUG - Starting new HTTPS connection (1): api.notion.com:443
+2025-08-07 17:09:38,783 - urllib3.connectionpool - DEBUG - https://api.notion.com:443 "POST /v1/databases/2476d3f4f60f8036b8ebd0c45a3fefae/query HTTP/1.1" 200 None
+2025-08-07 17:09:38,784 - notion_integration - DEBUG - Assignment 'hci - activity 1 (user story)' not found in Notion
+2025-08-07 17:09:38,785 - urllib3.connectionpool - DEBUG - Starting new HTTPS connection (1): api.notion.com:443
+2025-08-07 17:09:40,427 - urllib3.connectionpool - DEBUG - https://api.notion.com:443 "POST /v1/pages HTTP/1.1" 200 None
+2025-08-07 17:09:40,428 - notion_integration - INFO - Successfully added assignment to Notion: HCI - Activity 1 (User Story [1])
+2025-08-07 17:09:40,429 - notion_integration - INFO - Processing assignment 2/5: HCI - Activity 2 (MID FIDELITY)
+2025-08-07 17:09:40,429 - urllib3.connectionpool - DEBUG - Starting new HTTPS connection (1): api.notion.com:443
+2025-08-07 17:09:41,370 - urllib3.connectionpool - DEBUG - https://api.notion.com:443 "POST /v1/databases/2476d3f4f60f8036b8ebd0c45a3fefae/query HTTP/1.1" 200 None
+2025-08-07 17:09:41,371 - notion_integration - DEBUG - Assignment 'hci - activity 2 (mid fidelity)' not found in Notion
+2025-08-07 17:09:41,373 - urllib3.connectionpool - DEBUG - Starting new HTTPS connection (1): api.notion.com:443
+2025-08-07 17:09:41,861 - urllib3.connectionpool - DEBUG - https://api.notion.com:443 "POST /v1/pages HTTP/1.1" 200 None
+2025-08-07 17:09:41,863 - notion_integration - INFO - Successfully added assignment to Notion: HCI - Activity 2 (Mid Fidelity [1])
+2025-08-07 17:09:41,867 - notion_integration - INFO - Processing assignment 3/5: HCI - Activity 3 (HIGH FIDELITY PROTOTYPE)
+2025-08-07 17:09:41,868 - urllib3.connectionpool - DEBUG - Starting new HTTPS connection (1): api.notion.com:443
+2025-08-07 17:09:42,265 - urllib3.connectionpool - DEBUG - https://api.notion.com:443 "POST /v1/databases/2476d3f4f60f8036b8ebd0c45a3fefae/query HTTP/1.1" 200 None
+2025-08-07 17:09:42,266 - notion_integration - DEBUG - Assignment 'hci - activity 3 (high fidelity prototype)' not found in Notion
+2025-08-07 17:09:42,268 - urllib3.connectionpool - DEBUG - Starting new HTTPS connection (1): api.notion.com:443
+2025-08-07 17:09:46,360 - urllib3.connectionpool - DEBUG - https://api.notion.com:443 "POST /v1/pages HTTP/1.1" 200 None
+2025-08-07 17:09:46,361 - notion_integration - INFO - Successfully added assignment to Notion: HCI - Activity 3 (High Fidelity Prototype [1])
+2025-08-07 17:09:46,361 - notion_integration - INFO - Processing assignment 4/5: HCI - Activity 4 (USABILITY ASSESSMENT)
+2025-08-07 17:09:46,363 - urllib3.connectionpool - DEBUG - Starting new HTTPS connection (1): api.notion.com:443
+2025-08-07 17:09:47,757 - urllib3.connectionpool - DEBUG - https://api.notion.com:443 "POST /v1/databases/2476d3f4f60f8036b8ebd0c45a3fefae/query HTTP/1.1" 200 None
+2025-08-07 17:09:47,764 - notion_integration - DEBUG - Assignment 'hci - activity 4 (usability assessment)' not found in Notion
+2025-08-07 17:09:47,765 - urllib3.connectionpool - DEBUG - Starting new HTTPS connection (1): api.notion.com:443
+2025-08-07 17:09:49,261 - urllib3.connectionpool - DEBUG - https://api.notion.com:443 "POST /v1/pages HTTP/1.1" 200 None
+2025-08-07 17:09:49,262 - notion_integration - INFO - Successfully added assignment to Notion: HCI - Activity 4 (Usability Assessment [1])
+2025-08-07 17:09:49,263 - notion_integration - INFO - Processing assignment 5/5: III - Activity 1 (#1)
+2025-08-07 17:09:49,264 - urllib3.connectionpool - DEBUG - Starting new HTTPS connection (1): api.notion.com:443
+2025-08-07 17:09:49,749 - urllib3.connectionpool - DEBUG - https://api.notion.com:443 "POST /v1/databases/2476d3f4f60f8036b8ebd0c45a3fefae/query HTTP/1.1" 200 None
+2025-08-07 17:09:49,751 - notion_integration - DEBUG - Assignment 'iii - activity 1 (#1)' not found in Notion
+2025-08-07 17:09:49,752 - urllib3.connectionpool - DEBUG - Starting new HTTPS connection (1): api.notion.com:443
+2025-08-07 17:09:50,218 - urllib3.connectionpool - DEBUG - https://api.notion.com:443 "POST /v1/pages HTTP/1.1" 200 None
+2025-08-07 17:09:50,225 - notion_integration - INFO - Successfully added assignment to Notion: III - Activity 1 (#1)
+2025-08-07 17:09:50,226 - notion_integration - INFO - Notion sync completed: 5 created, 0 duplicates, 0 errors
+2025-08-07 17:09:50,226 - __main__ - INFO - Successfully synced 5 assignments to Notion
+2025-08-07 17:09:50,226 - __main__ - INFO - Initializing Todoist integration...
+2025-08-07 17:09:50,229 - urllib3.connectionpool - DEBUG - Starting new HTTPS connection (1): api.todoist.com:443
+2025-08-07 17:09:51,584 - urllib3.connectionpool - DEBUG - https://api.todoist.com:443 "GET /rest/v2/projects HTTP/1.1" 200 None
+2025-08-07 17:09:51,585 - todoist_integration - INFO - Todoist connection test successful
+2025-08-07 17:09:51,586 - todoist_integration - INFO - Todoist integration initialized successfully
+2025-08-07 17:09:51,586 - __main__ - INFO - Syncing 5 new assignments to Todoist...
+2025-08-07 17:09:51,587 - urllib3.connectionpool - DEBUG - Starting new HTTPS connection (1): api.todoist.com:443
+2025-08-07 17:09:52,158 - urllib3.connectionpool - DEBUG - https://api.todoist.com:443 "GET /rest/v2/projects HTTP/1.1" 200 None
+2025-08-07 17:09:52,160 - todoist_integration - INFO - Found existing project: School Assignments
+2025-08-07 17:09:52,161 - urllib3.connectionpool - DEBUG - Starting new HTTPS connection (1): api.todoist.com:443
+2025-08-07 17:09:52,705 - urllib3.connectionpool - DEBUG - https://api.todoist.com:443 "GET /rest/v2/tasks?project_id=2358015760 HTTP/1.1" 200 3
+2025-08-07 17:09:52,707 - todoist_integration - INFO - Retrieved 0 assignments from Todoist
+2025-08-07 17:09:52,708 - urllib3.connectionpool - DEBUG - Starting new HTTPS connection (1): api.todoist.com:443
+2025-08-07 17:09:53,692 - urllib3.connectionpool - DEBUG - https://api.todoist.com:443 "GET /rest/v2/projects HTTP/1.1" 200 None
+2025-08-07 17:09:53,694 - todoist_integration - INFO - Found existing project: School Assignments
+2025-08-07 17:09:53,695 - urllib3.connectionpool - DEBUG - Starting new HTTPS connection (1): api.todoist.com:443
+2025-08-07 17:09:54,252 - urllib3.connectionpool - DEBUG - https://api.todoist.com:443 "GET /rest/v2/tasks HTTP/1.1" 200 None
+2025-08-07 17:09:54,254 - todoist_integration - DEBUG - Set reminder for 2025-08-29 (due: 2025-09-05)
+2025-08-07 17:09:54,255 - urllib3.connectionpool - DEBUG - Starting new HTTPS connection (1): api.todoist.com:443
+2025-08-07 17:09:55,453 - urllib3.connectionpool - DEBUG - https://api.todoist.com:443 "POST /rest/v2/tasks HTTP/1.1" 200 None
+2025-08-07 17:09:55,454 - todoist_integration - INFO - Created Todoist task: HCI - Activity 1 (USER STORY)
+2025-08-07 17:09:55,455 - urllib3.connectionpool - DEBUG - Starting new HTTPS connection (1): api.todoist.com:443
+2025-08-07 17:09:56,075 - urllib3.connectionpool - DEBUG - https://api.todoist.com:443 "GET /rest/v2/tasks HTTP/1.1" 200 None
+2025-08-07 17:09:56,077 - todoist_integration - DEBUG - Set reminder for 2025-09-05 (due: 2025-09-19)
+2025-08-07 17:09:56,078 - urllib3.connectionpool - DEBUG - Starting new HTTPS connection (1): api.todoist.com:443
+2025-08-07 17:09:57,346 - urllib3.connectionpool - DEBUG - https://api.todoist.com:443 "POST /rest/v2/tasks HTTP/1.1" 200 None
+2025-08-07 17:09:57,348 - todoist_integration - INFO - Created Todoist task: HCI - Activity 2 (MID FIDELITY)
+2025-08-07 17:09:57,349 - urllib3.connectionpool - DEBUG - Starting new HTTPS connection (1): api.todoist.com:443
+2025-08-07 17:09:57,898 - urllib3.connectionpool - DEBUG - https://api.todoist.com:443 "GET /rest/v2/tasks HTTP/1.1" 200 None
+2025-08-07 17:09:57,899 - todoist_integration - DEBUG - Set reminder for 2025-10-03 (due: 2025-10-17)
+2025-08-07 17:09:57,900 - urllib3.connectionpool - DEBUG - Starting new HTTPS connection (1): api.todoist.com:443
+2025-08-07 17:09:59,163 - urllib3.connectionpool - DEBUG - https://api.todoist.com:443 "POST /rest/v2/tasks HTTP/1.1" 200 None
+2025-08-07 17:09:59,164 - todoist_integration - INFO - Created Todoist task: HCI - Activity 3 (HIGH FIDELITY PROTOTYPE)
+2025-08-07 17:09:59,165 - urllib3.connectionpool - DEBUG - Starting new HTTPS connection (1): api.todoist.com:443
+2025-08-07 17:10:00,397 - urllib3.connectionpool - DEBUG - https://api.todoist.com:443 "GET /rest/v2/tasks HTTP/1.1" 200 None
+2025-08-07 17:10:00,399 - todoist_integration - DEBUG - Set reminder for 2025-10-17 (due: 2025-10-31)
+2025-08-07 17:10:00,400 - urllib3.connectionpool - DEBUG - Starting new HTTPS connection (1): api.todoist.com:443
+2025-08-07 17:10:01,211 - urllib3.connectionpool - DEBUG - https://api.todoist.com:443 "POST /rest/v2/tasks HTTP/1.1" 200 None
+2025-08-07 17:10:01,212 - todoist_integration - INFO - Created Todoist task: HCI - Activity 4 (USABILITY ASSESSMENT)
+2025-08-07 17:10:01,213 - urllib3.connectionpool - DEBUG - Starting new HTTPS connection (1): api.todoist.com:443
+2025-08-07 17:10:03,056 - urllib3.connectionpool - DEBUG - https://api.todoist.com:443 "GET /rest/v2/tasks HTTP/1.1" 200 None
+2025-08-07 17:10:03,057 - todoist_integration - DEBUG - Set reminder for 2025-08-07 (due: 2025-08-08)
+2025-08-07 17:10:03,058 - urllib3.connectionpool - DEBUG - Starting new HTTPS connection (1): api.todoist.com:443
+2025-08-07 17:10:04,124 - urllib3.connectionpool - DEBUG - https://api.todoist.com:443 "POST /rest/v2/tasks HTTP/1.1" 200 None
+2025-08-07 17:10:04,125 - todoist_integration - INFO - Created Todoist task: III - Activity 1 (#1)
+2025-08-07 17:10:04,125 - todoist_integration - INFO - Synced 5 new assignments to Todoist
+2025-08-07 17:10:04,125 - __main__ - INFO - Successfully synced 5 assignments to Todoist
+2025-08-07 17:10:04,125 - __main__ - INFO - Running automatic archive cleanup...
+2025-08-07 17:10:04,125 - assignment_archive - INFO - Starting archive cleanup (completed assignments older than 30 days)
+2025-08-07 17:10:04,126 - assignment_archive - INFO - No assignments need archiving
+2025-08-07 17:10:04,126 - __main__ - DEBUG - Automatic cleanup: No assignments need archiving
+2025-08-07 17:10:04,126 - __main__ - INFO - Syncing assignment status from Notion...
+2025-08-07 17:10:04,128 - urllib3.connectionpool - DEBUG - Starting new HTTPS connection (1): api.notion.com:443
+2025-08-07 17:10:04,473 - urllib3.connectionpool - DEBUG - https://api.notion.com:443 "GET /v1/databases/2476d3f4f60f8036b8ebd0c45a3fefae HTTP/1.1" 200 None
+2025-08-07 17:10:04,474 - notion_integration - INFO - Notion integration initialized successfully
+2025-08-07 17:10:04,475 - urllib3.connectionpool - DEBUG - Starting new HTTPS connection (1): api.notion.com:443
+2025-08-07 17:10:04,901 - urllib3.connectionpool - DEBUG - https://api.notion.com:443 "POST /v1/databases/2476d3f4f60f8036b8ebd0c45a3fefae/query HTTP/1.1" 200 None
+2025-08-07 17:10:04,903 - notion_integration - INFO - Retrieved 5 assignments from Notion
+2025-08-07 17:10:04,903 - assignment_archive - INFO - Starting smart status sync with Notion
+2025-08-07 17:10:04,904 - __main__ - DEBUG - Notion status sync: No changes needed
+2025-08-07 17:10:04,904 - __main__ - INFO - Syncing assignment status from Todoist...
+2025-08-07 17:10:04,907 - urllib3.connectionpool - DEBUG - Starting new HTTPS connection (1): api.todoist.com:443
+2025-08-07 17:10:05,511 - urllib3.connectionpool - DEBUG - https://api.todoist.com:443 "GET /rest/v2/projects HTTP/1.1" 200 None
+2025-08-07 17:10:05,513 - todoist_integration - INFO - Todoist connection test successful
+2025-08-07 17:10:05,513 - todoist_integration - INFO - Todoist integration initialized successfully
+2025-08-07 17:10:05,515 - urllib3.connectionpool - DEBUG - Starting new HTTPS connection (1): api.todoist.com:443
+2025-08-07 17:10:06,534 - urllib3.connectionpool - DEBUG - https://api.todoist.com:443 "GET /rest/v2/projects HTTP/1.1" 200 None
+2025-08-07 17:10:06,535 - todoist_integration - INFO - Found existing project: School Assignments
+2025-08-07 17:10:06,541 - urllib3.connectionpool - DEBUG - Starting new HTTPS connection (1): api.todoist.com:443
+2025-08-07 17:10:07,028 - urllib3.connectionpool - DEBUG - https://api.todoist.com:443 "GET /rest/v2/tasks?project_id=2358015760 HTTP/1.1" 200 None
+2025-08-07 17:10:07,030 - todoist_integration - INFO - Retrieved 5 assignments from Todoist
+2025-08-07 17:10:07,030 - __main__ - DEBUG - Todoist status sync: No changes needed
+2025-08-07 17:10:07,031 - __main__ - INFO - ==================================================
+2025-08-07 17:10:07,031 - __main__ - INFO - MOODLE ASSIGNMENT FETCHER COMPLETED
+2025-08-07 17:10:07,031 - __main__ - INFO - ==================================================
