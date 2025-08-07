@@ -99,9 +99,12 @@ class TodoistIntegration:
     
     def format_task_content(self, assignment: Dict) -> str:
         """Format task content as: CODE - Activity # (Activity Name)"""
-        title = assignment.get('title', 'Unknown Assignment')
-        course_code = assignment.get('course_code', '')
-        raw_title = assignment.get('raw_title', '')
+        if not assignment or not isinstance(assignment, dict):
+            return "Unknown Assignment - Invalid Data"
+            
+        title = assignment.get('title', 'Unknown Assignment') or 'Unknown Assignment'
+        course_code = assignment.get('course_code', '') or ''
+        raw_title = assignment.get('raw_title', '') or ''
         
         # Try to extract activity number and name from raw_title or title
         activity_match = None
@@ -153,6 +156,9 @@ class TodoistIntegration:
     
     def format_task_description(self, assignment: Dict) -> str:
         """Format task description with deadline and other details"""
+        if not assignment or not isinstance(assignment, dict):
+            return "Invalid assignment data"
+            
         description_parts = []
         
         # Add deadline
@@ -286,6 +292,11 @@ class TodoistIntegration:
         if not self.enabled:
             return False
             
+        # Validate input
+        if not assignment or not isinstance(assignment, dict):
+            logger.error("Invalid assignment data provided to create_assignment_task")
+            return False
+            
         try:
             # Get or create project if not provided
             if not project_id:
@@ -371,9 +382,21 @@ class TodoistIntegration:
         if not assignments:
             logger.info("No assignments to sync to Todoist")
             return 0
+            
+        # Validate input data
+        valid_assignments = []
+        for assignment in assignments:
+            if isinstance(assignment, dict) and assignment.get('title'):
+                valid_assignments.append(assignment)
+            else:
+                logger.warning(f"Skipping invalid assignment data: {assignment}")
+        
+        if not valid_assignments:
+            logger.warning("No valid assignments found to sync")
+            return 0
         
         # Filter out assignments already completed in Todoist
-        filtered_assignments = self.prevent_duplicate_sync(assignments)
+        filtered_assignments = self.prevent_duplicate_sync(valid_assignments)
         
         if len(filtered_assignments) < len(assignments):
             skipped = len(assignments) - len(filtered_assignments)
@@ -454,6 +477,21 @@ class TodoistIntegration:
         if not self.enabled:
             return {'updated': 0, 'completed_in_todoist': []}
             
+        # Validate input
+        if not local_assignments or not isinstance(local_assignments, list):
+            logger.warning("Invalid local assignments data for status sync")
+            return {'updated': 0, 'completed_in_todoist': []}
+        
+        # Filter valid assignments
+        valid_assignments = []
+        for assignment in local_assignments:
+            if isinstance(assignment, dict) and assignment.get('title'):
+                valid_assignments.append(assignment)
+        
+        if not valid_assignments:
+            logger.info("No valid assignments for status sync")
+            return {'updated': 0, 'completed_in_todoist': []}
+            
         try:
             # Get all assignments from Todoist
             todoist_assignments = self.get_all_assignments_from_todoist()
@@ -475,7 +513,7 @@ class TodoistIntegration:
             completed_assignments = []
             
             # Check each local assignment against Todoist
-            for assignment in local_assignments:
+            for assignment in valid_assignments:
                 email_id = assignment.get('email_id', '')
                 title_normalized = assignment.get('title_normalized', '').lower()
                 

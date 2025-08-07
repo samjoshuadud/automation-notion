@@ -163,10 +163,61 @@ python run_fetcher.py --days 14 --todoist
 python tests/test_todoist_sync.py
 
 # Verbose logging to see what's happening
-python run_fetcher.py --todoist --verbose
+python tests/run_fetcher.py --todoist --verbose
 
 # Test connection without fetching
-python run_fetcher.py --test --todoist
+python tests/run_fetcher.py --test --todoist
+
+# Comprehensive bug testing
+python tests/test_bug_detection.py
+
+# Logic validation and loophole checking
+python tests/test_logic_validation.py
+
+# Stress testing for performance issues
+python tests/test_stress.py
+
+# Run all tests at once
+python tests/run_all_tests.py
+```
+
+## 🧪 Testing & Quality Assurance
+
+### Comprehensive Testing Suite
+The system includes extensive tests to catch bugs and loopholes:
+
+```bash
+# Quick health check
+python tests/run_all_tests.py --quick
+
+# Full test suite (recommended before production)
+python tests/run_all_tests.py
+
+# Check prerequisites only
+python tests/run_all_tests.py --prereq-only
+```
+
+### What Gets Tested
+- ✅ **Edge Cases**: Invalid dates, empty data, malformed content
+- ✅ **Duplicate Detection**: Prevents creating duplicate tasks
+- ✅ **Status Sync**: Bidirectional synchronization logic
+- ✅ **Performance**: Memory usage, API rate limits, large datasets
+- ✅ **Error Handling**: Network failures, API errors, data corruption
+- ✅ **Security**: Sensitive data exposure, input validation
+
+### Common Test Scenarios
+```bash
+# Test with large datasets
+python tests/test_stress.py
+
+# Test edge cases and error conditions  
+python tests/test_bug_detection.py
+
+# Validate business logic
+python tests/test_logic_validation.py
+
+# Test status synchronization
+python tests/test_status_sync.py
 ```
 
 ## 🌟 Advanced Features
