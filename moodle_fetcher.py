@@ -172,12 +172,14 @@ class MoodleEmailFetcher:
                     r'Start date:\s*([^,\n]+(?:,\s*\d+\s*\w+\s*\d{4}[^,\n]*)?)'
                 ],
                 'course_patterns': [
-                    # Based on course code pattern: "HCI - HUMAN COMPUTER INTERACTION (III-ACSAD)"
+                    # Most specific patterns first
+                    r'in\s+course\s+([A-Z]{2,5}\d*)\s*-\s*([A-Z\s]+)(?:\s*\([^)]+\))?',  # "in course ELEC1 - ELECTIVE 1 (III-ACSAD)"
+                    r'course\s+([A-Z]{2,5}\d*)\s*-\s*([A-Z\s]+)(?:\s*\([^)]+\))?',      # "course ELEC1 - ELECTIVE 1 (III-ACSAD)"
+                    # Original patterns
                     r'course\s+([A-Z]{2,5}\s*-\s*[^(]+(?:\([^)]+\))?)',
                     r'in\s+course\s+([A-Z]{2,5}\s*-\s*[^(]+(?:\([^)]+\))?)',
                     r'([A-Z]{2,5}\s*-\s*[A-Z\s]+(?:\([^)]+\))?)',
                     r'Course:\s*(.+?)(?:\n|$)',
-                    r'in\s+course\s+(.+?)(?:\n|$)',
                     r'from\s+(.+?)\s+course'
                 ]
             },
@@ -223,21 +225,26 @@ class MoodleEmailFetcher:
             
             # Fallback for title extraction
             if not assignment_title:
-                # Try simple subject parsing
-                subject_patterns = [
-                    r'Assignment\s+(.+?)(?:\s+has|\s+is|$)',
-                    r'(.+?)\s+has been changed',
-                    r'(.+?)\s+assignment'
-                ]
-                for pattern in subject_patterns:
-                    try:
-                        match = re.search(pattern, subject, re.IGNORECASE)
-                        if match:
-                            assignment_title = match.group(1).strip()
-                            break
-                    except Exception as e:
-                        logger.warning(f"Error in fallback title pattern: {e}")
-                        continue
+                # Try "Due on ... : Title" pattern first
+                due_subject_match = re.search(r'Due\s+on\s+[^:]+:\s*(.+?)$', subject, re.IGNORECASE)
+                if due_subject_match:
+                    assignment_title = due_subject_match.group(1).strip()
+                else:
+                    # Try other subject patterns
+                    subject_patterns = [
+                        r'Assignment\s+(.+?)(?:\s+has|\s+is|$)',
+                        r'(.+?)\s+has been changed',
+                        r'(.+?)\s+assignment'
+                    ]
+                    for pattern in subject_patterns:
+                        try:
+                            match = re.search(pattern, subject, re.IGNORECASE)
+                            if match:
+                                assignment_title = match.group(1).strip()
+                                break
+                        except Exception as e:
+                            logger.warning(f"Error in fallback title pattern: {e}")
+                            continue
             
             # Extract due date with multiple fallbacks
             for pattern_type in patterns.values():
@@ -277,17 +284,43 @@ class MoodleEmailFetcher:
                     try:
                         match = re.search(pattern, full_text, re.IGNORECASE | re.MULTILINE)
                         if match:
-                            course_name = match.group(1).strip()
-                            # Extract course code from course name
-                            course_code_match = re.search(r'^([A-Z]{2,5})', course_name)
-                            if course_code_match:
-                                course_code = course_code_match.group(1).upper()
+                            if len(match.groups()) >= 2:
+                                # Pattern with separate course code and name groups
+                                course_code = match.group(1).upper()
+                                course_name_part = match.group(2).strip()
+                                course_name_part = re.sub(r'\s*\([^)]*\)\s*', '', course_name_part)  # Remove (III-ACSAD)
+                                course_name = f"{course_code} - {course_name_part.title()}"
+                            else:
+                                # Original single group pattern
+                                course_name = match.group(1).strip()
+                                # Extract course code from course name
+                                course_code_match = re.search(r'^([A-Z]{2,5})', course_name)
+                                if course_code_match:
+                                    course_code = course_code_match.group(1).upper()
                             break
                     except Exception as e:
                         logger.warning(f"Error in course pattern matching: {e}")
                         continue
                 if course_name:
                     break
+            
+            # Fallback course extraction for body patterns like "in course ELEC1 - ELECTIVE 1"
+            if not course_name:
+                # Try different patterns to extract course code and name
+                patterns_to_try = [
+                    r'in\s+course\s+([A-Z]{2,5}\d*)\s*[-\s]*([A-Z\s]+)',  # "in course ELEC1 - ELECTIVE 1"
+                    r'course\s+([A-Z]{2,5}\d*)\s*[-\s]*([A-Z\s]+)',       # "course ELEC1 - ELECTIVE 1"
+                ]
+                
+                for pattern in patterns_to_try:
+                    match = re.search(pattern, body, re.IGNORECASE)
+                    if match:
+                        course_code = match.group(1).upper()
+                        course_name_part = match.group(2).strip()
+                        # Clean up course name part
+                        course_name_part = re.sub(r'\s*\([^)]*\)\s*', '', course_name_part)  # Remove (III-ACSAD)
+                        course_name = f"{course_code} - {course_name_part.title()}"
+                        break
             
             # Format the title according to requirements
             formatted_titles = self._format_assignment_title(assignment_title, course_code)
