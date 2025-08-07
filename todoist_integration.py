@@ -674,3 +674,86 @@ class TodoistIntegration:
         except Exception as e:
             logger.error(f"Error getting project stats: {e}")
             return {}
+    
+    def delete_assignment_task(self, assignment: Dict) -> bool:
+        """
+        Delete a specific assignment task from Todoist
+        
+        Args:
+            assignment: Assignment dictionary with title and other details
+            
+        Returns:
+            bool: True if task was found and deleted, False otherwise
+        """
+        if not self.enabled:
+            logger.warning("Todoist integration not enabled")
+            return False
+        
+        try:
+            # Find the task by searching for it
+            task_id = self._find_task_by_assignment(assignment)
+            
+            if not task_id:
+                logger.debug(f"Task not found in Todoist for assignment: {assignment.get('title', 'Unknown')}")
+                return False
+            
+            # Delete the task
+            url = f'{self.base_url}/tasks/{task_id}'
+            response = requests.delete(url, headers=self.headers, timeout=10)
+            
+            if response.status_code == 204:  # Todoist returns 204 for successful deletion
+                logger.info(f"Successfully deleted task from Todoist: {assignment.get('title', 'Unknown')}")
+                return True
+            else:
+                logger.error(f"Failed to delete task from Todoist: {response.status_code} - {response.text}")
+                return False
+                
+        except Exception as e:
+            logger.error(f"Error deleting task from Todoist: {e}")
+            return False
+    
+    def _find_task_by_assignment(self, assignment: Dict) -> Optional[str]:
+        """
+        Find a Todoist task ID by assignment details
+        
+        Args:
+            assignment: Assignment dictionary
+            
+        Returns:
+            str or None: Task ID if found, None otherwise
+        """
+        try:
+            # Get all tasks from the assignments project
+            project_id = self.get_or_create_project("Assignments")
+            url = f'{self.base_url}/tasks'
+            params = {'project_id': project_id}
+            
+            response = requests.get(url, headers=self.headers, params=params, timeout=10)
+            
+            if response.status_code != 200:
+                logger.error(f"Failed to get tasks: {response.status_code}")
+                return None
+            
+            tasks = response.json()
+            assignment_title = assignment.get('title', '').strip().lower()
+            
+            # Search for task by title similarity
+            for task in tasks:
+                task_title = task.get('content', '').strip().lower()
+                
+                # Exact match
+                if task_title == assignment_title:
+                    return task['id']
+                
+                # Partial match (assignment title contains task title or vice versa)
+                if assignment_title in task_title or task_title in assignment_title:
+                    # Additional verification by checking if course code matches
+                    course_code = assignment.get('course_code', '').upper()
+                    if course_code and course_code in task.get('content', '').upper():
+                        return task['id']
+            
+            return None
+            
+        except Exception as e:
+            logger.error(f"Error finding task: {e}")
+            return None

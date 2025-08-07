@@ -486,3 +486,116 @@ class NotionIntegration:
         except Exception as e:
             logger.error(f"Unexpected error fetching assignments from Notion: {e}")
             return []
+    
+    def delete_assignment_page(self, assignment: Dict) -> bool:
+        """
+        Delete a specific assignment page from Notion database
+        
+        Args:
+            assignment: Assignment dictionary with title and other details
+            
+        Returns:
+            bool: True if page was found and deleted, False otherwise
+        """
+        if not self.enabled:
+            logger.warning("Notion integration not enabled")
+            return False
+        
+        try:
+            # Find the page by assignment details
+            page_id = self._find_page_by_assignment(assignment)
+            
+            if not page_id:
+                logger.debug(f"Page not found in Notion for assignment: {assignment.get('title', 'Unknown')}")
+                return False
+            
+            # Archive (delete) the page - Notion doesn't actually delete, but archives
+            url = f'https://api.notion.com/v1/pages/{page_id}'
+            data = {
+                "archived": True
+            }
+            
+            response = requests.patch(url, headers=self.headers, json=data, timeout=10)
+            
+            if response.status_code == 200:
+                logger.info(f"Successfully archived page in Notion: {assignment.get('title', 'Unknown')}")
+                return True
+            else:
+                logger.error(f"Failed to archive page in Notion: {response.status_code} - {response.text}")
+                return False
+                
+        except Exception as e:
+            logger.error(f"Error deleting page from Notion: {e}")
+            return False
+    
+    def _find_page_by_assignment(self, assignment: Dict) -> Optional[str]:
+        """
+        Find a Notion page ID by assignment details
+        
+        Args:
+            assignment: Assignment dictionary
+            
+        Returns:
+            str or None: Page ID if found, None otherwise
+        """
+        try:
+            # Search for the assignment by title and email_id
+            assignment_title = assignment.get('title', '').strip()
+            assignment_email_id = assignment.get('email_id', '').strip()
+            
+            # First try to search by email_id if available (most reliable)
+            if assignment_email_id:
+                url = f'https://api.notion.com/v1/databases/{self.database_id}/query'
+                data = {
+                    "filter": {
+                        "property": "Email ID",
+                        "rich_text": {
+                            "equals": assignment_email_id
+                        }
+                    }
+                }
+                
+                response = requests.post(url, headers=self.headers, json=data, timeout=10)
+                
+                if response.status_code == 200:
+                    results = response.json().get('results', [])
+                    if results:
+                        return results[0]['id']
+            
+            # If email_id search didn't work, try title search
+            if assignment_title:
+                url = f'https://api.notion.com/v1/databases/{self.database_id}/query'
+                data = {
+                    "filter": {
+                        "property": "Name",  # Title property in Notion
+                        "title": {
+                            "contains": assignment_title
+                        }
+                    }
+                }
+                
+                response = requests.post(url, headers=self.headers, json=data, timeout=10)
+                
+                if response.status_code == 200:
+                    results = response.json().get('results', [])
+                    
+                    # Look for exact or close match
+                    for result in results:
+                        try:
+                            title_prop = result.get('properties', {}).get('Name', {})
+                            if title_prop.get('type') == 'title':
+                                page_title = ''
+                                for title_part in title_prop.get('title', []):
+                                    page_title += title_part.get('text', {}).get('content', '')
+                                
+                                # Check for exact or close match
+                                if page_title.strip().lower() == assignment_title.strip().lower():
+                                    return result['id']
+                        except Exception:
+                            continue
+            
+            return None
+            
+        except Exception as e:
+            logger.error(f"Error finding page: {e}")
+            return None
