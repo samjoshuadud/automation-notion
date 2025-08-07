@@ -1,6 +1,7 @@
 import requests
 import json
 import os
+import re
 from datetime import datetime, timedelta
 from dotenv import load_dotenv
 from typing import List, Dict, Optional
@@ -51,6 +52,129 @@ class NotionIntegration:
             logger.error(f"Error testing Notion connection: {e}")
             return False
     
+    def format_task_content(self, assignment: Dict) -> str:
+        """Format task content as: CODE - Activity # (Activity Name) - same as Todoist"""
+        if not assignment or not isinstance(assignment, dict):
+            return "Unknown Assignment - Invalid Data"
+            
+        title = assignment.get('title', 'Unknown Assignment') or 'Unknown Assignment'
+        course_code = assignment.get('course_code', '') or ''
+        raw_title = assignment.get('raw_title', '') or ''
+        
+        # Try to extract activity number and name from raw_title or title
+        activity_match = None
+        activity_name = ""
+        
+        # Look for patterns like "ACTIVITY 1 - USER STORY [1]" or "Activity 1 (User Story)"
+        if raw_title:
+            # Pattern 1: "ACTIVITY # - NAME [#]" 
+            pattern1 = re.search(r'ACTIVITY\s+(\d+)\s*-\s*([^[]+)', raw_title, re.IGNORECASE)
+            if pattern1:
+                activity_num = pattern1.group(1)
+                activity_name = pattern1.group(2).strip()
+                activity_match = f"Activity {activity_num}"
+            else:
+                # Pattern 2: Look for just "ACTIVITY #"
+                pattern2 = re.search(r'ACTIVITY\s+(\d+)', raw_title, re.IGNORECASE)
+                if pattern2:
+                    activity_num = pattern2.group(1)
+                    activity_match = f"Activity {activity_num}"
+                    # Try to get name from the rest
+                    remaining = re.sub(r'ACTIVITY\s+\d+\s*-?\s*', '', raw_title, flags=re.IGNORECASE)
+                    activity_name = re.sub(r'\[\d+\]', '', remaining).strip()
+        
+        # If no activity found in raw_title, try the formatted title
+        if not activity_match and title:
+            # Look for patterns in the formatted title
+            title_pattern = re.search(r'Activity\s+(\d+)\s*\(([^)]+)\)', title, re.IGNORECASE)
+            if title_pattern:
+                activity_num = title_pattern.group(1)
+                activity_name = title_pattern.group(2).strip()
+                activity_match = f"Activity {activity_num}"
+        
+        # Build the final format
+        if course_code and activity_match:
+            if activity_name:
+                # Clean up activity name (remove extra chars)
+                activity_name = re.sub(r'\s*\[\d+\]', '', activity_name).strip()
+                formatted_title = f"{course_code} - {activity_match} ({activity_name})"
+            else:
+                formatted_title = f"{course_code} - {activity_match}"
+        elif course_code:
+            # Fallback: use course code with original title
+            formatted_title = f"{course_code} - {title}"
+        else:
+            # Fallback: use original title
+            formatted_title = title
+            
+        return formatted_title
+    
+    def calculate_smart_reminder_date(self, assignment: Dict) -> Optional[str]:
+        """Calculate smart reminder date based on opening date and due date"""
+        due_date_str = assignment.get('due_date')
+        opening_date_str = assignment.get('opening_date')
+        
+        if not due_date_str or due_date_str == 'No due date':
+            return None
+            
+        try:
+            due_date = datetime.strptime(due_date_str, '%Y-%m-%d')
+            today = datetime.now().date()
+            days_until_due = (due_date.date() - today).days
+            
+            # If we have opening date, use it; otherwise assume assignment is already open
+            if opening_date_str and opening_date_str != 'No opening date':
+                try:
+                    opening_date = datetime.strptime(opening_date_str, '%Y-%m-%d').date()
+                except ValueError:
+                    # If opening date can't be parsed, assume assignment is open
+                    opening_date = today
+            else:
+                # No opening date info, assume assignment is open
+                opening_date = today
+            
+            # Calculate days until assignment opens
+            days_until_opens = (opening_date - today).days
+            
+            # Smart reminder logic based on days until due date
+            if days_until_due <= 0:
+                # Assignment already due or overdue
+                return None
+            elif days_until_due <= 3:
+                # Very short time (≤3 days): remind tomorrow or today if opening soon
+                reminder_days_before = 1
+            elif days_until_due <= 7:
+                # Short time (4-7 days): remind 3-4 days before due
+                reminder_days_before = min(3, days_until_due - 1)
+            elif days_until_due <= 14:
+                # Medium time (8-14 days): remind 4-7 days before due
+                reminder_days_before = min(7, days_until_due // 2)
+            else:
+                # Long time (>14 days): remind 7 days before due
+                reminder_days_before = 7
+            
+            # Calculate reminder date
+            reminder_date = due_date.date() - timedelta(days=reminder_days_before)
+            
+            # Critical: Ensure reminder is not before opening date
+            if reminder_date < opening_date:
+                # If calculated reminder is before opening, set reminder for opening day
+                # But add 1 day buffer if opening day is today (so user has time to see it)
+                if opening_date == today:
+                    reminder_date = today
+                else:
+                    reminder_date = opening_date
+            
+            # Ensure reminder is not in the past (but allow today)
+            if reminder_date < today:
+                return None
+            
+            return reminder_date.strftime('%Y-%m-%d')
+            
+        except ValueError as e:
+            logger.warning(f"Could not parse dates for smart reminder calculation: {e}")
+            return None
+    
     def create_assignment_page(self, assignment: Dict) -> bool:
         """Create a new page in Notion database for the assignment with reminder"""
         if not self.enabled:
@@ -60,20 +184,14 @@ class NotionIntegration:
         try:
             url = 'https://api.notion.com/v1/pages'
             
-            # Parse due date for reminder calculation
+            # Get due date from assignment
             due_date_str = assignment.get('due_date')
-            reminder_date = None
             
-            if due_date_str and due_date_str != 'No due date':
-                try:
-                    # Try to parse the due date
-                    due_date = datetime.strptime(due_date_str, '%Y-%m-%d')
-                    # Set reminder 3 days before
-                    reminder_date = (due_date - timedelta(days=3)).strftime('%Y-%m-%d')
-                except ValueError:
-                    logger.warning(f"Could not parse due date for reminder: {due_date_str}")
+            # Calculate smart reminder date based on opening and due dates
+            reminder_date = self.calculate_smart_reminder_date(assignment)
             
             # Prepare the page data with enhanced properties
+            formatted_title = self.format_task_content(assignment)
             page_data = {
                 "parent": {"database_id": self.database_id},
                 "properties": {
@@ -81,7 +199,7 @@ class NotionIntegration:
                         "title": [
                             {
                                 "text": {
-                                    "content": assignment.get('title', 'Unknown Assignment')[:100]  # Notion title limit
+                                    "content": formatted_title[:100]  # Notion title limit
                                 }
                             }
                         ]
@@ -232,11 +350,12 @@ class NotionIntegration:
         
         for i, assignment in enumerate(assignments, 1):
             try:
-                logger.info(f"Processing assignment {i}/{len(assignments)}: {assignment.get('title', 'Unknown')}")
+                formatted_title = self.format_task_content(assignment)
+                logger.info(f"Processing assignment {i}/{len(assignments)}: {formatted_title}")
                 
                 # Check if assignment already exists
                 if self.check_assignment_exists(assignment):
-                    logger.info(f"Assignment already exists in Notion: {assignment.get('title')}")
+                    logger.info(f"Assignment already exists in Notion: {formatted_title}")
                     duplicate_count += 1
                     continue
                 
@@ -247,7 +366,8 @@ class NotionIntegration:
                     error_count += 1
                     
             except Exception as e:
-                logger.error(f"Error processing assignment {assignment.get('title', 'Unknown')}: {e}")
+                formatted_title = self.format_task_content(assignment) if assignment else "Unknown"
+                logger.error(f"Error processing assignment {formatted_title}: {e}")
                 error_count += 1
         
         logger.info(f"Notion sync completed: {success_count} created, {duplicate_count} duplicates, {error_count} errors")
@@ -270,9 +390,9 @@ class NotionIntegration:
             
             if response.status_code == 200:
                 results = response.json().get('results', [])
-                assignment_title = assignment.get('title', '').strip().lower()
+                formatted_title = self.format_task_content(assignment).strip().lower()
                 
-                if not assignment_title:
+                if not formatted_title:
                     return False
                 
                 # Check each result for a matching title
@@ -290,11 +410,12 @@ class NotionIntegration:
                                     existing_title = title_array[0].get('plain_text', '').strip().lower()
                                     break
                     
-                    if existing_title and existing_title == assignment_title:
-                        logger.debug(f"Assignment '{assignment.get('title')}' already exists in Notion")
+                    # Compare using the same 100-char truncation as creation
+                    if existing_title and existing_title == formatted_title[:100].strip().lower():
+                        logger.debug(f"Assignment '{formatted_title}' already exists in Notion")
                         return True
                 
-                logger.debug(f"Assignment '{assignment.get('title')}' not found in Notion")
+                logger.debug(f"Assignment '{formatted_title}' not found in Notion")
                 return False
             else:
                 logger.warning(f"Could not check for existing assignments: {response.status_code}")
@@ -322,10 +443,10 @@ class NotionIntegration:
         try:
             url = f'https://api.notion.com/v1/databases/{self.database_id}/query'
             
-            assignment_title = assignment.get('title', '').strip().lower()
+            formatted_title = self.format_task_content(assignment).strip().lower()
             assignment_due_date = assignment.get('due_date', '').strip()
             
-            logger.debug(f"Checking Notion for assignment: '{assignment_title}'")
+            logger.debug(f"Checking Notion for assignment: '{formatted_title}'")
             
             # Get all entries to check against
             query_data = {
@@ -354,7 +475,8 @@ class NotionIntegration:
                                     break
                     
                     # If we found a matching title, check due date for extra confirmation
-                    if existing_title and existing_title == assignment_title:
+                    # Compare using the same 100-char truncation as creation
+                    if existing_title and existing_title == formatted_title[:100].strip().lower():
                         logger.debug(f"Found matching title: '{existing_title}'")
                         
                         # Try to get due date for extra verification
@@ -370,14 +492,14 @@ class NotionIntegration:
                         
                         # If both title and due date match, it's definitely the same assignment
                         if assignment_due_date and existing_due_date and assignment_due_date == existing_due_date:
-                            logger.debug(f"Assignment '{assignment_title}' exists with matching due date")
+                            logger.debug(f"Assignment '{formatted_title}' exists with matching due date")
                             return True
                         # If only title matches but no due date info, assume it's the same
                         elif not assignment_due_date or not existing_due_date:
-                            logger.debug(f"Assignment '{assignment_title}' exists (title match only)")
+                            logger.debug(f"Assignment '{formatted_title}' exists (title match only)")
                             return True
                 
-                logger.debug(f"Assignment '{assignment_title}' not found in Notion")
+                logger.debug(f"Assignment '{formatted_title}' not found in Notion")
                 return False
                 
             elif response.status_code == 404:
@@ -486,3 +608,118 @@ class NotionIntegration:
         except Exception as e:
             logger.error(f"Unexpected error fetching assignments from Notion: {e}")
             return []
+    
+    def delete_assignment_page(self, assignment: Dict) -> bool:
+        """
+        Delete a specific assignment page from Notion database
+        
+        Args:
+            assignment: Assignment dictionary with title and other details
+            
+        Returns:
+            bool: True if page was found and deleted, False otherwise
+        """
+        if not self.enabled:
+            logger.warning("Notion integration not enabled")
+            return False
+        
+        try:
+            # Find the page by assignment details
+            page_id = self._find_page_by_assignment(assignment)
+            formatted_title = self.format_task_content(assignment)
+            
+            if not page_id:
+                logger.debug(f"Page not found in Notion for assignment: {formatted_title}")
+                return False
+            
+            # Archive (delete) the page - Notion doesn't actually delete, but archives
+            url = f'https://api.notion.com/v1/pages/{page_id}'
+            data = {
+                "archived": True
+            }
+            
+            response = requests.patch(url, headers=self.headers, json=data, timeout=10)
+            
+            if response.status_code == 200:
+                logger.info(f"Successfully archived page in Notion: {formatted_title}")
+                return True
+            else:
+                logger.error(f"Failed to archive page in Notion: {response.status_code} - {response.text}")
+                return False
+                
+        except Exception as e:
+            logger.error(f"Error deleting page from Notion: {e}")
+            return False
+    
+    def _find_page_by_assignment(self, assignment: Dict) -> Optional[str]:
+        """
+        Find a Notion page ID by assignment details
+        
+        Args:
+            assignment: Assignment dictionary
+            
+        Returns:
+            str or None: Page ID if found, None otherwise
+        """
+        try:
+            # Search for the assignment by formatted title and email_id (same as creation)
+            formatted_title = self.format_task_content(assignment)
+            assignment_email_id = assignment.get('email_id', '').strip()
+            
+            # First try to search by email_id if available (most reliable)
+            if assignment_email_id:
+                url = f'https://api.notion.com/v1/databases/{self.database_id}/query'
+                data = {
+                    "filter": {
+                        "property": "Email ID",
+                        "rich_text": {
+                            "equals": assignment_email_id
+                        }
+                    }
+                }
+                
+                response = requests.post(url, headers=self.headers, json=data, timeout=10)
+                
+                if response.status_code == 200:
+                    results = response.json().get('results', [])
+                    if results:
+                        return results[0]['id']
+            
+            # If email_id search didn't work, try formatted title search
+            if formatted_title:
+                url = f'https://api.notion.com/v1/databases/{self.database_id}/query'
+                data = {
+                    "filter": {
+                        "property": "Assignment",  # Title property in Notion (matches creation)
+                        "title": {
+                            "contains": formatted_title
+                        }
+                    }
+                }
+                
+                response = requests.post(url, headers=self.headers, json=data, timeout=10)
+                
+                if response.status_code == 200:
+                    results = response.json().get('results', [])
+                    
+                    # Look for exact or close match
+                    for result in results:
+                        try:
+                            title_prop = result.get('properties', {}).get('Assignment', {})  # Use 'Assignment' property
+                            if title_prop.get('type') == 'title':
+                                page_title = ''
+                                for title_part in title_prop.get('title', []):
+                                    page_title += title_part.get('text', {}).get('content', '')
+                                
+                                # Check for exact or close match (using truncated title like creation)
+                                stored_title = formatted_title[:100]  # Match the 100 char limit from creation
+                                if page_title.strip().lower() == stored_title.strip().lower():
+                                    return result['id']
+                        except Exception:
+                            continue
+            
+            return None
+            
+        except Exception as e:
+            logger.error(f"Error finding page: {e}")
+            return None

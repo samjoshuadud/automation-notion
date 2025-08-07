@@ -472,6 +472,10 @@ class TodoistIntegration:
             logger.error(f"Error getting assignments from Todoist: {e}")
             return []
     
+    def get_school_assignments(self) -> List[Dict]:
+        """Alias for get_all_assignments_from_todoist for interactive deletion"""
+        return self.get_all_assignments_from_todoist()
+    
     def sync_status_from_todoist(self, local_assignments: List[Dict]) -> Dict:
         """Sync completion status from Todoist back to local storage"""
         if not self.enabled:
@@ -674,3 +678,99 @@ class TodoistIntegration:
         except Exception as e:
             logger.error(f"Error getting project stats: {e}")
             return {}
+    
+    def delete_assignment_task(self, assignment: Dict) -> bool:
+        """
+        Delete a specific assignment task from Todoist
+        
+        Args:
+            assignment: Assignment dictionary with title and other details
+            
+        Returns:
+            bool: True if task was found and deleted, False otherwise
+        """
+        if not self.enabled:
+            logger.warning("Todoist integration not enabled")
+            return False
+        
+        try:
+            # Find the task by searching for it
+            task_id = self._find_task_by_assignment(assignment)
+            
+            if not task_id:
+                logger.debug(f"Task not found in Todoist for assignment: {assignment.get('title', 'Unknown')}")
+                return False
+            
+            # Delete the task
+            url = f'{self.base_url}/tasks/{task_id}'
+            response = requests.delete(url, headers=self.headers, timeout=10)
+            
+            if response.status_code == 204:  # Todoist returns 204 for successful deletion
+                logger.info(f"Successfully deleted task from Todoist: {assignment.get('title', 'Unknown')}")
+                return True
+            else:
+                logger.error(f"Failed to delete task from Todoist: {response.status_code} - {response.text}")
+                return False
+                
+        except Exception as e:
+            logger.error(f"Error deleting task from Todoist: {e}")
+            return False
+    
+    def _find_task_by_assignment(self, assignment: Dict) -> Optional[str]:
+        """
+        Find a Todoist task ID by assignment details
+        
+        Args:
+            assignment: Assignment dictionary
+            
+        Returns:
+            str or None: Task ID if found, None otherwise
+        """
+        try:
+            # Get all tasks from the assignments project (use same project as creation)
+            project_id = self.get_or_create_project()
+            url = f'{self.base_url}/tasks'
+            params = {'project_id': project_id}
+            
+            response = requests.get(url, headers=self.headers, params=params, timeout=10)
+            
+            if response.status_code != 200:
+                logger.error(f"Failed to get tasks: {response.status_code}")
+                return None
+            
+            tasks = response.json()
+            
+            # Use the same formatting logic as task creation for comparison
+            expected_task_title = self.format_task_content(assignment)
+            
+            logger.debug(f"Looking for task with title: '{expected_task_title}'")
+            
+            # Search for task by formatted title match
+            for task in tasks:
+                task_title = task.get('content', '').strip()
+                
+                logger.debug(f"Comparing with task: '{task_title}'")
+                
+                # Exact match with formatted title
+                if task_title.lower() == expected_task_title.lower():
+                    logger.debug(f"Found exact match: {task['id']}")
+                    return task['id']
+                
+                # Fallback: Check if task title contains the course code and activity pattern
+                course_code = assignment.get('course_code', '').upper()
+                if course_code and course_code in task_title.upper():
+                    # Additional fuzzy matching for activity numbers
+                    import re
+                    original_activity = re.search(r'Activity\s+(\d+)', expected_task_title, re.IGNORECASE)
+                    task_activity = re.search(r'Activity\s+(\d+)', task_title, re.IGNORECASE)
+                    
+                    if original_activity and task_activity and original_activity.group(1) == task_activity.group(1):
+                        logger.debug(f"Found activity number match: {task['id']}")
+                        return task['id']
+            
+            logger.debug("No matching task found")
+            return None
+            
+        except Exception as e:
+            logger.error(f"Error finding task: {e}")
+            return None
