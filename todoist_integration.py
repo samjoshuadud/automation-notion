@@ -735,23 +735,36 @@ class TodoistIntegration:
                 return None
             
             tasks = response.json()
-            assignment_title = assignment.get('title', '').strip().lower()
             
-            # Search for task by title similarity
+            # Use the same formatting logic as task creation for comparison
+            expected_task_title = self.format_task_content(assignment)
+            
+            logger.debug(f"Looking for task with title: '{expected_task_title}'")
+            
+            # Search for task by formatted title match
             for task in tasks:
-                task_title = task.get('content', '').strip().lower()
+                task_title = task.get('content', '').strip()
                 
-                # Exact match
-                if task_title == assignment_title:
+                logger.debug(f"Comparing with task: '{task_title}'")
+                
+                # Exact match with formatted title
+                if task_title.lower() == expected_task_title.lower():
+                    logger.debug(f"Found exact match: {task['id']}")
                     return task['id']
                 
-                # Partial match (assignment title contains task title or vice versa)
-                if assignment_title in task_title or task_title in assignment_title:
-                    # Additional verification by checking if course code matches
-                    course_code = assignment.get('course_code', '').upper()
-                    if course_code and course_code in task.get('content', '').upper():
+                # Fallback: Check if task title contains the course code and activity pattern
+                course_code = assignment.get('course_code', '').upper()
+                if course_code and course_code in task_title.upper():
+                    # Additional fuzzy matching for activity numbers
+                    import re
+                    original_activity = re.search(r'Activity\s+(\d+)', expected_task_title, re.IGNORECASE)
+                    task_activity = re.search(r'Activity\s+(\d+)', task_title, re.IGNORECASE)
+                    
+                    if original_activity and task_activity and original_activity.group(1) == task_activity.group(1):
+                        logger.debug(f"Found activity number match: {task['id']}")
                         return task['id']
             
+            logger.debug("No matching task found")
             return None
             
         except Exception as e:

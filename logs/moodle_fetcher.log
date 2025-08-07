@@ -223,3 +223,566 @@
 2025-08-07 16:09:18,599 - urllib3.connectionpool - DEBUG - Starting new HTTPS connection (1): api.todoist.com:443
 2025-08-07 16:09:19,989 - urllib3.connectionpool - DEBUG - https://api.todoist.com:443 "GET /rest/v2/tasks?project_id=2358015760 HTTP/1.1" 200 None
 2025-08-07 16:09:19,990 - todoist_integration - DEBUG - Task not found in Todoist for assignment: III - Activity 1 (#1)
+2025-08-07 16:10:26,896 - urllib3.connectionpool - DEBUG - Starting new HTTPS connection (1): api.notion.com:443
+2025-08-07 16:10:29,480 - urllib3.connectionpool - DEBUG - https://api.notion.com:443 "GET /v1/databases/2476d3f4f60f8036b8ebd0c45a3fefae HTTP/1.1" 200 None
+2025-08-07 16:10:29,653 - notion_integration - INFO - Notion integration initialized successfully
+2025-08-07 16:10:29,654 - urllib3.connectionpool - DEBUG - Starting new HTTPS connection (1): api.notion.com:443
+2025-08-07 16:10:30,495 - urllib3.connectionpool - DEBUG - https://api.notion.com:443 "POST /v1/databases/2476d3f4f60f8036b8ebd0c45a3fefae/query HTTP/1.1" 400 171
+2025-08-07 16:10:30,496 - urllib3.connectionpool - DEBUG - Starting new HTTPS connection (1): api.notion.com:443
+2025-08-07 16:10:31,601 - urllib3.connectionpool - DEBUG - https://api.notion.com:443 "POST /v1/databases/2476d3f4f60f8036b8ebd0c45a3fefae/query HTTP/1.1" 400 167
+2025-08-07 16:10:31,602 - notion_integration - DEBUG - Page not found in Notion for assignment: HCI - Activity 1 (User Story [1])
+2025-08-07 16:10:31,603 - urllib3.connectionpool - DEBUG - Starting new HTTPS connection (1): api.notion.com:443
+2025-08-07 16:10:31,937 - urllib3.connectionpool - DEBUG - https://api.notion.com:443 "POST /v1/databases/2476d3f4f60f8036b8ebd0c45a3fefae/query HTTP/1.1" 400 171
+2025-08-07 16:10:31,939 - urllib3.connectionpool - DEBUG - Starting new HTTPS connection (1): api.notion.com:443
+2025-08-07 16:10:32,973 - urllib3.connectionpool - DEBUG - https://api.notion.com:443 "POST /v1/databases/2476d3f4f60f8036b8ebd0c45a3fefae/query HTTP/1.1" 400 167
+2025-08-07 16:10:32,974 - notion_integration - DEBUG - Page not found in Notion for assignment: HCI - Activity 2 (Mid Fidelity [1])
+2025-08-07 16:10:32,975 - urllib3.connectionpool - DEBUG - Starting new HTTPS connection (1): api.notion.com:443
+2025-08-07 16:10:33,377 - urllib3.connectionpool - DEBUG - https://api.notion.com:443 "POST /v1/databases/2476d3f4f60f8036b8ebd0c45a3fefae/query HTTP/1.1" 400 171
+2025-08-07 16:10:33,378 - urllib3.connectionpool - DEBUG - Starting new HTTPS connection (1): api.notion.com:443
+2025-08-07 16:10:33,705 - urllib3.connectionpool - DEBUG - https://api.notion.com:443 "POST /v1/databases/2476d3f4f60f8036b8ebd0c45a3fefae/query HTTP/1.1" 400 167
+2025-08-07 16:10:33,706 - notion_integration - DEBUG - Page not found in Notion for assignment: HCI - Activity 3 (High Fidelity Prototype [1])
+2025-08-07 16:10:33,707 - urllib3.connectionpool - DEBUG - Starting new HTTPS connection (1): api.notion.com:443
+2025-08-07 16:10:33,977 - urllib3.connectionpool - DEBUG - https://api.notion.com:443 "POST /v1/databases/2476d3f4f60f8036b8ebd0c45a3fefae/query HTTP/1.1" 400 171
+2025-08-07 16:10:33,978 - urllib3.connectionpool - DEBUG - Starting new HTTPS connection (1): api.notion.com:443
+2025-08-07 16:10:34,322 - urllib3.connectionpool - DEBUG - https://api.notion.com:443 "POST /v1/databases/2476d3f4f60f8036b8ebd0c45a3fefae/query HTTP/1.1" 400 167
+2025-08-07 16:10:34,323 - notion_integration - DEBUG - Page not found in Notion for assignment: HCI - Activity 4 (Usability Assessment [1])
+2025-08-07 16:10:34,324 - urllib3.connectionpool - DEBUG - Starting new HTTPS connection (1): api.notion.com:443
+2025-08-07 16:10:34,799 - urllib3.connectionpool - DEBUG - https://api.notion.com:443 "POST /v1/databases/2476d3f4f60f8036b8ebd0c45a3fefae/query HTTP/1.1" 400 171
+2025-08-07 16:10:34,800 - urllib3.connectionpool - DEBUG - Starting new HTTPS connection (1): api.notion.com:443
+2025-08-07 16:10:35,080 - urllib3.connectionpool - DEBUG - https://api.notion.com:443 "POST /v1/databases/2476d3f4f60f8036b8ebd0c45a3fefae/query HTTP/1.1" 400 167
+2025-08-07 16:10:35,081 - notion_integration - DEBUG - Page not found in Notion for assignment: III - Activity 1 (#1)
+2025-08-07 16:12:14,910 - urllib3.connectionpool - DEBUG - Starting new HTTPS connection (1): api.todoist.com:443
+2025-08-07 16:12:15,925 - urllib3.connectionpool - DEBUG - https://api.todoist.com:443 "GET /rest/v2/projects HTTP/1.1" 200 None
+2025-08-07 16:12:15,926 - todoist_integration - INFO - Todoist connection test successful
+2025-08-07 16:12:15,927 - todoist_integration - INFO - Todoist integration initialized successfully
+2025-08-07 16:12:15,928 - urllib3.connectionpool - DEBUG - Starting new HTTPS connection (1): api.todoist.com:443
+2025-08-07 16:12:16,865 - urllib3.connectionpool - DEBUG - https://api.todoist.com:443 "GET /rest/v2/projects HTTP/1.1" 200 None
+2025-08-07 16:12:16,866 - todoist_integration - INFO - Found existing project: School Assignments
+2025-08-07 16:12:16,867 - urllib3.connectionpool - DEBUG - Starting new HTTPS connection (1): api.todoist.com:443
+2025-08-07 16:12:17,213 - urllib3.connectionpool - DEBUG - https://api.todoist.com:443 "GET /rest/v2/tasks?project_id=2358015760 HTTP/1.1" 200 None
+2025-08-07 16:12:17,215 - todoist_integration - DEBUG - Looking for task with title: 'HCI - Activity 1 (USER STORY)'
+2025-08-07 16:12:17,215 - todoist_integration - DEBUG - Comparing with task: 'HCI - Activity 1 (USER STORY)'
+2025-08-07 16:12:17,215 - todoist_integration - DEBUG - Found exact match: 9421094951
+2025-08-07 16:12:17,216 - urllib3.connectionpool - DEBUG - Starting new HTTPS connection (1): api.todoist.com:443
+2025-08-07 16:12:17,753 - urllib3.connectionpool - DEBUG - https://api.todoist.com:443 "DELETE /rest/v2/tasks/9421094951 HTTP/1.1" 204 0
+2025-08-07 16:12:17,754 - todoist_integration - INFO - Successfully deleted task from Todoist: HCI - Activity 1 (User Story [1])
+2025-08-07 16:12:17,755 - urllib3.connectionpool - DEBUG - Starting new HTTPS connection (1): api.todoist.com:443
+2025-08-07 16:12:18,790 - urllib3.connectionpool - DEBUG - https://api.todoist.com:443 "GET /rest/v2/projects HTTP/1.1" 200 None
+2025-08-07 16:12:18,791 - todoist_integration - INFO - Found existing project: School Assignments
+2025-08-07 16:12:18,792 - urllib3.connectionpool - DEBUG - Starting new HTTPS connection (1): api.todoist.com:443
+2025-08-07 16:12:19,559 - urllib3.connectionpool - DEBUG - https://api.todoist.com:443 "GET /rest/v2/tasks?project_id=2358015760 HTTP/1.1" 200 None
+2025-08-07 16:12:19,561 - todoist_integration - DEBUG - Looking for task with title: 'HCI - Activity 2 (MID FIDELITY)'
+2025-08-07 16:12:19,561 - todoist_integration - DEBUG - Comparing with task: 'HCI - Activity 1 (USER STORY)'
+2025-08-07 16:12:19,561 - todoist_integration - DEBUG - Comparing with task: 'HCI - Activity 2 (MID FIDELITY)'
+2025-08-07 16:12:19,561 - todoist_integration - DEBUG - Found exact match: 9421095292
+2025-08-07 16:12:19,563 - urllib3.connectionpool - DEBUG - Starting new HTTPS connection (1): api.todoist.com:443
+2025-08-07 16:12:20,829 - urllib3.connectionpool - DEBUG - https://api.todoist.com:443 "DELETE /rest/v2/tasks/9421095292 HTTP/1.1" 204 0
+2025-08-07 16:12:20,830 - todoist_integration - INFO - Successfully deleted task from Todoist: HCI - Activity 2 (Mid Fidelity [1])
+2025-08-07 16:12:20,832 - urllib3.connectionpool - DEBUG - Starting new HTTPS connection (1): api.todoist.com:443
+2025-08-07 16:12:21,517 - urllib3.connectionpool - DEBUG - https://api.todoist.com:443 "GET /rest/v2/projects HTTP/1.1" 200 None
+2025-08-07 16:12:21,518 - todoist_integration - INFO - Found existing project: School Assignments
+2025-08-07 16:12:21,519 - urllib3.connectionpool - DEBUG - Starting new HTTPS connection (1): api.todoist.com:443
+2025-08-07 16:12:21,862 - urllib3.connectionpool - DEBUG - https://api.todoist.com:443 "GET /rest/v2/tasks?project_id=2358015760 HTTP/1.1" 200 None
+2025-08-07 16:12:21,864 - todoist_integration - DEBUG - Looking for task with title: 'HCI - Activity 3 (HIGH FIDELITY PROTOTYPE)'
+2025-08-07 16:12:21,864 - todoist_integration - DEBUG - Comparing with task: 'HCI - Activity 1 (USER STORY)'
+2025-08-07 16:12:21,864 - todoist_integration - DEBUG - Comparing with task: 'HCI - Activity 3 (HIGH FIDELITY PROTOTYPE)'
+2025-08-07 16:12:21,864 - todoist_integration - DEBUG - Found exact match: 9421095315
+2025-08-07 16:12:21,865 - urllib3.connectionpool - DEBUG - Starting new HTTPS connection (1): api.todoist.com:443
+2025-08-07 16:12:22,557 - urllib3.connectionpool - DEBUG - https://api.todoist.com:443 "DELETE /rest/v2/tasks/9421095315 HTTP/1.1" 204 0
+2025-08-07 16:12:22,558 - todoist_integration - INFO - Successfully deleted task from Todoist: HCI - Activity 3 (High Fidelity Prototype [1])
+2025-08-07 16:12:22,559 - urllib3.connectionpool - DEBUG - Starting new HTTPS connection (1): api.todoist.com:443
+2025-08-07 16:12:23,002 - urllib3.connectionpool - DEBUG - https://api.todoist.com:443 "GET /rest/v2/projects HTTP/1.1" 200 None
+2025-08-07 16:12:23,003 - todoist_integration - INFO - Found existing project: School Assignments
+2025-08-07 16:12:23,004 - urllib3.connectionpool - DEBUG - Starting new HTTPS connection (1): api.todoist.com:443
+2025-08-07 16:12:23,811 - urllib3.connectionpool - DEBUG - https://api.todoist.com:443 "GET /rest/v2/tasks?project_id=2358015760 HTTP/1.1" 200 None
+2025-08-07 16:12:23,813 - todoist_integration - DEBUG - Looking for task with title: 'HCI - Activity 4 (USABILITY ASSESSMENT)'
+2025-08-07 16:12:23,813 - todoist_integration - DEBUG - Comparing with task: 'HCI - Activity 1 (USER STORY)'
+2025-08-07 16:12:23,813 - todoist_integration - DEBUG - Comparing with task: 'Valid'
+2025-08-07 16:12:23,813 - todoist_integration - DEBUG - Comparing with task: 'Another Valid'
+2025-08-07 16:12:23,813 - todoist_integration - DEBUG - Comparing with task: 'TEST - Activity 1 (REAL-TIME TEST)'
+2025-08-07 16:12:23,813 - todoist_integration - DEBUG - Comparing with task: 'SAMPLE - Activity 1 (Test Assignment)'
+2025-08-07 16:12:23,813 - todoist_integration - DEBUG - No matching task found
+2025-08-07 16:12:23,813 - todoist_integration - DEBUG - Task not found in Todoist for assignment: HCI - Activity 4 (Usability Assessment [1])
+2025-08-07 16:12:23,814 - urllib3.connectionpool - DEBUG - Starting new HTTPS connection (1): api.todoist.com:443
+2025-08-07 16:12:24,339 - urllib3.connectionpool - DEBUG - https://api.todoist.com:443 "GET /rest/v2/projects HTTP/1.1" 200 None
+2025-08-07 16:12:24,340 - todoist_integration - INFO - Found existing project: School Assignments
+2025-08-07 16:12:24,341 - urllib3.connectionpool - DEBUG - Starting new HTTPS connection (1): api.todoist.com:443
+2025-08-07 16:12:24,686 - urllib3.connectionpool - DEBUG - https://api.todoist.com:443 "GET /rest/v2/tasks?project_id=2358015760 HTTP/1.1" 200 None
+2025-08-07 16:12:24,687 - todoist_integration - DEBUG - Looking for task with title: 'III - Activity 1 (#1)'
+2025-08-07 16:12:24,687 - todoist_integration - DEBUG - Comparing with task: 'HCI - Activity 1 (USER STORY)'
+2025-08-07 16:12:24,687 - todoist_integration - DEBUG - Comparing with task: 'Valid'
+2025-08-07 16:12:24,687 - todoist_integration - DEBUG - Comparing with task: 'Another Valid'
+2025-08-07 16:12:24,687 - todoist_integration - DEBUG - Comparing with task: 'TEST - Activity 1 (REAL-TIME TEST)'
+2025-08-07 16:12:24,687 - todoist_integration - DEBUG - Comparing with task: 'SAMPLE - Activity 1 (Test Assignment)'
+2025-08-07 16:12:24,687 - todoist_integration - DEBUG - No matching task found
+2025-08-07 16:12:24,687 - todoist_integration - DEBUG - Task not found in Todoist for assignment: III - Activity 1 (#1)
+2025-08-07 16:12:45,418 - urllib3.connectionpool - DEBUG - Starting new HTTPS connection (1): api.notion.com:443
+2025-08-07 16:12:46,036 - urllib3.connectionpool - DEBUG - https://api.notion.com:443 "GET /v1/databases/2476d3f4f60f8036b8ebd0c45a3fefae HTTP/1.1" 200 None
+2025-08-07 16:12:46,038 - notion_integration - INFO - Notion integration initialized successfully
+2025-08-07 16:12:46,039 - urllib3.connectionpool - DEBUG - Starting new HTTPS connection (1): api.notion.com:443
+2025-08-07 16:12:46,554 - urllib3.connectionpool - DEBUG - https://api.notion.com:443 "POST /v1/databases/2476d3f4f60f8036b8ebd0c45a3fefae/query HTTP/1.1" 400 171
+2025-08-07 16:12:46,556 - urllib3.connectionpool - DEBUG - Starting new HTTPS connection (1): api.notion.com:443
+2025-08-07 16:12:46,937 - urllib3.connectionpool - DEBUG - https://api.notion.com:443 "POST /v1/databases/2476d3f4f60f8036b8ebd0c45a3fefae/query HTTP/1.1" 400 167
+2025-08-07 16:12:46,938 - notion_integration - DEBUG - Page not found in Notion for assignment: HCI - Activity 1 (User Story [1])
+2025-08-07 16:12:46,939 - urllib3.connectionpool - DEBUG - Starting new HTTPS connection (1): api.notion.com:443
+2025-08-07 16:12:48,318 - urllib3.connectionpool - DEBUG - https://api.notion.com:443 "POST /v1/databases/2476d3f4f60f8036b8ebd0c45a3fefae/query HTTP/1.1" 400 171
+2025-08-07 16:12:48,319 - urllib3.connectionpool - DEBUG - Starting new HTTPS connection (1): api.notion.com:443
+2025-08-07 16:12:49,034 - urllib3.connectionpool - DEBUG - https://api.notion.com:443 "POST /v1/databases/2476d3f4f60f8036b8ebd0c45a3fefae/query HTTP/1.1" 400 167
+2025-08-07 16:12:49,035 - notion_integration - DEBUG - Page not found in Notion for assignment: HCI - Activity 2 (Mid Fidelity [1])
+2025-08-07 16:12:49,036 - urllib3.connectionpool - DEBUG - Starting new HTTPS connection (1): api.notion.com:443
+2025-08-07 16:12:49,985 - urllib3.connectionpool - DEBUG - https://api.notion.com:443 "POST /v1/databases/2476d3f4f60f8036b8ebd0c45a3fefae/query HTTP/1.1" 400 171
+2025-08-07 16:12:49,986 - urllib3.connectionpool - DEBUG - Starting new HTTPS connection (1): api.notion.com:443
+2025-08-07 16:12:50,286 - urllib3.connectionpool - DEBUG - https://api.notion.com:443 "POST /v1/databases/2476d3f4f60f8036b8ebd0c45a3fefae/query HTTP/1.1" 400 167
+2025-08-07 16:12:50,287 - notion_integration - DEBUG - Page not found in Notion for assignment: HCI - Activity 3 (High Fidelity Prototype [1])
+2025-08-07 16:12:50,288 - urllib3.connectionpool - DEBUG - Starting new HTTPS connection (1): api.notion.com:443
+2025-08-07 16:12:50,824 - urllib3.connectionpool - DEBUG - https://api.notion.com:443 "POST /v1/databases/2476d3f4f60f8036b8ebd0c45a3fefae/query HTTP/1.1" 400 171
+2025-08-07 16:12:50,825 - urllib3.connectionpool - DEBUG - Starting new HTTPS connection (1): api.notion.com:443
+2025-08-07 16:12:51,909 - urllib3.connectionpool - DEBUG - https://api.notion.com:443 "POST /v1/databases/2476d3f4f60f8036b8ebd0c45a3fefae/query HTTP/1.1" 400 167
+2025-08-07 16:12:51,910 - notion_integration - DEBUG - Page not found in Notion for assignment: HCI - Activity 4 (Usability Assessment [1])
+2025-08-07 16:12:51,911 - urllib3.connectionpool - DEBUG - Starting new HTTPS connection (1): api.notion.com:443
+2025-08-07 16:12:52,757 - urllib3.connectionpool - DEBUG - https://api.notion.com:443 "POST /v1/databases/2476d3f4f60f8036b8ebd0c45a3fefae/query HTTP/1.1" 400 171
+2025-08-07 16:12:52,759 - urllib3.connectionpool - DEBUG - Starting new HTTPS connection (1): api.notion.com:443
+2025-08-07 16:12:53,958 - urllib3.connectionpool - DEBUG - https://api.notion.com:443 "POST /v1/databases/2476d3f4f60f8036b8ebd0c45a3fefae/query HTTP/1.1" 400 167
+2025-08-07 16:12:53,959 - notion_integration - DEBUG - Page not found in Notion for assignment: III - Activity 1 (#1)
+2025-08-07 16:15:46,327 - __main__ - INFO - ==================================================
+2025-08-07 16:15:46,327 - __main__ - INFO - MOODLE ASSIGNMENT FETCHER STARTED
+2025-08-07 16:15:46,327 - __main__ - INFO - ==================================================
+2025-08-07 16:15:46,327 - __main__ - INFO - Initializing Moodle email fetcher...
+2025-08-07 16:15:46,328 - __main__ - INFO - Checking for assignments from the past 7 days...
+2025-08-07 16:15:46,328 - moodle_fetcher - INFO - ============================================================
+2025-08-07 16:15:46,328 - moodle_fetcher - INFO - STARTING MOODLE ASSIGNMENT CHECK
+2025-08-07 16:15:46,328 - moodle_fetcher - INFO - Checking emails from last 7 days
+2025-08-07 16:15:46,328 - moodle_fetcher - INFO - ============================================================
+2025-08-07 16:15:46,964 - moodle_fetcher - INFO - Successfully connected to Gmail
+2025-08-07 16:15:47,157 - moodle_fetcher - INFO - Searching for emails: (FROM "noreply-tbl@umak.edu.ph" SINCE "31-Jul-2025")
+2025-08-07 16:15:47,364 - moodle_fetcher - INFO - Found 20 Moodle emails from last 7 days
+2025-08-07 16:15:47,364 - moodle_fetcher - INFO - Processing 20 emails...
+2025-08-07 16:15:47,364 - moodle_fetcher - INFO - Existing assignments in database: 5
+2025-08-07 16:15:47,364 - moodle_fetcher - DEBUG - Processing email 1/20: b'742'
+2025-08-07 16:15:47,569 - moodle_fetcher - DEBUG - ❌ Failed to parse email b'742'
+2025-08-07 16:15:47,569 - moodle_fetcher - DEBUG - Processing email 2/20: b'743'
+2025-08-07 16:15:47,878 - moodle_fetcher - DEBUG - ❌ Failed to parse email b'743'
+2025-08-07 16:15:47,879 - moodle_fetcher - DEBUG - Processing email 3/20: b'744'
+2025-08-07 16:15:48,070 - moodle_fetcher - DEBUG - ❌ Failed to parse email b'744'
+2025-08-07 16:15:48,070 - moodle_fetcher - DEBUG - Processing email 4/20: b'747'
+2025-08-07 16:15:48,262 - moodle_fetcher - DEBUG - ❌ Failed to parse email b'747'
+2025-08-07 16:15:48,262 - moodle_fetcher - DEBUG - Processing email 5/20: b'748'
+2025-08-07 16:15:48,453 - moodle_fetcher - DEBUG - ❌ Failed to parse email b'748'
+2025-08-07 16:15:48,453 - moodle_fetcher - DEBUG - Processing email 6/20: b'749'
+2025-08-07 16:15:48,648 - moodle_fetcher - DEBUG - ❌ Failed to parse email b'749'
+2025-08-07 16:15:48,648 - moodle_fetcher - DEBUG - Processing email 7/20: b'750'
+2025-08-07 16:15:48,839 - moodle_fetcher - DEBUG - ❌ Failed to parse email b'750'
+2025-08-07 16:15:48,839 - moodle_fetcher - DEBUG - Processing email 8/20: b'751'
+2025-08-07 16:15:49,030 - moodle_fetcher - DEBUG - ❌ Failed to parse email b'751'
+2025-08-07 16:15:49,031 - moodle_fetcher - DEBUG - Processing email 9/20: b'752'
+2025-08-07 16:15:49,224 - moodle_fetcher - DEBUG - ❌ Failed to parse email b'752'
+2025-08-07 16:15:49,224 - moodle_fetcher - DEBUG - Processing email 10/20: b'753'
+2025-08-07 16:15:49,417 - moodle_fetcher - DEBUG - ❌ Failed to parse email b'753'
+2025-08-07 16:15:49,417 - moodle_fetcher - DEBUG - Processing email 11/20: b'754'
+2025-08-07 16:15:49,607 - moodle_fetcher - DEBUG - ❌ Failed to parse email b'754'
+2025-08-07 16:15:49,607 - moodle_fetcher - DEBUG - Processing email 12/20: b'755'
+2025-08-07 16:15:49,803 - moodle_fetcher - DEBUG - ❌ Failed to parse email b'755'
+2025-08-07 16:15:49,803 - moodle_fetcher - DEBUG - Processing email 13/20: b'756'
+2025-08-07 16:15:50,001 - moodle_fetcher - DEBUG - Successfully parsed assignment: HCI - Activity 1 (User Story [1])
+2025-08-07 16:15:50,001 - moodle_fetcher - DEBUG - Duplicate found by email ID: 756
+2025-08-07 16:15:50,001 - moodle_fetcher - DEBUG - ⏭️  Skipped duplicate: HCI - Activity 1 (User Story [1])
+2025-08-07 16:15:50,001 - moodle_fetcher - DEBUG - Processing email 14/20: b'757'
+2025-08-07 16:15:50,198 - moodle_fetcher - DEBUG - Successfully parsed assignment: HCI - Activity 1 (User Story [1])
+2025-08-07 16:15:50,199 - moodle_fetcher - DEBUG - Duplicate found by title+course: hci - activity 1 (user story [1])
+2025-08-07 16:15:50,199 - moodle_fetcher - DEBUG - ⏭️  Skipped duplicate: HCI - Activity 1 (User Story [1])
+2025-08-07 16:15:50,199 - moodle_fetcher - DEBUG - Processing email 15/20: b'758'
+2025-08-07 16:15:50,390 - moodle_fetcher - DEBUG - Successfully parsed assignment: HCI - Activity 2 (Mid Fidelity [1])
+2025-08-07 16:15:50,391 - moodle_fetcher - DEBUG - Duplicate found by email ID: 758
+2025-08-07 16:15:50,391 - moodle_fetcher - DEBUG - ⏭️  Skipped duplicate: HCI - Activity 2 (Mid Fidelity [1])
+2025-08-07 16:15:50,391 - moodle_fetcher - DEBUG - Processing email 16/20: b'759'
+2025-08-07 16:15:50,584 - moodle_fetcher - DEBUG - Successfully parsed assignment: HCI - Activity 3 (High Fidelity Prototype [1])
+2025-08-07 16:15:50,585 - moodle_fetcher - DEBUG - Duplicate found by email ID: 759
+2025-08-07 16:15:50,585 - moodle_fetcher - DEBUG - ⏭️  Skipped duplicate: HCI - Activity 3 (High Fidelity Prototype [1])
+2025-08-07 16:15:50,585 - moodle_fetcher - DEBUG - Processing email 17/20: b'760'
+2025-08-07 16:15:50,779 - moodle_fetcher - DEBUG - Successfully parsed assignment: HCI - Activity 4 (Usability Assessment [1])
+2025-08-07 16:15:50,780 - moodle_fetcher - DEBUG - Duplicate found by email ID: 760
+2025-08-07 16:15:50,780 - moodle_fetcher - DEBUG - ⏭️  Skipped duplicate: HCI - Activity 4 (Usability Assessment [1])
+2025-08-07 16:15:50,780 - moodle_fetcher - DEBUG - Processing email 18/20: b'761'
+2025-08-07 16:15:50,971 - moodle_fetcher - DEBUG - ❌ Failed to parse email b'761'
+2025-08-07 16:15:50,971 - moodle_fetcher - DEBUG - Processing email 19/20: b'762'
+2025-08-07 16:15:51,164 - moodle_fetcher - DEBUG - ❌ Failed to parse email b'762'
+2025-08-07 16:15:51,164 - moodle_fetcher - DEBUG - Processing email 20/20: b'769'
+2025-08-07 16:15:51,357 - moodle_fetcher - DEBUG - Successfully parsed assignment: III - Activity 1 (#1)
+2025-08-07 16:15:51,358 - moodle_fetcher - DEBUG - Duplicate found by email ID: 769
+2025-08-07 16:15:51,358 - moodle_fetcher - DEBUG - ⏭️  Skipped duplicate: III - Activity 1 (#1)
+2025-08-07 16:15:51,358 - moodle_fetcher - INFO - ============================================================
+2025-08-07 16:15:51,358 - moodle_fetcher - INFO - ASSIGNMENT CHECK COMPLETED
+2025-08-07 16:15:51,358 - moodle_fetcher - INFO - 📧 Emails processed: 20
+2025-08-07 16:15:51,358 - moodle_fetcher - INFO - ✅ New assignments: 0
+2025-08-07 16:15:51,358 - moodle_fetcher - INFO - ⏭️  Duplicates skipped: 6
+2025-08-07 16:15:51,358 - moodle_fetcher - INFO - 📊 Total assignments: 5
+2025-08-07 16:15:51,358 - moodle_fetcher - INFO - ============================================================
+2025-08-07 16:15:51,535 - __main__ - INFO - No new assignments found
+2025-08-07 16:15:51,536 - __main__ - INFO - Checking existing assignments for Notion sync...
+2025-08-07 16:15:51,539 - urllib3.connectionpool - DEBUG - Starting new HTTPS connection (1): api.notion.com:443
+2025-08-07 16:15:52,845 - urllib3.connectionpool - DEBUG - https://api.notion.com:443 "GET /v1/databases/2476d3f4f60f8036b8ebd0c45a3fefae HTTP/1.1" 200 None
+2025-08-07 16:15:52,846 - notion_integration - INFO - Notion integration initialized successfully
+2025-08-07 16:15:52,846 - __main__ - INFO - Checking 5 existing assignments against Notion...
+2025-08-07 16:15:52,846 - notion_integration - DEBUG - Checking Notion for assignment: 'hci - activity 1 (user story [1])'
+2025-08-07 16:15:52,847 - urllib3.connectionpool - DEBUG - Starting new HTTPS connection (1): api.notion.com:443
+2025-08-07 16:15:54,114 - urllib3.connectionpool - DEBUG - https://api.notion.com:443 "POST /v1/databases/2476d3f4f60f8036b8ebd0c45a3fefae/query HTTP/1.1" 404 None
+2025-08-07 16:15:54,115 - notion_integration - ERROR - Notion database not found or integration not shared with database
+2025-08-07 16:15:54,116 - __main__ - INFO - Missing from Notion: HCI - Activity 1 (User Story [1])
+2025-08-07 16:15:54,116 - notion_integration - DEBUG - Checking Notion for assignment: 'hci - activity 2 (mid fidelity [1])'
+2025-08-07 16:15:54,117 - urllib3.connectionpool - DEBUG - Starting new HTTPS connection (1): api.notion.com:443
+2025-08-07 16:15:54,582 - urllib3.connectionpool - DEBUG - https://api.notion.com:443 "POST /v1/databases/2476d3f4f60f8036b8ebd0c45a3fefae/query HTTP/1.1" 404 None
+2025-08-07 16:15:54,582 - notion_integration - ERROR - Notion database not found or integration not shared with database
+2025-08-07 16:15:54,583 - __main__ - INFO - Missing from Notion: HCI - Activity 2 (Mid Fidelity [1])
+2025-08-07 16:15:54,583 - notion_integration - DEBUG - Checking Notion for assignment: 'hci - activity 3 (high fidelity prototype [1])'
+2025-08-07 16:15:54,584 - urllib3.connectionpool - DEBUG - Starting new HTTPS connection (1): api.notion.com:443
+2025-08-07 16:15:54,893 - urllib3.connectionpool - DEBUG - https://api.notion.com:443 "POST /v1/databases/2476d3f4f60f8036b8ebd0c45a3fefae/query HTTP/1.1" 404 None
+2025-08-07 16:15:54,894 - notion_integration - ERROR - Notion database not found or integration not shared with database
+2025-08-07 16:15:54,894 - __main__ - INFO - Missing from Notion: HCI - Activity 3 (High Fidelity Prototype [1])
+2025-08-07 16:15:54,894 - notion_integration - DEBUG - Checking Notion for assignment: 'hci - activity 4 (usability assessment [1])'
+2025-08-07 16:15:54,895 - urllib3.connectionpool - DEBUG - Starting new HTTPS connection (1): api.notion.com:443
+2025-08-07 16:15:57,371 - urllib3.connectionpool - DEBUG - https://api.notion.com:443 "POST /v1/databases/2476d3f4f60f8036b8ebd0c45a3fefae/query HTTP/1.1" 404 None
+2025-08-07 16:15:57,371 - notion_integration - ERROR - Notion database not found or integration not shared with database
+2025-08-07 16:15:57,372 - __main__ - INFO - Missing from Notion: HCI - Activity 4 (Usability Assessment [1])
+2025-08-07 16:15:57,372 - notion_integration - DEBUG - Checking Notion for assignment: 'iii - activity 1 (#1)'
+2025-08-07 16:15:57,373 - urllib3.connectionpool - DEBUG - Starting new HTTPS connection (1): api.notion.com:443
+2025-08-07 16:15:57,701 - urllib3.connectionpool - DEBUG - https://api.notion.com:443 "POST /v1/databases/2476d3f4f60f8036b8ebd0c45a3fefae/query HTTP/1.1" 404 None
+2025-08-07 16:15:57,702 - notion_integration - ERROR - Notion database not found or integration not shared with database
+2025-08-07 16:15:57,702 - __main__ - INFO - Missing from Notion: III - Activity 1 (#1)
+2025-08-07 16:15:57,702 - __main__ - INFO - Found 5 assignments missing from Notion
+2025-08-07 16:15:57,703 - notion_integration - INFO - Starting sync of 5 assignments to Notion
+2025-08-07 16:15:57,703 - notion_integration - INFO - Processing assignment 1/5: HCI - Activity 1 (User Story [1])
+2025-08-07 16:15:57,703 - urllib3.connectionpool - DEBUG - Starting new HTTPS connection (1): api.notion.com:443
+2025-08-07 16:15:58,031 - urllib3.connectionpool - DEBUG - https://api.notion.com:443 "POST /v1/databases/2476d3f4f60f8036b8ebd0c45a3fefae/query HTTP/1.1" 404 None
+2025-08-07 16:15:58,031 - notion_integration - WARNING - Could not check for existing assignments: 404
+2025-08-07 16:15:58,032 - urllib3.connectionpool - DEBUG - Starting new HTTPS connection (1): api.notion.com:443
+2025-08-07 16:15:58,323 - urllib3.connectionpool - DEBUG - https://api.notion.com:443 "POST /v1/pages HTTP/1.1" 404 None
+2025-08-07 16:15:58,324 - notion_integration - ERROR - Notion database not found. Check your database ID.
+2025-08-07 16:15:58,324 - notion_integration - INFO - Processing assignment 2/5: HCI - Activity 2 (Mid Fidelity [1])
+2025-08-07 16:15:58,325 - urllib3.connectionpool - DEBUG - Starting new HTTPS connection (1): api.notion.com:443
+2025-08-07 16:15:58,835 - urllib3.connectionpool - DEBUG - https://api.notion.com:443 "POST /v1/databases/2476d3f4f60f8036b8ebd0c45a3fefae/query HTTP/1.1" 404 None
+2025-08-07 16:15:58,835 - notion_integration - WARNING - Could not check for existing assignments: 404
+2025-08-07 16:15:58,836 - urllib3.connectionpool - DEBUG - Starting new HTTPS connection (1): api.notion.com:443
+2025-08-07 16:15:59,831 - urllib3.connectionpool - DEBUG - https://api.notion.com:443 "POST /v1/pages HTTP/1.1" 404 None
+2025-08-07 16:15:59,832 - notion_integration - ERROR - Notion database not found. Check your database ID.
+2025-08-07 16:15:59,832 - notion_integration - INFO - Processing assignment 3/5: HCI - Activity 3 (High Fidelity Prototype [1])
+2025-08-07 16:15:59,832 - urllib3.connectionpool - DEBUG - Starting new HTTPS connection (1): api.notion.com:443
+2025-08-07 16:16:00,138 - urllib3.connectionpool - DEBUG - https://api.notion.com:443 "POST /v1/databases/2476d3f4f60f8036b8ebd0c45a3fefae/query HTTP/1.1" 404 None
+2025-08-07 16:16:00,139 - notion_integration - WARNING - Could not check for existing assignments: 404
+2025-08-07 16:16:00,139 - urllib3.connectionpool - DEBUG - Starting new HTTPS connection (1): api.notion.com:443
+2025-08-07 16:16:00,505 - urllib3.connectionpool - DEBUG - https://api.notion.com:443 "POST /v1/pages HTTP/1.1" 404 None
+2025-08-07 16:16:00,506 - notion_integration - ERROR - Notion database not found. Check your database ID.
+2025-08-07 16:16:00,506 - notion_integration - INFO - Processing assignment 4/5: HCI - Activity 4 (Usability Assessment [1])
+2025-08-07 16:16:00,506 - urllib3.connectionpool - DEBUG - Starting new HTTPS connection (1): api.notion.com:443
+2025-08-07 16:16:02,100 - urllib3.connectionpool - DEBUG - https://api.notion.com:443 "POST /v1/databases/2476d3f4f60f8036b8ebd0c45a3fefae/query HTTP/1.1" 404 None
+2025-08-07 16:16:02,101 - notion_integration - WARNING - Could not check for existing assignments: 404
+2025-08-07 16:16:02,102 - urllib3.connectionpool - DEBUG - Starting new HTTPS connection (1): api.notion.com:443
+2025-08-07 16:16:03,072 - urllib3.connectionpool - DEBUG - https://api.notion.com:443 "POST /v1/pages HTTP/1.1" 404 None
+2025-08-07 16:16:03,073 - notion_integration - ERROR - Notion database not found. Check your database ID.
+2025-08-07 16:16:03,073 - notion_integration - INFO - Processing assignment 5/5: III - Activity 1 (#1)
+2025-08-07 16:16:03,074 - urllib3.connectionpool - DEBUG - Starting new HTTPS connection (1): api.notion.com:443
+2025-08-07 16:16:03,728 - urllib3.connectionpool - DEBUG - https://api.notion.com:443 "POST /v1/databases/2476d3f4f60f8036b8ebd0c45a3fefae/query HTTP/1.1" 404 None
+2025-08-07 16:16:03,729 - notion_integration - WARNING - Could not check for existing assignments: 404
+2025-08-07 16:16:03,730 - urllib3.connectionpool - DEBUG - Starting new HTTPS connection (1): api.notion.com:443
+2025-08-07 16:16:04,687 - urllib3.connectionpool - DEBUG - https://api.notion.com:443 "POST /v1/pages HTTP/1.1" 404 None
+2025-08-07 16:16:04,688 - notion_integration - ERROR - Notion database not found. Check your database ID.
+2025-08-07 16:16:04,688 - notion_integration - INFO - Notion sync completed: 0 created, 0 duplicates, 5 errors
+2025-08-07 16:16:04,688 - __main__ - INFO - Successfully synced 0 assignments to Notion
+2025-08-07 16:16:04,688 - __main__ - INFO - Running automatic archive cleanup...
+2025-08-07 16:16:04,688 - assignment_archive - INFO - Starting archive cleanup (completed assignments older than 30 days)
+2025-08-07 16:16:04,689 - assignment_archive - INFO - No assignments need archiving
+2025-08-07 16:16:04,689 - __main__ - DEBUG - Automatic cleanup: No assignments need archiving
+2025-08-07 16:16:04,689 - __main__ - INFO - Syncing assignment status from Notion...
+2025-08-07 16:16:04,691 - urllib3.connectionpool - DEBUG - Starting new HTTPS connection (1): api.notion.com:443
+2025-08-07 16:16:05,088 - urllib3.connectionpool - DEBUG - https://api.notion.com:443 "GET /v1/databases/2476d3f4f60f8036b8ebd0c45a3fefae HTTP/1.1" 200 None
+2025-08-07 16:16:05,089 - notion_integration - INFO - Notion integration initialized successfully
+2025-08-07 16:16:05,090 - urllib3.connectionpool - DEBUG - Starting new HTTPS connection (1): api.notion.com:443
+2025-08-07 16:16:06,121 - urllib3.connectionpool - DEBUG - https://api.notion.com:443 "POST /v1/databases/2476d3f4f60f8036b8ebd0c45a3fefae/query HTTP/1.1" 404 None
+2025-08-07 16:16:06,122 - notion_integration - ERROR - Failed to fetch assignments from Notion: 404 - {"object":"error","status":404,"code":"object_not_found","message":"Could not find database with ID: 2476d3f4-f60f-8036-b8eb-d0c45a3fefae. Make sure the relevant pages and databases are shared with your integration.","request_id":"0a270e42-c984-4742-88a9-5f42aa97f4b0"}
+2025-08-07 16:16:06,122 - notion_integration - INFO - Retrieved 0 assignments from Notion
+2025-08-07 16:16:06,122 - __main__ - DEBUG - No assignments found in Notion for status sync
+2025-08-07 16:16:06,122 - __main__ - INFO - ==================================================
+2025-08-07 16:16:06,122 - __main__ - INFO - MOODLE ASSIGNMENT FETCHER COMPLETED
+2025-08-07 16:16:06,122 - __main__ - INFO - ==================================================
+2025-08-07 16:26:58,748 - __main__ - INFO - ==================================================
+2025-08-07 16:26:58,748 - __main__ - INFO - MOODLE ASSIGNMENT FETCHER STARTED
+2025-08-07 16:26:58,749 - __main__ - INFO - ==================================================
+2025-08-07 16:26:58,749 - __main__ - INFO - Initializing Moodle email fetcher...
+2025-08-07 16:26:58,750 - __main__ - INFO - Checking for assignments from the past 7 days...
+2025-08-07 16:26:58,751 - moodle_fetcher - INFO - ============================================================
+2025-08-07 16:26:58,751 - moodle_fetcher - INFO - STARTING MOODLE ASSIGNMENT CHECK
+2025-08-07 16:26:58,751 - moodle_fetcher - INFO - Checking emails from last 7 days
+2025-08-07 16:26:58,751 - moodle_fetcher - INFO - ============================================================
+2025-08-07 16:27:04,683 - moodle_fetcher - INFO - Successfully connected to Gmail
+2025-08-07 16:27:04,878 - moodle_fetcher - INFO - Searching for emails: (FROM "noreply-tbl@umak.edu.ph" SINCE "31-Jul-2025")
+2025-08-07 16:27:05,087 - moodle_fetcher - INFO - Found 20 Moodle emails from last 7 days
+2025-08-07 16:27:05,088 - moodle_fetcher - INFO - Processing 20 emails...
+2025-08-07 16:27:05,088 - moodle_fetcher - INFO - Existing assignments in database: 5
+2025-08-07 16:27:05,088 - moodle_fetcher - DEBUG - Processing email 1/20: b'742'
+2025-08-07 16:27:05,301 - moodle_fetcher - DEBUG - ❌ Failed to parse email b'742'
+2025-08-07 16:27:05,301 - moodle_fetcher - DEBUG - Processing email 2/20: b'743'
+2025-08-07 16:27:05,504 - moodle_fetcher - DEBUG - ❌ Failed to parse email b'743'
+2025-08-07 16:27:05,504 - moodle_fetcher - DEBUG - Processing email 3/20: b'744'
+2025-08-07 16:27:05,700 - moodle_fetcher - DEBUG - ❌ Failed to parse email b'744'
+2025-08-07 16:27:05,700 - moodle_fetcher - DEBUG - Processing email 4/20: b'747'
+2025-08-07 16:27:05,897 - moodle_fetcher - DEBUG - ❌ Failed to parse email b'747'
+2025-08-07 16:27:05,897 - moodle_fetcher - DEBUG - Processing email 5/20: b'748'
+2025-08-07 16:27:06,092 - moodle_fetcher - DEBUG - ❌ Failed to parse email b'748'
+2025-08-07 16:27:06,092 - moodle_fetcher - DEBUG - Processing email 6/20: b'749'
+2025-08-07 16:27:06,292 - moodle_fetcher - DEBUG - ❌ Failed to parse email b'749'
+2025-08-07 16:27:06,292 - moodle_fetcher - DEBUG - Processing email 7/20: b'750'
+2025-08-07 16:27:06,486 - moodle_fetcher - DEBUG - ❌ Failed to parse email b'750'
+2025-08-07 16:27:06,486 - moodle_fetcher - DEBUG - Processing email 8/20: b'751'
+2025-08-07 16:27:06,686 - moodle_fetcher - DEBUG - ❌ Failed to parse email b'751'
+2025-08-07 16:27:06,686 - moodle_fetcher - DEBUG - Processing email 9/20: b'752'
+2025-08-07 16:27:06,881 - moodle_fetcher - DEBUG - ❌ Failed to parse email b'752'
+2025-08-07 16:27:06,881 - moodle_fetcher - DEBUG - Processing email 10/20: b'753'
+2025-08-07 16:27:07,075 - moodle_fetcher - DEBUG - ❌ Failed to parse email b'753'
+2025-08-07 16:27:07,075 - moodle_fetcher - DEBUG - Processing email 11/20: b'754'
+2025-08-07 16:27:07,298 - moodle_fetcher - DEBUG - ❌ Failed to parse email b'754'
+2025-08-07 16:27:07,298 - moodle_fetcher - DEBUG - Processing email 12/20: b'755'
+2025-08-07 16:27:07,494 - moodle_fetcher - DEBUG - ❌ Failed to parse email b'755'
+2025-08-07 16:27:07,494 - moodle_fetcher - DEBUG - Processing email 13/20: b'756'
+2025-08-07 16:27:07,699 - moodle_fetcher - DEBUG - Successfully parsed assignment: HCI - Activity 1 (User Story [1])
+2025-08-07 16:27:07,699 - moodle_fetcher - DEBUG - Duplicate found by email ID: 756
+2025-08-07 16:27:07,699 - moodle_fetcher - DEBUG - ⏭️  Skipped duplicate: HCI - Activity 1 (User Story [1])
+2025-08-07 16:27:07,699 - moodle_fetcher - DEBUG - Processing email 14/20: b'757'
+2025-08-07 16:27:07,900 - moodle_fetcher - DEBUG - Successfully parsed assignment: HCI - Activity 1 (User Story [1])
+2025-08-07 16:27:07,900 - moodle_fetcher - DEBUG - Duplicate found by title+course: hci - activity 1 (user story [1])
+2025-08-07 16:27:07,900 - moodle_fetcher - DEBUG - ⏭️  Skipped duplicate: HCI - Activity 1 (User Story [1])
+2025-08-07 16:27:07,900 - moodle_fetcher - DEBUG - Processing email 15/20: b'758'
+2025-08-07 16:27:08,098 - moodle_fetcher - DEBUG - Successfully parsed assignment: HCI - Activity 2 (Mid Fidelity [1])
+2025-08-07 16:27:08,098 - moodle_fetcher - DEBUG - Duplicate found by email ID: 758
+2025-08-07 16:27:08,098 - moodle_fetcher - DEBUG - ⏭️  Skipped duplicate: HCI - Activity 2 (Mid Fidelity [1])
+2025-08-07 16:27:08,098 - moodle_fetcher - DEBUG - Processing email 16/20: b'759'
+2025-08-07 16:27:08,301 - moodle_fetcher - DEBUG - Successfully parsed assignment: HCI - Activity 3 (High Fidelity Prototype [1])
+2025-08-07 16:27:08,302 - moodle_fetcher - DEBUG - Duplicate found by email ID: 759
+2025-08-07 16:27:08,302 - moodle_fetcher - DEBUG - ⏭️  Skipped duplicate: HCI - Activity 3 (High Fidelity Prototype [1])
+2025-08-07 16:27:08,302 - moodle_fetcher - DEBUG - Processing email 17/20: b'760'
+2025-08-07 16:27:08,502 - moodle_fetcher - DEBUG - Successfully parsed assignment: HCI - Activity 4 (Usability Assessment [1])
+2025-08-07 16:27:08,502 - moodle_fetcher - DEBUG - Duplicate found by email ID: 760
+2025-08-07 16:27:08,502 - moodle_fetcher - DEBUG - ⏭️  Skipped duplicate: HCI - Activity 4 (Usability Assessment [1])
+2025-08-07 16:27:08,502 - moodle_fetcher - DEBUG - Processing email 18/20: b'761'
+2025-08-07 16:27:08,709 - moodle_fetcher - DEBUG - ❌ Failed to parse email b'761'
+2025-08-07 16:27:08,709 - moodle_fetcher - DEBUG - Processing email 19/20: b'762'
+2025-08-07 16:27:08,906 - moodle_fetcher - DEBUG - ❌ Failed to parse email b'762'
+2025-08-07 16:27:08,906 - moodle_fetcher - DEBUG - Processing email 20/20: b'769'
+2025-08-07 16:27:09,103 - moodle_fetcher - DEBUG - Successfully parsed assignment: III - Activity 1 (#1)
+2025-08-07 16:27:09,103 - moodle_fetcher - DEBUG - Duplicate found by email ID: 769
+2025-08-07 16:27:09,103 - moodle_fetcher - DEBUG - ⏭️  Skipped duplicate: III - Activity 1 (#1)
+2025-08-07 16:27:09,103 - moodle_fetcher - INFO - ============================================================
+2025-08-07 16:27:09,103 - moodle_fetcher - INFO - ASSIGNMENT CHECK COMPLETED
+2025-08-07 16:27:09,103 - moodle_fetcher - INFO - 📧 Emails processed: 20
+2025-08-07 16:27:09,103 - moodle_fetcher - INFO - ✅ New assignments: 0
+2025-08-07 16:27:09,103 - moodle_fetcher - INFO - ⏭️  Duplicates skipped: 6
+2025-08-07 16:27:09,103 - moodle_fetcher - INFO - 📊 Total assignments: 5
+2025-08-07 16:27:09,103 - moodle_fetcher - INFO - ============================================================
+2025-08-07 16:27:09,286 - __main__ - INFO - No new assignments found
+2025-08-07 16:27:09,286 - __main__ - INFO - Checking existing assignments for Notion sync...
+2025-08-07 16:27:09,289 - urllib3.connectionpool - DEBUG - Starting new HTTPS connection (1): api.notion.com:443
+2025-08-07 16:27:12,732 - urllib3.connectionpool - DEBUG - https://api.notion.com:443 "GET /v1/databases/2476d3f4f60f8036b8ebd0c45a3fefae HTTP/1.1" 200 None
+2025-08-07 16:27:12,746 - notion_integration - INFO - Notion integration initialized successfully
+2025-08-07 16:27:12,746 - __main__ - INFO - Checking 5 existing assignments against Notion...
+2025-08-07 16:27:12,747 - notion_integration - DEBUG - Checking Notion for assignment: 'hci - activity 1 (user story)'
+2025-08-07 16:27:12,748 - urllib3.connectionpool - DEBUG - Starting new HTTPS connection (1): api.notion.com:443
+2025-08-07 16:27:15,485 - urllib3.connectionpool - DEBUG - https://api.notion.com:443 "POST /v1/databases/2476d3f4f60f8036b8ebd0c45a3fefae/query HTTP/1.1" 200 None
+2025-08-07 16:27:15,486 - notion_integration - DEBUG - Found 0 entries in Notion database
+2025-08-07 16:27:15,486 - notion_integration - DEBUG - Assignment 'hci - activity 1 (user story)' not found in Notion
+2025-08-07 16:27:15,487 - __main__ - INFO - Missing from Notion: HCI - Activity 1 (User Story [1])
+2025-08-07 16:27:15,487 - notion_integration - DEBUG - Checking Notion for assignment: 'hci - activity 2 (mid fidelity)'
+2025-08-07 16:27:15,488 - urllib3.connectionpool - DEBUG - Starting new HTTPS connection (1): api.notion.com:443
+2025-08-07 16:27:16,698 - urllib3.connectionpool - DEBUG - https://api.notion.com:443 "POST /v1/databases/2476d3f4f60f8036b8ebd0c45a3fefae/query HTTP/1.1" 200 None
+2025-08-07 16:27:16,699 - notion_integration - DEBUG - Found 0 entries in Notion database
+2025-08-07 16:27:16,699 - notion_integration - DEBUG - Assignment 'hci - activity 2 (mid fidelity)' not found in Notion
+2025-08-07 16:27:16,699 - __main__ - INFO - Missing from Notion: HCI - Activity 2 (Mid Fidelity [1])
+2025-08-07 16:27:16,699 - notion_integration - DEBUG - Checking Notion for assignment: 'hci - activity 3 (high fidelity prototype)'
+2025-08-07 16:27:16,700 - urllib3.connectionpool - DEBUG - Starting new HTTPS connection (1): api.notion.com:443
+2025-08-07 16:27:18,508 - urllib3.connectionpool - DEBUG - https://api.notion.com:443 "POST /v1/databases/2476d3f4f60f8036b8ebd0c45a3fefae/query HTTP/1.1" 200 None
+2025-08-07 16:27:18,509 - notion_integration - DEBUG - Found 0 entries in Notion database
+2025-08-07 16:27:18,509 - notion_integration - DEBUG - Assignment 'hci - activity 3 (high fidelity prototype)' not found in Notion
+2025-08-07 16:27:18,509 - __main__ - INFO - Missing from Notion: HCI - Activity 3 (High Fidelity Prototype [1])
+2025-08-07 16:27:18,510 - notion_integration - DEBUG - Checking Notion for assignment: 'hci - activity 4 (usability assessment)'
+2025-08-07 16:27:18,510 - urllib3.connectionpool - DEBUG - Starting new HTTPS connection (1): api.notion.com:443
+2025-08-07 16:27:19,363 - urllib3.connectionpool - DEBUG - https://api.notion.com:443 "POST /v1/databases/2476d3f4f60f8036b8ebd0c45a3fefae/query HTTP/1.1" 200 None
+2025-08-07 16:27:19,364 - notion_integration - DEBUG - Found 0 entries in Notion database
+2025-08-07 16:27:19,364 - notion_integration - DEBUG - Assignment 'hci - activity 4 (usability assessment)' not found in Notion
+2025-08-07 16:27:19,365 - __main__ - INFO - Missing from Notion: HCI - Activity 4 (Usability Assessment [1])
+2025-08-07 16:27:19,365 - notion_integration - DEBUG - Checking Notion for assignment: 'iii - activity 1 (#1)'
+2025-08-07 16:27:19,366 - urllib3.connectionpool - DEBUG - Starting new HTTPS connection (1): api.notion.com:443
+2025-08-07 16:27:20,642 - urllib3.connectionpool - DEBUG - https://api.notion.com:443 "POST /v1/databases/2476d3f4f60f8036b8ebd0c45a3fefae/query HTTP/1.1" 200 None
+2025-08-07 16:27:20,643 - notion_integration - DEBUG - Found 0 entries in Notion database
+2025-08-07 16:27:20,643 - notion_integration - DEBUG - Assignment 'iii - activity 1 (#1)' not found in Notion
+2025-08-07 16:27:20,644 - __main__ - INFO - Missing from Notion: III - Activity 1 (#1)
+2025-08-07 16:27:20,644 - __main__ - INFO - Found 5 assignments missing from Notion
+2025-08-07 16:27:20,644 - notion_integration - INFO - Starting sync of 5 assignments to Notion
+2025-08-07 16:27:20,644 - notion_integration - INFO - Processing assignment 1/5: HCI - Activity 1 (USER STORY)
+2025-08-07 16:27:20,645 - urllib3.connectionpool - DEBUG - Starting new HTTPS connection (1): api.notion.com:443
+2025-08-07 16:27:21,973 - urllib3.connectionpool - DEBUG - https://api.notion.com:443 "POST /v1/databases/2476d3f4f60f8036b8ebd0c45a3fefae/query HTTP/1.1" 200 None
+2025-08-07 16:27:21,974 - notion_integration - DEBUG - Assignment 'hci - activity 1 (user story)' not found in Notion
+2025-08-07 16:27:21,976 - urllib3.connectionpool - DEBUG - Starting new HTTPS connection (1): api.notion.com:443
+2025-08-07 16:27:22,488 - urllib3.connectionpool - DEBUG - https://api.notion.com:443 "POST /v1/pages HTTP/1.1" 200 None
+2025-08-07 16:27:22,489 - notion_integration - INFO - Successfully added assignment to Notion: HCI - Activity 1 (User Story [1])
+2025-08-07 16:27:22,489 - notion_integration - INFO - Processing assignment 2/5: HCI - Activity 2 (MID FIDELITY)
+2025-08-07 16:27:22,490 - urllib3.connectionpool - DEBUG - Starting new HTTPS connection (1): api.notion.com:443
+2025-08-07 16:27:22,847 - urllib3.connectionpool - DEBUG - https://api.notion.com:443 "POST /v1/databases/2476d3f4f60f8036b8ebd0c45a3fefae/query HTTP/1.1" 200 None
+2025-08-07 16:27:22,848 - notion_integration - DEBUG - Assignment 'hci - activity 2 (mid fidelity)' not found in Notion
+2025-08-07 16:27:22,848 - urllib3.connectionpool - DEBUG - Starting new HTTPS connection (1): api.notion.com:443
+2025-08-07 16:27:23,318 - urllib3.connectionpool - DEBUG - https://api.notion.com:443 "POST /v1/pages HTTP/1.1" 200 None
+2025-08-07 16:27:23,319 - notion_integration - INFO - Successfully added assignment to Notion: HCI - Activity 2 (Mid Fidelity [1])
+2025-08-07 16:27:23,320 - notion_integration - INFO - Processing assignment 3/5: HCI - Activity 3 (HIGH FIDELITY PROTOTYPE)
+2025-08-07 16:27:23,321 - urllib3.connectionpool - DEBUG - Starting new HTTPS connection (1): api.notion.com:443
+2025-08-07 16:27:26,240 - urllib3.connectionpool - DEBUG - https://api.notion.com:443 "POST /v1/databases/2476d3f4f60f8036b8ebd0c45a3fefae/query HTTP/1.1" 200 None
+2025-08-07 16:27:26,241 - notion_integration - DEBUG - Assignment 'hci - activity 3 (high fidelity prototype)' not found in Notion
+2025-08-07 16:27:26,242 - urllib3.connectionpool - DEBUG - Starting new HTTPS connection (1): api.notion.com:443
+2025-08-07 16:27:26,729 - urllib3.connectionpool - DEBUG - https://api.notion.com:443 "POST /v1/pages HTTP/1.1" 200 None
+2025-08-07 16:27:26,730 - notion_integration - INFO - Successfully added assignment to Notion: HCI - Activity 3 (High Fidelity Prototype [1])
+2025-08-07 16:27:26,730 - notion_integration - INFO - Processing assignment 4/5: HCI - Activity 4 (USABILITY ASSESSMENT)
+2025-08-07 16:27:26,731 - urllib3.connectionpool - DEBUG - Starting new HTTPS connection (1): api.notion.com:443
+2025-08-07 16:27:27,074 - urllib3.connectionpool - DEBUG - https://api.notion.com:443 "POST /v1/databases/2476d3f4f60f8036b8ebd0c45a3fefae/query HTTP/1.1" 200 None
+2025-08-07 16:27:27,075 - notion_integration - DEBUG - Assignment 'hci - activity 4 (usability assessment)' not found in Notion
+2025-08-07 16:27:27,076 - urllib3.connectionpool - DEBUG - Starting new HTTPS connection (1): api.notion.com:443
+2025-08-07 16:27:30,090 - urllib3.connectionpool - DEBUG - https://api.notion.com:443 "POST /v1/pages HTTP/1.1" 200 None
+2025-08-07 16:27:30,092 - notion_integration - INFO - Successfully added assignment to Notion: HCI - Activity 4 (Usability Assessment [1])
+2025-08-07 16:27:30,092 - notion_integration - INFO - Processing assignment 5/5: III - Activity 1 (#1)
+2025-08-07 16:27:30,093 - urllib3.connectionpool - DEBUG - Starting new HTTPS connection (1): api.notion.com:443
+2025-08-07 16:27:30,461 - urllib3.connectionpool - DEBUG - https://api.notion.com:443 "POST /v1/databases/2476d3f4f60f8036b8ebd0c45a3fefae/query HTTP/1.1" 200 None
+2025-08-07 16:27:30,462 - notion_integration - DEBUG - Assignment 'iii - activity 1 (#1)' not found in Notion
+2025-08-07 16:27:30,463 - urllib3.connectionpool - DEBUG - Starting new HTTPS connection (1): api.notion.com:443
+2025-08-07 16:27:30,940 - urllib3.connectionpool - DEBUG - https://api.notion.com:443 "POST /v1/pages HTTP/1.1" 200 None
+2025-08-07 16:27:30,941 - notion_integration - INFO - Successfully added assignment to Notion: III - Activity 1 (#1)
+2025-08-07 16:27:30,942 - notion_integration - INFO - Notion sync completed: 5 created, 0 duplicates, 0 errors
+2025-08-07 16:27:30,942 - __main__ - INFO - Successfully synced 5 assignments to Notion
+2025-08-07 16:27:30,942 - __main__ - INFO - Running automatic archive cleanup...
+2025-08-07 16:27:30,942 - assignment_archive - INFO - Starting archive cleanup (completed assignments older than 30 days)
+2025-08-07 16:27:30,942 - assignment_archive - INFO - No assignments need archiving
+2025-08-07 16:27:30,942 - __main__ - DEBUG - Automatic cleanup: No assignments need archiving
+2025-08-07 16:27:30,942 - __main__ - INFO - Syncing assignment status from Notion...
+2025-08-07 16:27:30,944 - urllib3.connectionpool - DEBUG - Starting new HTTPS connection (1): api.notion.com:443
+2025-08-07 16:27:31,262 - urllib3.connectionpool - DEBUG - https://api.notion.com:443 "GET /v1/databases/2476d3f4f60f8036b8ebd0c45a3fefae HTTP/1.1" 200 None
+2025-08-07 16:27:31,263 - notion_integration - INFO - Notion integration initialized successfully
+2025-08-07 16:27:31,264 - urllib3.connectionpool - DEBUG - Starting new HTTPS connection (1): api.notion.com:443
+2025-08-07 16:27:31,728 - urllib3.connectionpool - DEBUG - https://api.notion.com:443 "POST /v1/databases/2476d3f4f60f8036b8ebd0c45a3fefae/query HTTP/1.1" 200 None
+2025-08-07 16:27:31,729 - notion_integration - INFO - Retrieved 5 assignments from Notion
+2025-08-07 16:27:31,729 - assignment_archive - INFO - Starting smart status sync with Notion
+2025-08-07 16:27:31,730 - __main__ - DEBUG - Notion status sync: No changes needed
+2025-08-07 16:27:31,730 - __main__ - INFO - ==================================================
+2025-08-07 16:27:31,730 - __main__ - INFO - MOODLE ASSIGNMENT FETCHER COMPLETED
+2025-08-07 16:27:31,730 - __main__ - INFO - ==================================================
+2025-08-07 16:27:51,703 - urllib3.connectionpool - DEBUG - Starting new HTTPS connection (1): api.notion.com:443
+2025-08-07 16:27:53,241 - urllib3.connectionpool - DEBUG - https://api.notion.com:443 "GET /v1/databases/2476d3f4f60f8036b8ebd0c45a3fefae HTTP/1.1" 200 None
+2025-08-07 16:27:53,243 - notion_integration - INFO - Notion integration initialized successfully
+2025-08-07 16:27:53,243 - urllib3.connectionpool - DEBUG - Starting new HTTPS connection (1): api.notion.com:443
+2025-08-07 16:27:54,548 - urllib3.connectionpool - DEBUG - https://api.notion.com:443 "POST /v1/databases/2476d3f4f60f8036b8ebd0c45a3fefae/query HTTP/1.1" 400 171
+2025-08-07 16:27:54,549 - urllib3.connectionpool - DEBUG - Starting new HTTPS connection (1): api.notion.com:443
+2025-08-07 16:27:54,933 - urllib3.connectionpool - DEBUG - https://api.notion.com:443 "POST /v1/databases/2476d3f4f60f8036b8ebd0c45a3fefae/query HTTP/1.1" 200 None
+2025-08-07 16:27:54,934 - urllib3.connectionpool - DEBUG - Starting new HTTPS connection (1): api.notion.com:443
+2025-08-07 16:27:55,799 - urllib3.connectionpool - DEBUG - https://api.notion.com:443 "PATCH /v1/pages/2486d3f4-f60f-81fc-9071-c7baabb6ff30 HTTP/1.1" 200 None
+2025-08-07 16:27:55,800 - notion_integration - INFO - Successfully archived page in Notion: HCI - Activity 1 (USER STORY)
+2025-08-07 16:27:55,801 - urllib3.connectionpool - DEBUG - Starting new HTTPS connection (1): api.notion.com:443
+2025-08-07 16:27:56,230 - urllib3.connectionpool - DEBUG - https://api.notion.com:443 "POST /v1/databases/2476d3f4f60f8036b8ebd0c45a3fefae/query HTTP/1.1" 400 171
+2025-08-07 16:27:56,231 - urllib3.connectionpool - DEBUG - Starting new HTTPS connection (1): api.notion.com:443
+2025-08-07 16:27:56,582 - urllib3.connectionpool - DEBUG - https://api.notion.com:443 "POST /v1/databases/2476d3f4f60f8036b8ebd0c45a3fefae/query HTTP/1.1" 200 None
+2025-08-07 16:27:56,584 - urllib3.connectionpool - DEBUG - Starting new HTTPS connection (1): api.notion.com:443
+2025-08-07 16:27:57,268 - urllib3.connectionpool - DEBUG - https://api.notion.com:443 "PATCH /v1/pages/2486d3f4-f60f-810b-a84e-c109f0d6f634 HTTP/1.1" 200 None
+2025-08-07 16:27:57,269 - notion_integration - INFO - Successfully archived page in Notion: HCI - Activity 2 (MID FIDELITY)
+2025-08-07 16:27:57,270 - urllib3.connectionpool - DEBUG - Starting new HTTPS connection (1): api.notion.com:443
+2025-08-07 16:27:57,571 - urllib3.connectionpool - DEBUG - https://api.notion.com:443 "POST /v1/databases/2476d3f4f60f8036b8ebd0c45a3fefae/query HTTP/1.1" 400 171
+2025-08-07 16:27:57,572 - urllib3.connectionpool - DEBUG - Starting new HTTPS connection (1): api.notion.com:443
+2025-08-07 16:27:57,885 - urllib3.connectionpool - DEBUG - https://api.notion.com:443 "POST /v1/databases/2476d3f4f60f8036b8ebd0c45a3fefae/query HTTP/1.1" 200 None
+2025-08-07 16:27:57,887 - urllib3.connectionpool - DEBUG - Starting new HTTPS connection (1): api.notion.com:443
+2025-08-07 16:27:58,803 - urllib3.connectionpool - DEBUG - https://api.notion.com:443 "PATCH /v1/pages/2486d3f4-f60f-81ca-9079-c3e61f332038 HTTP/1.1" 200 None
+2025-08-07 16:27:58,804 - notion_integration - INFO - Successfully archived page in Notion: HCI - Activity 3 (HIGH FIDELITY PROTOTYPE)
+2025-08-07 16:27:58,805 - urllib3.connectionpool - DEBUG - Starting new HTTPS connection (1): api.notion.com:443
+2025-08-07 16:27:59,087 - urllib3.connectionpool - DEBUG - https://api.notion.com:443 "POST /v1/databases/2476d3f4f60f8036b8ebd0c45a3fefae/query HTTP/1.1" 400 171
+2025-08-07 16:27:59,089 - urllib3.connectionpool - DEBUG - Starting new HTTPS connection (1): api.notion.com:443
+2025-08-07 16:27:59,427 - urllib3.connectionpool - DEBUG - https://api.notion.com:443 "POST /v1/databases/2476d3f4f60f8036b8ebd0c45a3fefae/query HTTP/1.1" 200 None
+2025-08-07 16:27:59,429 - urllib3.connectionpool - DEBUG - Starting new HTTPS connection (1): api.notion.com:443
+2025-08-07 16:28:02,316 - urllib3.connectionpool - DEBUG - https://api.notion.com:443 "PATCH /v1/pages/2486d3f4-f60f-81c4-bc96-e2c7d2a38e18 HTTP/1.1" 200 None
+2025-08-07 16:28:02,317 - notion_integration - INFO - Successfully archived page in Notion: HCI - Activity 4 (USABILITY ASSESSMENT)
+2025-08-07 16:28:02,318 - urllib3.connectionpool - DEBUG - Starting new HTTPS connection (1): api.notion.com:443
+2025-08-07 16:28:02,600 - urllib3.connectionpool - DEBUG - https://api.notion.com:443 "POST /v1/databases/2476d3f4f60f8036b8ebd0c45a3fefae/query HTTP/1.1" 400 171
+2025-08-07 16:28:02,602 - urllib3.connectionpool - DEBUG - Starting new HTTPS connection (1): api.notion.com:443
+2025-08-07 16:28:03,356 - urllib3.connectionpool - DEBUG - https://api.notion.com:443 "POST /v1/databases/2476d3f4f60f8036b8ebd0c45a3fefae/query HTTP/1.1" 200 None
+2025-08-07 16:28:03,359 - urllib3.connectionpool - DEBUG - Starting new HTTPS connection (1): api.notion.com:443
+2025-08-07 16:28:04,217 - urllib3.connectionpool - DEBUG - https://api.notion.com:443 "PATCH /v1/pages/2486d3f4-f60f-8164-87e2-dbc8cbcac4d7 HTTP/1.1" 200 None
+2025-08-07 16:28:04,218 - notion_integration - INFO - Successfully archived page in Notion: III - Activity 1 (#1)
+2025-08-07 16:31:13,090 - __main__ - INFO - ==================================================
+2025-08-07 16:31:13,091 - __main__ - INFO - MOODLE ASSIGNMENT FETCHER STARTED
+2025-08-07 16:31:13,091 - __main__ - INFO - ==================================================
+2025-08-07 16:31:13,091 - __main__ - INFO - Initializing Moodle email fetcher...
+2025-08-07 16:31:13,092 - __main__ - INFO - Checking for assignments from the past 7 days...
+2025-08-07 16:31:13,093 - moodle_fetcher - INFO - ============================================================
+2025-08-07 16:31:13,093 - moodle_fetcher - INFO - STARTING MOODLE ASSIGNMENT CHECK
+2025-08-07 16:31:13,093 - moodle_fetcher - INFO - Checking emails from last 7 days
+2025-08-07 16:31:13,093 - moodle_fetcher - INFO - ============================================================
+2025-08-07 16:31:13,753 - moodle_fetcher - INFO - Successfully connected to Gmail
+2025-08-07 16:31:13,949 - moodle_fetcher - INFO - Searching for emails: (FROM "noreply-tbl@umak.edu.ph" SINCE "31-Jul-2025")
+2025-08-07 16:31:14,156 - moodle_fetcher - INFO - Found 20 Moodle emails from last 7 days
+2025-08-07 16:31:14,157 - moodle_fetcher - INFO - Processing 20 emails...
+2025-08-07 16:31:14,157 - moodle_fetcher - INFO - Existing assignments in database: 5
+2025-08-07 16:31:14,157 - moodle_fetcher - DEBUG - Processing email 1/20: b'742'
+2025-08-07 16:31:14,362 - moodle_fetcher - DEBUG - ❌ Failed to parse email b'742'
+2025-08-07 16:31:14,362 - moodle_fetcher - DEBUG - Processing email 2/20: b'743'
+2025-08-07 16:31:14,673 - moodle_fetcher - DEBUG - ❌ Failed to parse email b'743'
+2025-08-07 16:31:14,673 - moodle_fetcher - DEBUG - Processing email 3/20: b'744'
+2025-08-07 16:31:14,879 - moodle_fetcher - DEBUG - ❌ Failed to parse email b'744'
+2025-08-07 16:31:14,880 - moodle_fetcher - DEBUG - Processing email 4/20: b'747'
+2025-08-07 16:31:15,077 - moodle_fetcher - DEBUG - ❌ Failed to parse email b'747'
+2025-08-07 16:31:15,077 - moodle_fetcher - DEBUG - Processing email 5/20: b'748'
+2025-08-07 16:31:15,271 - moodle_fetcher - DEBUG - ❌ Failed to parse email b'748'
+2025-08-07 16:31:15,271 - moodle_fetcher - DEBUG - Processing email 6/20: b'749'
+2025-08-07 16:31:15,465 - moodle_fetcher - DEBUG - ❌ Failed to parse email b'749'
+2025-08-07 16:31:15,465 - moodle_fetcher - DEBUG - Processing email 7/20: b'750'
+2025-08-07 16:31:15,656 - moodle_fetcher - DEBUG - ❌ Failed to parse email b'750'
+2025-08-07 16:31:15,656 - moodle_fetcher - DEBUG - Processing email 8/20: b'751'
+2025-08-07 16:31:15,850 - moodle_fetcher - DEBUG - ❌ Failed to parse email b'751'
+2025-08-07 16:31:15,850 - moodle_fetcher - DEBUG - Processing email 9/20: b'752'
+2025-08-07 16:31:16,044 - moodle_fetcher - DEBUG - ❌ Failed to parse email b'752'
+2025-08-07 16:31:16,044 - moodle_fetcher - DEBUG - Processing email 10/20: b'753'
+2025-08-07 16:31:16,236 - moodle_fetcher - DEBUG - ❌ Failed to parse email b'753'
+2025-08-07 16:31:16,236 - moodle_fetcher - DEBUG - Processing email 11/20: b'754'
+2025-08-07 16:31:16,428 - moodle_fetcher - DEBUG - ❌ Failed to parse email b'754'
+2025-08-07 16:31:16,428 - moodle_fetcher - DEBUG - Processing email 12/20: b'755'
+2025-08-07 16:31:16,625 - moodle_fetcher - DEBUG - ❌ Failed to parse email b'755'
+2025-08-07 16:31:16,625 - moodle_fetcher - DEBUG - Processing email 13/20: b'756'
+2025-08-07 16:31:16,820 - moodle_fetcher - DEBUG - Successfully parsed assignment: HCI - Activity 1 (User Story [1])
+2025-08-07 16:31:16,820 - moodle_fetcher - DEBUG - Duplicate found by email ID: 756
+2025-08-07 16:31:16,820 - moodle_fetcher - DEBUG - ⏭️  Skipped duplicate: HCI - Activity 1 (User Story [1])
+2025-08-07 16:31:16,820 - moodle_fetcher - DEBUG - Processing email 14/20: b'757'
+2025-08-07 16:31:17,020 - moodle_fetcher - DEBUG - Successfully parsed assignment: HCI - Activity 1 (User Story [1])
+2025-08-07 16:31:17,020 - moodle_fetcher - DEBUG - Duplicate found by title+course: hci - activity 1 (user story [1])
+2025-08-07 16:31:17,020 - moodle_fetcher - DEBUG - ⏭️  Skipped duplicate: HCI - Activity 1 (User Story [1])
+2025-08-07 16:31:17,021 - moodle_fetcher - DEBUG - Processing email 15/20: b'758'
+2025-08-07 16:31:17,220 - moodle_fetcher - DEBUG - Successfully parsed assignment: HCI - Activity 2 (Mid Fidelity [1])
+2025-08-07 16:31:17,221 - moodle_fetcher - DEBUG - Duplicate found by email ID: 758
+2025-08-07 16:31:17,221 - moodle_fetcher - DEBUG - ⏭️  Skipped duplicate: HCI - Activity 2 (Mid Fidelity [1])
+2025-08-07 16:31:17,221 - moodle_fetcher - DEBUG - Processing email 16/20: b'759'
+2025-08-07 16:31:17,416 - moodle_fetcher - DEBUG - Successfully parsed assignment: HCI - Activity 3 (High Fidelity Prototype [1])
+2025-08-07 16:31:17,416 - moodle_fetcher - DEBUG - Duplicate found by email ID: 759
+2025-08-07 16:31:17,416 - moodle_fetcher - DEBUG - ⏭️  Skipped duplicate: HCI - Activity 3 (High Fidelity Prototype [1])
+2025-08-07 16:31:17,416 - moodle_fetcher - DEBUG - Processing email 17/20: b'760'
+2025-08-07 16:31:17,613 - moodle_fetcher - DEBUG - Successfully parsed assignment: HCI - Activity 4 (Usability Assessment [1])
+2025-08-07 16:31:17,614 - moodle_fetcher - DEBUG - Duplicate found by email ID: 760
+2025-08-07 16:31:17,614 - moodle_fetcher - DEBUG - ⏭️  Skipped duplicate: HCI - Activity 4 (Usability Assessment [1])
+2025-08-07 16:31:17,614 - moodle_fetcher - DEBUG - Processing email 18/20: b'761'
+2025-08-07 16:31:17,809 - moodle_fetcher - DEBUG - ❌ Failed to parse email b'761'
+2025-08-07 16:31:17,809 - moodle_fetcher - DEBUG - Processing email 19/20: b'762'
+2025-08-07 16:31:18,012 - moodle_fetcher - DEBUG - ❌ Failed to parse email b'762'
+2025-08-07 16:31:18,012 - moodle_fetcher - DEBUG - Processing email 20/20: b'769'
+2025-08-07 16:31:18,211 - moodle_fetcher - DEBUG - Successfully parsed assignment: III - Activity 1 (#1)
+2025-08-07 16:31:18,211 - moodle_fetcher - DEBUG - Duplicate found by email ID: 769
+2025-08-07 16:31:18,211 - moodle_fetcher - DEBUG - ⏭️  Skipped duplicate: III - Activity 1 (#1)
+2025-08-07 16:31:18,211 - moodle_fetcher - INFO - ============================================================
+2025-08-07 16:31:18,211 - moodle_fetcher - INFO - ASSIGNMENT CHECK COMPLETED
+2025-08-07 16:31:18,211 - moodle_fetcher - INFO - 📧 Emails processed: 20
+2025-08-07 16:31:18,212 - moodle_fetcher - INFO - ✅ New assignments: 0
+2025-08-07 16:31:18,212 - moodle_fetcher - INFO - ⏭️  Duplicates skipped: 6
+2025-08-07 16:31:18,212 - moodle_fetcher - INFO - 📊 Total assignments: 5
+2025-08-07 16:31:18,212 - moodle_fetcher - INFO - ============================================================
+2025-08-07 16:31:18,393 - __main__ - INFO - No new assignments found
+2025-08-07 16:31:18,393 - __main__ - INFO - Running automatic archive cleanup...
+2025-08-07 16:31:18,393 - assignment_archive - INFO - Starting archive cleanup (completed assignments older than 30 days)
+2025-08-07 16:31:18,394 - assignment_archive - INFO - No assignments need archiving
+2025-08-07 16:31:18,394 - __main__ - DEBUG - Automatic cleanup: No assignments need archiving
+2025-08-07 16:31:18,394 - __main__ - INFO - ==================================================
+2025-08-07 16:31:18,394 - __main__ - INFO - MOODLE ASSIGNMENT FETCHER COMPLETED
+2025-08-07 16:31:18,394 - __main__ - INFO - ==================================================
