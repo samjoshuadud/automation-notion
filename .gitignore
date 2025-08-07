@@ -1,6 +1,6 @@
 venv/
 __pycache__/
 .env
-data/
-deployment/
-tests/
+logs/*
+
+data/*
