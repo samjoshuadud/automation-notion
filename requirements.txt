@@ -17,6 +17,10 @@ lxml>=4.9.0                   # XML/HTML parser backend
 fuzzywuzzy>=0.18.0            # Fuzzy string matching for duplicates
 python-Levenshtein>=0.21.0    # Fast string similarity calculations
 
+# Web Scraping (for direct Moodle access)
+playwright>=1.40.0            # Modern web automation and scraping
+selenium>=4.15.0              # Alternative web automation (fallback)
+
 # JSON and Data Handling
 jsonschema>=4.17.0            # JSON schema validation
 tabulate>=0.9.0               # Pretty table formatting

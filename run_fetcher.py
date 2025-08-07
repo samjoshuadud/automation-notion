@@ -11,6 +11,14 @@ from moodle_fetcher import MoodleEmailFetcher
 from notion_integration import NotionIntegration
 from todoist_integration import TodoistIntegration
 from assignment_archive import AssignmentArchiveManager
+
+# Try to import Moodle direct scraper (optional)
+try:
+    from moodle_direct_scraper import MoodleDirectScraper
+    MOODLE_SCRAPER_AVAILABLE = True
+except ImportError:
+    MOODLE_SCRAPER_AVAILABLE = False
+
 import argparse
 import logging
 import time
@@ -353,6 +361,22 @@ def main():
     parser.add_argument('--fresh-start', action='store_true',
                        help='DELETE ALL data files and start fresh (clears assignments.json, assignments.md, archive, backups - emails are NOT touched)')
     
+    # Moodle Direct Scraping Arguments
+    parser.add_argument('--login-type', action='store_true',
+                       help='Check Moodle login status and prompt for manual login if needed')
+    parser.add_argument('--moodle-url', type=str,
+                       help='Moodle site URL (can also set MOODLE_URL environment variable)')
+    parser.add_argument('--clear-moodle-session', action='store_true',
+                       help='Clear stored Moodle session data')
+    parser.add_argument('--scrape-assignments', action='store_true',
+                       help='Scrape assignments directly from Moodle (requires login)')
+    parser.add_argument('--scrape-forums', action='store_true',
+                       help='Scrape forum posts directly from Moodle (requires login)')
+    parser.add_argument('--headless', action='store_true',
+                       help='Run browser in headless mode (no GUI)')
+    parser.add_argument('--login-timeout', type=int, default=10,
+                       help='Timeout for manual login in minutes (default: 10)')
+    
     args = parser.parse_args()
     
     # Debug mode implies verbose
@@ -371,6 +395,75 @@ def main():
     
     # Initialize archive manager
     archive_manager = AssignmentArchiveManager()
+    
+    # Handle Moodle direct scraping login check
+    if args.login_type or args.clear_moodle_session:
+        if not MOODLE_SCRAPER_AVAILABLE:
+            print("❌ Moodle scraper not available!")
+            print("💡 Please install required packages:")
+            print("   pip install playwright selenium")
+            print("   playwright install chromium")
+            return 1
+        
+        try:
+            scraper = MoodleDirectScraper(moodle_url=args.moodle_url, headless=args.headless)
+            
+            # Handle clear session
+            if args.clear_moodle_session:
+                print("\n🗑️ CLEARING MOODLE SESSION")
+                print("=" * 30)
+                scraper.session.session_dir.mkdir(exist_ok=True, parents=True)
+                import shutil
+                if scraper.session.session_dir.exists():
+                    shutil.rmtree(scraper.session.session_dir)
+                    scraper.session.session_dir.mkdir(exist_ok=True, parents=True)
+                print("✅ Moodle session data cleared")
+                scraper.close()
+                return 0
+            
+            # Handle login check
+            if args.login_type:
+                print("\n🔍 MOODLE LOGIN STATUS CHECK")
+                print("=" * 40)
+                
+                status = scraper.check_login_status()
+                
+                if status.get('error'):
+                    print(f"❌ Error: {status['error']}")
+                    return 1
+                
+                if status['logged_in']:
+                    print("✅ Status: LOGGED IN")
+                    print(f"🌐 Moodle URL: {status['moodle_url']}")
+                    print("🎉 Ready to scrape Moodle content!")
+                else:
+                    print("❌ Status: NOT LOGGED IN")
+                    print(f"🌐 Moodle URL: {status['moodle_url']}")
+                    print(f"🔗 Login URL: {status['login_url']}")
+                    
+                    # Offer interactive login
+                    choice = input("\n❓ Would you like to login now? (y/N): ").strip().lower()
+                    if choice in ['y', 'yes']:
+                        print("\n🚀 Starting interactive login process...")
+                        print("💡 A browser window will open - please login manually")
+                        
+                        if scraper.interactive_login(timeout_minutes=args.login_timeout):
+                            print("✅ Login successful! You can now scrape Moodle content.")
+                        else:
+                            print("❌ Login failed or timed out.")
+                            return 1
+                    else:
+                        print(f"❗ Please login manually at: {status['login_url']}")
+                        print("💡 Then run this command again to verify login status.")
+                        return 1
+            
+            scraper.close()
+            return 0
+            
+        except Exception as e:
+            logger.error(f"Moodle login check failed: {e}")
+            print(f"❌ Error: {e}")
+            return 1
     
     # Handle archive-specific commands first
     if args.archive_stats:
