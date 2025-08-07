@@ -38,6 +38,8 @@ show_usage() {
     echo "  test              Test all connections (Gmail, Notion, Todoist)"
     echo "  check [days]      Check for assignments (default: 7 days)"
     echo "  notion [days]     Check and sync to Notion database"
+    echo "  todoist [days]    Check and sync to Todoist tasks"
+    echo "  both [days]       Check and sync to both Notion and Todoist"
     echo "  logs              Show recent logs"
     echo "  status            Show detailed assignment status report"
     echo ""
@@ -52,8 +54,10 @@ show_usage() {
     echo "  ./run.sh test                    # Test connections"
     echo "  ./run.sh check 3                # Check last 3 days"
     echo "  ./run.sh notion                 # Full Notion sync"
+    echo "  ./run.sh todoist                # Full Todoist sync"
+    echo "  ./run.sh both                   # Sync to both Notion and Todoist"
     echo "  ./run.sh verbose check          # Verbose assignment check"
-    echo "  ./run.sh debug notion 14        # Debug mode with 14 days + Notion"
+    echo "  ./run.sh debug both 14          # Debug mode with 14 days + both platforms"
     echo "  ./run.sh status                 # Detailed status report"
     echo "  ./run.sh duplicates             # Check for duplicate assignments"
     echo "  ./run.sh delete-all             # Delete all assignments (DEBUG)"
@@ -79,6 +83,16 @@ case "$1" in
         echo -e "${YELLOW}📧 Checking assignments and syncing to Notion...${NC}"
         $PYTHON_CMD run_fetcher.py --days $DAYS --notion --verbose
         ;;
+    "todoist")
+        DAYS=${2:-7}
+        echo -e "${YELLOW}📧 Checking assignments and syncing to Todoist...${NC}"
+        $PYTHON_CMD run_fetcher.py --days $DAYS --todoist --verbose
+        ;;
+    "both")
+        DAYS=${2:-7}
+        echo -e "${YELLOW}📧 Checking assignments and syncing to both Notion and Todoist...${NC}"
+        $PYTHON_CMD run_fetcher.py --days $DAYS --notion --todoist --verbose
+        ;;
     "verbose")
         shift  # Remove 'verbose' from arguments
         case "$1" in
@@ -92,12 +106,22 @@ case "$1" in
                 echo -e "${GREEN}🔍 VERBOSE MODE: Notion sync with detailed logging...${NC}"
                 $PYTHON_CMD run_fetcher.py --days $DAYS --notion --verbose
                 ;;
+            "todoist")
+                DAYS=${2:-7}
+                echo -e "${GREEN}🔍 VERBOSE MODE: Todoist sync with detailed logging...${NC}"
+                $PYTHON_CMD run_fetcher.py --days $DAYS --todoist --verbose
+                ;;
+            "both")
+                DAYS=${2:-7}
+                echo -e "${GREEN}🔍 VERBOSE MODE: Both platforms sync with detailed logging...${NC}"
+                $PYTHON_CMD run_fetcher.py --days $DAYS --notion --todoist --verbose
+                ;;
             "test")
                 echo -e "${GREEN}🔍 VERBOSE MODE: Testing connections with detailed output...${NC}"
                 $PYTHON_CMD run_fetcher.py --test --notion --todoist --verbose
                 ;;
             *)
-                echo -e "${RED}❌ Invalid verbose command. Use: verbose [check|notion|test]${NC}"
+                echo -e "${RED}❌ Invalid verbose command. Use: verbose [check|notion|todoist|both|test]${NC}"
                 show_usage
                 exit 1
                 ;;
@@ -116,12 +140,22 @@ case "$1" in
                 echo -e "${RED}🐛 DEBUG MODE: Notion sync with maximum detail...${NC}"
                 $PYTHON_CMD run_fetcher.py --days $DAYS --notion --debug
                 ;;
+            "todoist")
+                DAYS=${2:-7}
+                echo -e "${RED}🐛 DEBUG MODE: Todoist sync with maximum detail...${NC}"
+                $PYTHON_CMD run_fetcher.py --days $DAYS --todoist --debug
+                ;;
+            "both")
+                DAYS=${2:-7}
+                echo -e "${RED}🐛 DEBUG MODE: Both platforms sync with maximum detail...${NC}"
+                $PYTHON_CMD run_fetcher.py --days $DAYS --notion --todoist --debug
+                ;;
             "test")
                 echo -e "${RED}🐛 DEBUG MODE: Testing with maximum detail...${NC}"
                 $PYTHON_CMD run_fetcher.py --test --notion --todoist --debug
                 ;;
             *)
-                echo -e "${RED}❌ Invalid debug command. Use: debug [check|notion|test]${NC}"
+                echo -e "${RED}❌ Invalid debug command. Use: debug [check|notion|todoist|both|test]${NC}"
                 show_usage
                 exit 1
                 ;;
