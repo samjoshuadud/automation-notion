@@ -142,6 +142,25 @@ python run_fetcher.py --notion --todoist
 python run_fetcher.py --verbose
 ```
 
+### Debug & Management Commands
+
+```bash
+# Status and analysis
+./deployment/run.sh status              # Detailed assignment status report
+./deployment/run.sh duplicates          # Show duplicate detection analysis
+./deployment/run.sh archive-stats       # Show archive statistics
+
+# Selective deletion (⚠️ Use with caution!)
+./deployment/run.sh delete-all          # Delete from both Notion and Todoist (local preserved)
+./deployment/run.sh delete-all notion   # Delete only from Notion (local preserved)
+./deployment/run.sh delete-all todoist  # Delete only from Todoist (local preserved)
+./deployment/run.sh delete-all both --include-local     # Delete from both + local database
+./deployment/run.sh delete-all notion --include-local   # Delete from Notion + local database
+./deployment/run.sh delete-all todoist --include-local  # Delete from Todoist + local database
+
+# Note: Deletion commands never touch your Gmail emails, only local storage and synced platforms
+```
+
 ---
 
 ## 📊 Features
