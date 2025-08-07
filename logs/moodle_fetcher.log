@@ -1538,3 +1538,472 @@
 2025-08-07 17:10:07,031 - __main__ - INFO - ==================================================
 2025-08-07 17:10:07,031 - __main__ - INFO - MOODLE ASSIGNMENT FETCHER COMPLETED
 2025-08-07 17:10:07,031 - __main__ - INFO - ==================================================
+2025-08-07 17:23:36,903 - urllib3.connectionpool - DEBUG - Starting new HTTPS connection (1): api.todoist.com:443
+2025-08-07 17:23:38,654 - urllib3.connectionpool - DEBUG - https://api.todoist.com:443 "GET /rest/v2/projects HTTP/1.1" 200 None
+2025-08-07 17:23:38,655 - todoist_integration - INFO - Todoist connection test successful
+2025-08-07 17:23:38,656 - todoist_integration - INFO - Todoist integration initialized successfully
+2025-08-07 17:23:38,657 - urllib3.connectionpool - DEBUG - Starting new HTTPS connection (1): api.todoist.com:443
+2025-08-07 17:23:39,697 - urllib3.connectionpool - DEBUG - https://api.todoist.com:443 "GET /rest/v2/projects HTTP/1.1" 200 None
+2025-08-07 17:23:39,699 - todoist_integration - INFO - Found existing project: School Assignments
+2025-08-07 17:23:39,700 - urllib3.connectionpool - DEBUG - Starting new HTTPS connection (1): api.todoist.com:443
+2025-08-07 17:23:40,684 - urllib3.connectionpool - DEBUG - https://api.todoist.com:443 "GET /rest/v2/tasks?project_id=2358015760 HTTP/1.1" 200 None
+2025-08-07 17:23:40,686 - todoist_integration - DEBUG - Looking for task with title: 'HCI - Activity 1 (USER STORY)'
+2025-08-07 17:23:40,686 - todoist_integration - DEBUG - Comparing with task: 'TBL - University of Makati - TBL Hub: linked login confirmation'
+2025-08-07 17:23:40,686 - todoist_integration - DEBUG - Comparing with task: 'TBL - New sign in to your University of Makati - TBL Hub account'
+2025-08-07 17:23:40,686 - todoist_integration - DEBUG - Comparing with task: 'TBL - New sign in to your University of Makati - TBL Hub account'
+2025-08-07 17:23:40,686 - todoist_integration - DEBUG - Comparing with task: 'AND - Welcome to CALCULUS - DIFFERENTIAL AND INTEGRAL CALCULUS (III-ACSAD)'
+2025-08-07 17:23:40,686 - todoist_integration - DEBUG - Comparing with task: 'AND - Welcome to ALGOCOM - ALGORITHMS AND COMPLEXITY (III-ACSAD)'
+2025-08-07 17:23:40,686 - todoist_integration - DEBUG - Comparing with task: 'III - Welcome to DISCSTRU2 - DISCRETE STRUCTURES 2 (III-ACSAD)'
+2025-08-07 17:23:40,686 - todoist_integration - DEBUG - Comparing with task: 'IAS - Welcome to IAS - INFORMATION ASSURANCE AND SECURITY (III-ACSAD)'
+2025-08-07 17:23:40,686 - todoist_integration - DEBUG - Comparing with task: 'III - Welcome to SOFTENG1 - SOFTWARE ENGINEERING 1 (III-ACSAD)'
+2025-08-07 17:23:40,686 - todoist_integration - DEBUG - No matching task found
+2025-08-07 17:23:40,686 - todoist_integration - DEBUG - Task not found in Todoist for assignment: HCI - Activity 1 (User Story [1])
+2025-08-07 17:23:40,687 - urllib3.connectionpool - DEBUG - Starting new HTTPS connection (1): api.todoist.com:443
+2025-08-07 17:23:41,694 - urllib3.connectionpool - DEBUG - https://api.todoist.com:443 "GET /rest/v2/projects HTTP/1.1" 200 None
+2025-08-07 17:23:41,695 - todoist_integration - INFO - Found existing project: School Assignments
+2025-08-07 17:23:41,696 - urllib3.connectionpool - DEBUG - Starting new HTTPS connection (1): api.todoist.com:443
+2025-08-07 17:23:42,228 - urllib3.connectionpool - DEBUG - https://api.todoist.com:443 "GET /rest/v2/tasks?project_id=2358015760 HTTP/1.1" 200 None
+2025-08-07 17:23:42,230 - todoist_integration - DEBUG - Looking for task with title: 'HCI - Activity 2 (MID FIDELITY)'
+2025-08-07 17:23:42,230 - todoist_integration - DEBUG - Comparing with task: 'TBL - University of Makati - TBL Hub: linked login confirmation'
+2025-08-07 17:23:42,230 - todoist_integration - DEBUG - Comparing with task: 'TBL - New sign in to your University of Makati - TBL Hub account'
+2025-08-07 17:23:42,230 - todoist_integration - DEBUG - Comparing with task: 'TBL - New sign in to your University of Makati - TBL Hub account'
+2025-08-07 17:23:42,230 - todoist_integration - DEBUG - Comparing with task: 'AND - Welcome to CALCULUS - DIFFERENTIAL AND INTEGRAL CALCULUS (III-ACSAD)'
+2025-08-07 17:23:42,230 - todoist_integration - DEBUG - Comparing with task: 'AND - Welcome to ALGOCOM - ALGORITHMS AND COMPLEXITY (III-ACSAD)'
+2025-08-07 17:23:42,230 - todoist_integration - DEBUG - Comparing with task: 'III - Welcome to DISCSTRU2 - DISCRETE STRUCTURES 2 (III-ACSAD)'
+2025-08-07 17:23:42,230 - todoist_integration - DEBUG - Comparing with task: 'IAS - Welcome to IAS - INFORMATION ASSURANCE AND SECURITY (III-ACSAD)'
+2025-08-07 17:23:42,230 - todoist_integration - DEBUG - Comparing with task: 'III - Welcome to SOFTENG1 - SOFTWARE ENGINEERING 1 (III-ACSAD)'
+2025-08-07 17:23:42,230 - todoist_integration - DEBUG - No matching task found
+2025-08-07 17:23:42,230 - todoist_integration - DEBUG - Task not found in Todoist for assignment: HCI - Activity 2 (Mid Fidelity [1])
+2025-08-07 17:23:42,231 - urllib3.connectionpool - DEBUG - Starting new HTTPS connection (1): api.todoist.com:443
+2025-08-07 17:23:42,873 - urllib3.connectionpool - DEBUG - https://api.todoist.com:443 "GET /rest/v2/projects HTTP/1.1" 200 None
+2025-08-07 17:23:42,874 - todoist_integration - INFO - Found existing project: School Assignments
+2025-08-07 17:23:42,876 - urllib3.connectionpool - DEBUG - Starting new HTTPS connection (1): api.todoist.com:443
+2025-08-07 17:23:43,314 - urllib3.connectionpool - DEBUG - https://api.todoist.com:443 "GET /rest/v2/tasks?project_id=2358015760 HTTP/1.1" 200 None
+2025-08-07 17:23:43,316 - todoist_integration - DEBUG - Looking for task with title: 'HCI - Activity 3 (HIGH FIDELITY PROTOTYPE)'
+2025-08-07 17:23:43,316 - todoist_integration - DEBUG - Comparing with task: 'TBL - University of Makati - TBL Hub: linked login confirmation'
+2025-08-07 17:23:43,316 - todoist_integration - DEBUG - Comparing with task: 'TBL - New sign in to your University of Makati - TBL Hub account'
+2025-08-07 17:23:43,316 - todoist_integration - DEBUG - Comparing with task: 'TBL - New sign in to your University of Makati - TBL Hub account'
+2025-08-07 17:23:43,316 - todoist_integration - DEBUG - Comparing with task: 'AND - Welcome to CALCULUS - DIFFERENTIAL AND INTEGRAL CALCULUS (III-ACSAD)'
+2025-08-07 17:23:43,316 - todoist_integration - DEBUG - Comparing with task: 'AND - Welcome to ALGOCOM - ALGORITHMS AND COMPLEXITY (III-ACSAD)'
+2025-08-07 17:23:43,316 - todoist_integration - DEBUG - Comparing with task: 'III - Welcome to DISCSTRU2 - DISCRETE STRUCTURES 2 (III-ACSAD)'
+2025-08-07 17:23:43,316 - todoist_integration - DEBUG - Comparing with task: 'IAS - Welcome to IAS - INFORMATION ASSURANCE AND SECURITY (III-ACSAD)'
+2025-08-07 17:23:43,316 - todoist_integration - DEBUG - Comparing with task: 'III - Welcome to SOFTENG1 - SOFTWARE ENGINEERING 1 (III-ACSAD)'
+2025-08-07 17:23:43,316 - todoist_integration - DEBUG - No matching task found
+2025-08-07 17:23:43,316 - todoist_integration - DEBUG - Task not found in Todoist for assignment: HCI - Activity 3 (High Fidelity Prototype [1])
+2025-08-07 17:23:43,317 - urllib3.connectionpool - DEBUG - Starting new HTTPS connection (1): api.todoist.com:443
+2025-08-07 17:23:44,407 - urllib3.connectionpool - DEBUG - https://api.todoist.com:443 "GET /rest/v2/projects HTTP/1.1" 200 None
+2025-08-07 17:23:44,409 - todoist_integration - INFO - Found existing project: School Assignments
+2025-08-07 17:23:44,410 - urllib3.connectionpool - DEBUG - Starting new HTTPS connection (1): api.todoist.com:443
+2025-08-07 17:23:44,859 - urllib3.connectionpool - DEBUG - https://api.todoist.com:443 "GET /rest/v2/tasks?project_id=2358015760 HTTP/1.1" 200 None
+2025-08-07 17:23:44,861 - todoist_integration - DEBUG - Looking for task with title: 'HCI - Activity 4 (USABILITY ASSESSMENT)'
+2025-08-07 17:23:44,861 - todoist_integration - DEBUG - Comparing with task: 'TBL - University of Makati - TBL Hub: linked login confirmation'
+2025-08-07 17:23:44,861 - todoist_integration - DEBUG - Comparing with task: 'TBL - New sign in to your University of Makati - TBL Hub account'
+2025-08-07 17:23:44,861 - todoist_integration - DEBUG - Comparing with task: 'TBL - New sign in to your University of Makati - TBL Hub account'
+2025-08-07 17:23:44,861 - todoist_integration - DEBUG - Comparing with task: 'AND - Welcome to CALCULUS - DIFFERENTIAL AND INTEGRAL CALCULUS (III-ACSAD)'
+2025-08-07 17:23:44,861 - todoist_integration - DEBUG - Comparing with task: 'AND - Welcome to ALGOCOM - ALGORITHMS AND COMPLEXITY (III-ACSAD)'
+2025-08-07 17:23:44,861 - todoist_integration - DEBUG - Comparing with task: 'III - Welcome to DISCSTRU2 - DISCRETE STRUCTURES 2 (III-ACSAD)'
+2025-08-07 17:23:44,861 - todoist_integration - DEBUG - Comparing with task: 'IAS - Welcome to IAS - INFORMATION ASSURANCE AND SECURITY (III-ACSAD)'
+2025-08-07 17:23:44,861 - todoist_integration - DEBUG - Comparing with task: 'III - Welcome to SOFTENG1 - SOFTWARE ENGINEERING 1 (III-ACSAD)'
+2025-08-07 17:23:44,861 - todoist_integration - DEBUG - No matching task found
+2025-08-07 17:23:44,861 - todoist_integration - DEBUG - Task not found in Todoist for assignment: HCI - Activity 4 (Usability Assessment [1])
+2025-08-07 17:23:44,862 - urllib3.connectionpool - DEBUG - Starting new HTTPS connection (1): api.todoist.com:443
+2025-08-07 17:23:47,079 - urllib3.connectionpool - DEBUG - https://api.todoist.com:443 "GET /rest/v2/projects HTTP/1.1" 200 None
+2025-08-07 17:23:47,080 - todoist_integration - INFO - Found existing project: School Assignments
+2025-08-07 17:23:47,081 - urllib3.connectionpool - DEBUG - Starting new HTTPS connection (1): api.todoist.com:443
+2025-08-07 17:23:47,519 - urllib3.connectionpool - DEBUG - https://api.todoist.com:443 "GET /rest/v2/tasks?project_id=2358015760 HTTP/1.1" 200 None
+2025-08-07 17:23:47,521 - todoist_integration - DEBUG - Looking for task with title: 'ELEC1 - Activity 59 (59 Pm: Midterm Assignment #1)'
+2025-08-07 17:23:47,521 - todoist_integration - DEBUG - Comparing with task: 'TBL - University of Makati - TBL Hub: linked login confirmation'
+2025-08-07 17:23:47,521 - todoist_integration - DEBUG - Comparing with task: 'TBL - New sign in to your University of Makati - TBL Hub account'
+2025-08-07 17:23:47,521 - todoist_integration - DEBUG - Comparing with task: 'TBL - New sign in to your University of Makati - TBL Hub account'
+2025-08-07 17:23:47,521 - todoist_integration - DEBUG - Comparing with task: 'AND - Welcome to CALCULUS - DIFFERENTIAL AND INTEGRAL CALCULUS (III-ACSAD)'
+2025-08-07 17:23:47,521 - todoist_integration - DEBUG - Comparing with task: 'AND - Welcome to ALGOCOM - ALGORITHMS AND COMPLEXITY (III-ACSAD)'
+2025-08-07 17:23:47,521 - todoist_integration - DEBUG - Comparing with task: 'III - Welcome to DISCSTRU2 - DISCRETE STRUCTURES 2 (III-ACSAD)'
+2025-08-07 17:23:47,521 - todoist_integration - DEBUG - Comparing with task: 'IAS - Welcome to IAS - INFORMATION ASSURANCE AND SECURITY (III-ACSAD)'
+2025-08-07 17:23:47,521 - todoist_integration - DEBUG - Comparing with task: 'III - Welcome to SOFTENG1 - SOFTWARE ENGINEERING 1 (III-ACSAD)'
+2025-08-07 17:23:47,521 - todoist_integration - DEBUG - No matching task found
+2025-08-07 17:23:47,521 - todoist_integration - DEBUG - Task not found in Todoist for assignment: ELEC1 - Activity 59 (59 Pm: Midterm Assignment #1)
+2025-08-07 17:23:47,522 - urllib3.connectionpool - DEBUG - Starting new HTTPS connection (1): api.todoist.com:443
+2025-08-07 17:23:48,488 - urllib3.connectionpool - DEBUG - https://api.todoist.com:443 "GET /rest/v2/projects HTTP/1.1" 200 None
+2025-08-07 17:23:48,489 - todoist_integration - INFO - Found existing project: School Assignments
+2025-08-07 17:23:48,490 - urllib3.connectionpool - DEBUG - Starting new HTTPS connection (1): api.todoist.com:443
+2025-08-07 17:23:49,016 - urllib3.connectionpool - DEBUG - https://api.todoist.com:443 "GET /rest/v2/tasks?project_id=2358015760 HTTP/1.1" 200 None
+2025-08-07 17:23:49,018 - todoist_integration - DEBUG - Looking for task with title: 'TBL - University of Makati - TBL Hub: linked login confirmation'
+2025-08-07 17:23:49,018 - todoist_integration - DEBUG - Comparing with task: 'TBL - University of Makati - TBL Hub: linked login confirmation'
+2025-08-07 17:23:49,018 - todoist_integration - DEBUG - Found exact match: 9421584994
+2025-08-07 17:23:49,019 - urllib3.connectionpool - DEBUG - Starting new HTTPS connection (1): api.todoist.com:443
+2025-08-07 17:23:49,707 - urllib3.connectionpool - DEBUG - https://api.todoist.com:443 "DELETE /rest/v2/tasks/9421584994 HTTP/1.1" 204 0
+2025-08-07 17:23:49,708 - todoist_integration - INFO - Successfully deleted task from Todoist: University of Makati - TBL Hub: linked login confirmation
+2025-08-07 17:23:49,709 - urllib3.connectionpool - DEBUG - Starting new HTTPS connection (1): api.todoist.com:443
+2025-08-07 17:23:50,346 - urllib3.connectionpool - DEBUG - https://api.todoist.com:443 "GET /rest/v2/projects HTTP/1.1" 200 None
+2025-08-07 17:23:50,348 - todoist_integration - INFO - Found existing project: School Assignments
+2025-08-07 17:23:50,349 - urllib3.connectionpool - DEBUG - Starting new HTTPS connection (1): api.todoist.com:443
+2025-08-07 17:23:50,762 - urllib3.connectionpool - DEBUG - https://api.todoist.com:443 "GET /rest/v2/tasks?project_id=2358015760 HTTP/1.1" 200 None
+2025-08-07 17:23:50,763 - todoist_integration - DEBUG - Looking for task with title: 'TBL - New sign in to your University of Makati - TBL Hub account'
+2025-08-07 17:23:50,763 - todoist_integration - DEBUG - Comparing with task: 'TBL - New sign in to your University of Makati - TBL Hub account'
+2025-08-07 17:23:50,763 - todoist_integration - DEBUG - Found exact match: 9421585054
+2025-08-07 17:23:50,764 - urllib3.connectionpool - DEBUG - Starting new HTTPS connection (1): api.todoist.com:443
+2025-08-07 17:23:51,433 - urllib3.connectionpool - DEBUG - https://api.todoist.com:443 "DELETE /rest/v2/tasks/9421585054 HTTP/1.1" 204 0
+2025-08-07 17:23:51,434 - todoist_integration - INFO - Successfully deleted task from Todoist: New sign in to your University of Makati - TBL Hub account
+2025-08-07 17:23:51,435 - urllib3.connectionpool - DEBUG - Starting new HTTPS connection (1): api.todoist.com:443
+2025-08-07 17:23:52,022 - urllib3.connectionpool - DEBUG - https://api.todoist.com:443 "GET /rest/v2/projects HTTP/1.1" 200 None
+2025-08-07 17:23:52,023 - todoist_integration - INFO - Found existing project: School Assignments
+2025-08-07 17:23:52,024 - urllib3.connectionpool - DEBUG - Starting new HTTPS connection (1): api.todoist.com:443
+2025-08-07 17:23:52,463 - urllib3.connectionpool - DEBUG - https://api.todoist.com:443 "GET /rest/v2/tasks?project_id=2358015760 HTTP/1.1" 200 None
+2025-08-07 17:23:52,464 - todoist_integration - DEBUG - Looking for task with title: 'TBL - New sign in to your University of Makati - TBL Hub account'
+2025-08-07 17:23:52,464 - todoist_integration - DEBUG - Comparing with task: 'TBL - New sign in to your University of Makati - TBL Hub account'
+2025-08-07 17:23:52,464 - todoist_integration - DEBUG - Found exact match: 9421585116
+2025-08-07 17:23:52,465 - urllib3.connectionpool - DEBUG - Starting new HTTPS connection (1): api.todoist.com:443
+2025-08-07 17:23:53,079 - urllib3.connectionpool - DEBUG - https://api.todoist.com:443 "DELETE /rest/v2/tasks/9421585116 HTTP/1.1" 204 0
+2025-08-07 17:23:53,080 - todoist_integration - INFO - Successfully deleted task from Todoist: New sign in to your University of Makati - TBL Hub account
+2025-08-07 17:23:53,082 - urllib3.connectionpool - DEBUG - Starting new HTTPS connection (1): api.todoist.com:443
+2025-08-07 17:23:53,726 - urllib3.connectionpool - DEBUG - https://api.todoist.com:443 "GET /rest/v2/projects HTTP/1.1" 200 None
+2025-08-07 17:23:53,727 - todoist_integration - INFO - Found existing project: School Assignments
+2025-08-07 17:23:53,733 - urllib3.connectionpool - DEBUG - Starting new HTTPS connection (1): api.todoist.com:443
+2025-08-07 17:23:54,238 - urllib3.connectionpool - DEBUG - https://api.todoist.com:443 "GET /rest/v2/tasks?project_id=2358015760 HTTP/1.1" 200 None
+2025-08-07 17:23:54,240 - todoist_integration - DEBUG - Looking for task with title: 'AND - Welcome to CALCULUS - DIFFERENTIAL AND INTEGRAL CALCULUS (III-ACSAD)'
+2025-08-07 17:23:54,240 - todoist_integration - DEBUG - Comparing with task: 'AND - Welcome to CALCULUS - DIFFERENTIAL AND INTEGRAL CALCULUS (III-ACSAD)'
+2025-08-07 17:23:54,240 - todoist_integration - DEBUG - Found exact match: 9421585160
+2025-08-07 17:23:54,241 - urllib3.connectionpool - DEBUG - Starting new HTTPS connection (1): api.todoist.com:443
+2025-08-07 17:23:54,955 - urllib3.connectionpool - DEBUG - https://api.todoist.com:443 "DELETE /rest/v2/tasks/9421585160 HTTP/1.1" 204 0
+2025-08-07 17:23:54,956 - todoist_integration - INFO - Successfully deleted task from Todoist: Welcome to CALCULUS - DIFFERENTIAL AND INTEGRAL CALCULUS (III-ACSAD)
+2025-08-07 17:23:54,958 - urllib3.connectionpool - DEBUG - Starting new HTTPS connection (1): api.todoist.com:443
+2025-08-07 17:23:55,671 - urllib3.connectionpool - DEBUG - https://api.todoist.com:443 "GET /rest/v2/projects HTTP/1.1" 200 None
+2025-08-07 17:23:55,673 - todoist_integration - INFO - Found existing project: School Assignments
+2025-08-07 17:23:55,674 - urllib3.connectionpool - DEBUG - Starting new HTTPS connection (1): api.todoist.com:443
+2025-08-07 17:23:56,111 - urllib3.connectionpool - DEBUG - https://api.todoist.com:443 "GET /rest/v2/tasks?project_id=2358015760 HTTP/1.1" 200 None
+2025-08-07 17:23:56,112 - todoist_integration - DEBUG - Looking for task with title: 'AND - Welcome to ALGOCOM - ALGORITHMS AND COMPLEXITY (III-ACSAD)'
+2025-08-07 17:23:56,112 - todoist_integration - DEBUG - Comparing with task: 'AND - Welcome to ALGOCOM - ALGORITHMS AND COMPLEXITY (III-ACSAD)'
+2025-08-07 17:23:56,112 - todoist_integration - DEBUG - Found exact match: 9421585202
+2025-08-07 17:23:56,113 - urllib3.connectionpool - DEBUG - Starting new HTTPS connection (1): api.todoist.com:443
+2025-08-07 17:23:56,756 - urllib3.connectionpool - DEBUG - https://api.todoist.com:443 "DELETE /rest/v2/tasks/9421585202 HTTP/1.1" 204 0
+2025-08-07 17:23:56,758 - todoist_integration - INFO - Successfully deleted task from Todoist: Welcome to ALGOCOM - ALGORITHMS AND COMPLEXITY (III-ACSAD)
+2025-08-07 17:23:56,759 - urllib3.connectionpool - DEBUG - Starting new HTTPS connection (1): api.todoist.com:443
+2025-08-07 17:23:57,824 - urllib3.connectionpool - DEBUG - https://api.todoist.com:443 "GET /rest/v2/projects HTTP/1.1" 200 None
+2025-08-07 17:23:57,825 - todoist_integration - INFO - Found existing project: School Assignments
+2025-08-07 17:23:57,826 - urllib3.connectionpool - DEBUG - Starting new HTTPS connection (1): api.todoist.com:443
+2025-08-07 17:23:58,334 - urllib3.connectionpool - DEBUG - https://api.todoist.com:443 "GET /rest/v2/tasks?project_id=2358015760 HTTP/1.1" 200 None
+2025-08-07 17:23:58,335 - todoist_integration - DEBUG - Looking for task with title: 'III - Welcome to DISCSTRU2 - DISCRETE STRUCTURES 2 (III-ACSAD)'
+2025-08-07 17:23:58,335 - todoist_integration - DEBUG - Comparing with task: 'III - Welcome to DISCSTRU2 - DISCRETE STRUCTURES 2 (III-ACSAD)'
+2025-08-07 17:23:58,335 - todoist_integration - DEBUG - Found exact match: 9421585267
+2025-08-07 17:23:58,336 - urllib3.connectionpool - DEBUG - Starting new HTTPS connection (1): api.todoist.com:443
+2025-08-07 17:23:59,800 - urllib3.connectionpool - DEBUG - https://api.todoist.com:443 "DELETE /rest/v2/tasks/9421585267 HTTP/1.1" 204 0
+2025-08-07 17:23:59,801 - todoist_integration - INFO - Successfully deleted task from Todoist: Welcome to DISCSTRU2 - DISCRETE STRUCTURES 2 (III-ACSAD)
+2025-08-07 17:23:59,803 - urllib3.connectionpool - DEBUG - Starting new HTTPS connection (1): api.todoist.com:443
+2025-08-07 17:24:00,689 - urllib3.connectionpool - DEBUG - https://api.todoist.com:443 "GET /rest/v2/projects HTTP/1.1" 200 None
+2025-08-07 17:24:00,691 - todoist_integration - INFO - Found existing project: School Assignments
+2025-08-07 17:24:00,692 - urllib3.connectionpool - DEBUG - Starting new HTTPS connection (1): api.todoist.com:443
+2025-08-07 17:24:01,202 - urllib3.connectionpool - DEBUG - https://api.todoist.com:443 "GET /rest/v2/tasks?project_id=2358015760 HTTP/1.1" 200 None
+2025-08-07 17:24:01,203 - todoist_integration - DEBUG - Looking for task with title: 'IAS - Welcome to IAS - INFORMATION ASSURANCE AND SECURITY (III-ACSAD)'
+2025-08-07 17:24:01,203 - todoist_integration - DEBUG - Comparing with task: 'IAS - Welcome to IAS - INFORMATION ASSURANCE AND SECURITY (III-ACSAD)'
+2025-08-07 17:24:01,203 - todoist_integration - DEBUG - Found exact match: 9421585328
+2025-08-07 17:24:01,204 - urllib3.connectionpool - DEBUG - Starting new HTTPS connection (1): api.todoist.com:443
+2025-08-07 17:24:02,954 - urllib3.connectionpool - DEBUG - https://api.todoist.com:443 "DELETE /rest/v2/tasks/9421585328 HTTP/1.1" 204 0
+2025-08-07 17:24:02,955 - todoist_integration - INFO - Successfully deleted task from Todoist: Welcome to IAS - INFORMATION ASSURANCE AND SECURITY (III-ACSAD)
+2025-08-07 17:24:02,957 - urllib3.connectionpool - DEBUG - Starting new HTTPS connection (1): api.todoist.com:443
+2025-08-07 17:24:03,990 - urllib3.connectionpool - DEBUG - https://api.todoist.com:443 "GET /rest/v2/projects HTTP/1.1" 200 None
+2025-08-07 17:24:03,991 - todoist_integration - INFO - Found existing project: School Assignments
+2025-08-07 17:24:03,993 - urllib3.connectionpool - DEBUG - Starting new HTTPS connection (1): api.todoist.com:443
+2025-08-07 17:24:04,839 - urllib3.connectionpool - DEBUG - https://api.todoist.com:443 "GET /rest/v2/tasks?project_id=2358015760 HTTP/1.1" 200 None
+2025-08-07 17:24:04,840 - todoist_integration - DEBUG - Looking for task with title: 'III - Welcome to SOFTENG1 - SOFTWARE ENGINEERING 1 (III-ACSAD)'
+2025-08-07 17:24:04,841 - todoist_integration - DEBUG - Comparing with task: 'III - Welcome to SOFTENG1 - SOFTWARE ENGINEERING 1 (III-ACSAD)'
+2025-08-07 17:24:04,841 - todoist_integration - DEBUG - Found exact match: 9421585405
+2025-08-07 17:24:04,842 - urllib3.connectionpool - DEBUG - Starting new HTTPS connection (1): api.todoist.com:443
+2025-08-07 17:24:06,014 - urllib3.connectionpool - DEBUG - https://api.todoist.com:443 "DELETE /rest/v2/tasks/9421585405 HTTP/1.1" 204 0
+2025-08-07 17:24:06,015 - todoist_integration - INFO - Successfully deleted task from Todoist: Welcome to SOFTENG1 - SOFTWARE ENGINEERING 1 (III-ACSAD)
+2025-08-07 17:24:06,017 - urllib3.connectionpool - DEBUG - Starting new HTTPS connection (1): api.todoist.com:443
+2025-08-07 17:24:06,513 - urllib3.connectionpool - DEBUG - https://api.todoist.com:443 "GET /rest/v2/projects HTTP/1.1" 200 None
+2025-08-07 17:24:06,515 - todoist_integration - INFO - Found existing project: School Assignments
+2025-08-07 17:24:06,516 - urllib3.connectionpool - DEBUG - Starting new HTTPS connection (1): api.todoist.com:443
+2025-08-07 17:24:07,037 - urllib3.connectionpool - DEBUG - https://api.todoist.com:443 "GET /rest/v2/tasks?project_id=2358015760 HTTP/1.1" 200 3
+2025-08-07 17:24:07,038 - todoist_integration - DEBUG - Looking for task with title: 'HCI - Welcome to HCI - HUMAN COMPUTER INTERACTION (III-ACSAD)'
+2025-08-07 17:24:07,039 - todoist_integration - DEBUG - No matching task found
+2025-08-07 17:24:07,039 - todoist_integration - DEBUG - Task not found in Todoist for assignment: Welcome to HCI - HUMAN COMPUTER INTERACTION (III-ACSAD)
+2025-08-07 17:24:07,040 - urllib3.connectionpool - DEBUG - Starting new HTTPS connection (1): api.todoist.com:443
+2025-08-07 17:24:07,592 - urllib3.connectionpool - DEBUG - https://api.todoist.com:443 "GET /rest/v2/projects HTTP/1.1" 200 None
+2025-08-07 17:24:07,593 - todoist_integration - INFO - Found existing project: School Assignments
+2025-08-07 17:24:07,594 - urllib3.connectionpool - DEBUG - Starting new HTTPS connection (1): api.todoist.com:443
+2025-08-07 17:24:07,975 - urllib3.connectionpool - DEBUG - https://api.todoist.com:443 "GET /rest/v2/tasks?project_id=2358015760 HTTP/1.1" 200 3
+2025-08-07 17:24:07,976 - todoist_integration - DEBUG - Looking for task with title: 'III - Welcome to ELEC1 - ELECTIVE 1 (III-ACSAD)'
+2025-08-07 17:24:07,976 - todoist_integration - DEBUG - No matching task found
+2025-08-07 17:24:07,976 - todoist_integration - DEBUG - Task not found in Todoist for assignment: Welcome to ELEC1 - ELECTIVE 1 (III-ACSAD)
+2025-08-07 17:24:07,977 - urllib3.connectionpool - DEBUG - Starting new HTTPS connection (1): api.todoist.com:443
+2025-08-07 17:24:08,503 - urllib3.connectionpool - DEBUG - https://api.todoist.com:443 "GET /rest/v2/projects HTTP/1.1" 200 None
+2025-08-07 17:24:08,504 - todoist_integration - INFO - Found existing project: School Assignments
+2025-08-07 17:24:08,505 - urllib3.connectionpool - DEBUG - Starting new HTTPS connection (1): api.todoist.com:443
+2025-08-07 17:24:08,933 - urllib3.connectionpool - DEBUG - https://api.todoist.com:443 "GET /rest/v2/tasks?project_id=2358015760 HTTP/1.1" 200 3
+2025-08-07 17:24:08,934 - todoist_integration - DEBUG - Looking for task with title: 'AND - Welcome to MODSIMU - MODELING AND SIMULATION (III-ACSAD)'
+2025-08-07 17:24:08,939 - todoist_integration - DEBUG - No matching task found
+2025-08-07 17:24:08,939 - todoist_integration - DEBUG - Task not found in Todoist for assignment: Welcome to MODSIMU - MODELING AND SIMULATION (III-ACSAD)
+2025-08-07 17:24:08,940 - urllib3.connectionpool - DEBUG - Starting new HTTPS connection (1): api.todoist.com:443
+2025-08-07 17:24:09,497 - urllib3.connectionpool - DEBUG - https://api.todoist.com:443 "GET /rest/v2/projects HTTP/1.1" 200 None
+2025-08-07 17:24:09,498 - todoist_integration - INFO - Found existing project: School Assignments
+2025-08-07 17:24:09,499 - urllib3.connectionpool - DEBUG - Starting new HTTPS connection (1): api.todoist.com:443
+2025-08-07 17:24:09,965 - urllib3.connectionpool - DEBUG - https://api.todoist.com:443 "GET /rest/v2/tasks?project_id=2358015760 HTTP/1.1" 200 3
+2025-08-07 17:24:09,966 - todoist_integration - DEBUG - Looking for task with title: 'HCI - HCI - HUMAN COMPUTER INTERACTION (III-ACSAD) new content'
+2025-08-07 17:24:09,966 - todoist_integration - DEBUG - No matching task found
+2025-08-07 17:24:09,966 - todoist_integration - DEBUG - Task not found in Todoist for assignment: HCI - HUMAN COMPUTER INTERACTION (III-ACSAD) new content
+2025-08-07 17:24:09,967 - urllib3.connectionpool - DEBUG - Starting new HTTPS connection (1): api.todoist.com:443
+2025-08-07 17:24:11,032 - urllib3.connectionpool - DEBUG - https://api.todoist.com:443 "GET /rest/v2/projects HTTP/1.1" 200 None
+2025-08-07 17:24:11,033 - todoist_integration - INFO - Found existing project: School Assignments
+2025-08-07 17:24:11,034 - urllib3.connectionpool - DEBUG - Starting new HTTPS connection (1): api.todoist.com:443
+2025-08-07 17:24:11,580 - urllib3.connectionpool - DEBUG - https://api.todoist.com:443 "GET /rest/v2/tasks?project_id=2358015760 HTTP/1.1" 200 3
+2025-08-07 17:24:11,581 - todoist_integration - DEBUG - Looking for task with title: 'TBL - University of Makati - TBL Hub: linked login confirmation'
+2025-08-07 17:24:11,582 - todoist_integration - DEBUG - No matching task found
+2025-08-07 17:24:11,582 - todoist_integration - DEBUG - Task not found in Todoist for assignment: University of Makati - TBL Hub: linked login confirmation
+2025-08-07 17:24:11,583 - urllib3.connectionpool - DEBUG - Starting new HTTPS connection (1): api.todoist.com:443
+2025-08-07 17:24:12,143 - urllib3.connectionpool - DEBUG - https://api.todoist.com:443 "GET /rest/v2/projects HTTP/1.1" 200 None
+2025-08-07 17:24:12,144 - todoist_integration - INFO - Found existing project: School Assignments
+2025-08-07 17:24:12,145 - urllib3.connectionpool - DEBUG - Starting new HTTPS connection (1): api.todoist.com:443
+2025-08-07 17:24:13,130 - urllib3.connectionpool - DEBUG - https://api.todoist.com:443 "GET /rest/v2/tasks?project_id=2358015760 HTTP/1.1" 200 3
+2025-08-07 17:24:13,131 - todoist_integration - DEBUG - Looking for task with title: 'TBL - New sign in to your University of Makati - TBL Hub account'
+2025-08-07 17:24:13,131 - todoist_integration - DEBUG - No matching task found
+2025-08-07 17:24:13,132 - todoist_integration - DEBUG - Task not found in Todoist for assignment: New sign in to your University of Makati - TBL Hub account
+2025-08-07 17:24:13,134 - urllib3.connectionpool - DEBUG - Starting new HTTPS connection (1): api.notion.com:443
+2025-08-07 17:24:14,412 - urllib3.connectionpool - DEBUG - https://api.notion.com:443 "GET /v1/databases/2476d3f4f60f8036b8ebd0c45a3fefae HTTP/1.1" 200 None
+2025-08-07 17:24:14,414 - notion_integration - INFO - Notion integration initialized successfully
+2025-08-07 17:24:14,416 - urllib3.connectionpool - DEBUG - Starting new HTTPS connection (1): api.notion.com:443
+2025-08-07 17:24:21,170 - urllib3.connectionpool - DEBUG - https://api.notion.com:443 "POST /v1/databases/2476d3f4f60f8036b8ebd0c45a3fefae/query HTTP/1.1" 400 171
+2025-08-07 17:24:21,172 - urllib3.connectionpool - DEBUG - Starting new HTTPS connection (1): api.notion.com:443
+2025-08-07 17:24:22,093 - urllib3.connectionpool - DEBUG - https://api.notion.com:443 "POST /v1/databases/2476d3f4f60f8036b8ebd0c45a3fefae/query HTTP/1.1" 200 None
+2025-08-07 17:24:22,095 - notion_integration - DEBUG - Page not found in Notion for assignment: HCI - Activity 1 (USER STORY)
+2025-08-07 17:24:22,095 - urllib3.connectionpool - DEBUG - Starting new HTTPS connection (1): api.notion.com:443
+2025-08-07 17:24:22,980 - urllib3.connectionpool - DEBUG - https://api.notion.com:443 "POST /v1/databases/2476d3f4f60f8036b8ebd0c45a3fefae/query HTTP/1.1" 400 171
+2025-08-07 17:24:22,982 - urllib3.connectionpool - DEBUG - Starting new HTTPS connection (1): api.notion.com:443
+2025-08-07 17:24:23,388 - urllib3.connectionpool - DEBUG - https://api.notion.com:443 "POST /v1/databases/2476d3f4f60f8036b8ebd0c45a3fefae/query HTTP/1.1" 200 None
+2025-08-07 17:24:23,389 - notion_integration - DEBUG - Page not found in Notion for assignment: HCI - Activity 2 (MID FIDELITY)
+2025-08-07 17:24:23,390 - urllib3.connectionpool - DEBUG - Starting new HTTPS connection (1): api.notion.com:443
+2025-08-07 17:24:24,366 - urllib3.connectionpool - DEBUG - https://api.notion.com:443 "POST /v1/databases/2476d3f4f60f8036b8ebd0c45a3fefae/query HTTP/1.1" 400 171
+2025-08-07 17:24:24,368 - urllib3.connectionpool - DEBUG - Starting new HTTPS connection (1): api.notion.com:443
+2025-08-07 17:24:24,783 - urllib3.connectionpool - DEBUG - https://api.notion.com:443 "POST /v1/databases/2476d3f4f60f8036b8ebd0c45a3fefae/query HTTP/1.1" 200 None
+2025-08-07 17:24:24,785 - notion_integration - DEBUG - Page not found in Notion for assignment: HCI - Activity 3 (HIGH FIDELITY PROTOTYPE)
+2025-08-07 17:24:24,786 - urllib3.connectionpool - DEBUG - Starting new HTTPS connection (1): api.notion.com:443
+2025-08-07 17:24:25,166 - urllib3.connectionpool - DEBUG - https://api.notion.com:443 "POST /v1/databases/2476d3f4f60f8036b8ebd0c45a3fefae/query HTTP/1.1" 400 171
+2025-08-07 17:24:25,167 - urllib3.connectionpool - DEBUG - Starting new HTTPS connection (1): api.notion.com:443
+2025-08-07 17:24:26,172 - urllib3.connectionpool - DEBUG - https://api.notion.com:443 "POST /v1/databases/2476d3f4f60f8036b8ebd0c45a3fefae/query HTTP/1.1" 200 None
+2025-08-07 17:24:26,174 - notion_integration - DEBUG - Page not found in Notion for assignment: HCI - Activity 4 (USABILITY ASSESSMENT)
+2025-08-07 17:24:26,174 - urllib3.connectionpool - DEBUG - Starting new HTTPS connection (1): api.notion.com:443
+2025-08-07 17:24:26,503 - urllib3.connectionpool - DEBUG - https://api.notion.com:443 "POST /v1/databases/2476d3f4f60f8036b8ebd0c45a3fefae/query HTTP/1.1" 400 171
+2025-08-07 17:24:26,505 - urllib3.connectionpool - DEBUG - Starting new HTTPS connection (1): api.notion.com:443
+2025-08-07 17:24:26,871 - urllib3.connectionpool - DEBUG - https://api.notion.com:443 "POST /v1/databases/2476d3f4f60f8036b8ebd0c45a3fefae/query HTTP/1.1" 200 None
+2025-08-07 17:24:26,872 - notion_integration - DEBUG - Page not found in Notion for assignment: ELEC1 - Activity 59 (59 Pm: Midterm Assignment #1)
+2025-08-07 17:24:26,873 - urllib3.connectionpool - DEBUG - Starting new HTTPS connection (1): api.notion.com:443
+2025-08-07 17:24:27,201 - urllib3.connectionpool - DEBUG - https://api.notion.com:443 "POST /v1/databases/2476d3f4f60f8036b8ebd0c45a3fefae/query HTTP/1.1" 400 171
+2025-08-07 17:24:27,203 - urllib3.connectionpool - DEBUG - Starting new HTTPS connection (1): api.notion.com:443
+2025-08-07 17:24:27,547 - urllib3.connectionpool - DEBUG - https://api.notion.com:443 "POST /v1/databases/2476d3f4f60f8036b8ebd0c45a3fefae/query HTTP/1.1" 200 None
+2025-08-07 17:24:27,548 - notion_integration - DEBUG - Page not found in Notion for assignment: TBL - University of Makati - TBL Hub: linked login confirmation
+2025-08-07 17:24:27,549 - urllib3.connectionpool - DEBUG - Starting new HTTPS connection (1): api.notion.com:443
+2025-08-07 17:24:28,422 - urllib3.connectionpool - DEBUG - https://api.notion.com:443 "POST /v1/databases/2476d3f4f60f8036b8ebd0c45a3fefae/query HTTP/1.1" 400 171
+2025-08-07 17:24:28,424 - urllib3.connectionpool - DEBUG - Starting new HTTPS connection (1): api.notion.com:443
+2025-08-07 17:24:28,766 - urllib3.connectionpool - DEBUG - https://api.notion.com:443 "POST /v1/databases/2476d3f4f60f8036b8ebd0c45a3fefae/query HTTP/1.1" 200 None
+2025-08-07 17:24:28,768 - notion_integration - DEBUG - Page not found in Notion for assignment: TBL - New sign in to your University of Makati - TBL Hub account
+2025-08-07 17:24:28,769 - urllib3.connectionpool - DEBUG - Starting new HTTPS connection (1): api.notion.com:443
+2025-08-07 17:24:29,072 - urllib3.connectionpool - DEBUG - https://api.notion.com:443 "POST /v1/databases/2476d3f4f60f8036b8ebd0c45a3fefae/query HTTP/1.1" 400 171
+2025-08-07 17:24:29,074 - urllib3.connectionpool - DEBUG - Starting new HTTPS connection (1): api.notion.com:443
+2025-08-07 17:24:29,384 - urllib3.connectionpool - DEBUG - https://api.notion.com:443 "POST /v1/databases/2476d3f4f60f8036b8ebd0c45a3fefae/query HTTP/1.1" 200 None
+2025-08-07 17:24:29,385 - notion_integration - DEBUG - Page not found in Notion for assignment: TBL - New sign in to your University of Makati - TBL Hub account
+2025-08-07 17:24:29,386 - urllib3.connectionpool - DEBUG - Starting new HTTPS connection (1): api.notion.com:443
+2025-08-07 17:24:29,668 - urllib3.connectionpool - DEBUG - https://api.notion.com:443 "POST /v1/databases/2476d3f4f60f8036b8ebd0c45a3fefae/query HTTP/1.1" 400 171
+2025-08-07 17:24:29,670 - urllib3.connectionpool - DEBUG - Starting new HTTPS connection (1): api.notion.com:443
+2025-08-07 17:24:30,079 - urllib3.connectionpool - DEBUG - https://api.notion.com:443 "POST /v1/databases/2476d3f4f60f8036b8ebd0c45a3fefae/query HTTP/1.1" 200 None
+2025-08-07 17:24:30,081 - notion_integration - DEBUG - Page not found in Notion for assignment: AND - Welcome to CALCULUS - DIFFERENTIAL AND INTEGRAL CALCULUS (III-ACSAD)
+2025-08-07 17:24:30,082 - urllib3.connectionpool - DEBUG - Starting new HTTPS connection (1): api.notion.com:443
+2025-08-07 17:24:30,379 - urllib3.connectionpool - DEBUG - https://api.notion.com:443 "POST /v1/databases/2476d3f4f60f8036b8ebd0c45a3fefae/query HTTP/1.1" 400 171
+2025-08-07 17:24:30,381 - urllib3.connectionpool - DEBUG - Starting new HTTPS connection (1): api.notion.com:443
+2025-08-07 17:24:30,899 - urllib3.connectionpool - DEBUG - https://api.notion.com:443 "POST /v1/databases/2476d3f4f60f8036b8ebd0c45a3fefae/query HTTP/1.1" 200 None
+2025-08-07 17:24:30,901 - notion_integration - DEBUG - Page not found in Notion for assignment: AND - Welcome to ALGOCOM - ALGORITHMS AND COMPLEXITY (III-ACSAD)
+2025-08-07 17:24:30,902 - urllib3.connectionpool - DEBUG - Starting new HTTPS connection (1): api.notion.com:443
+2025-08-07 17:24:31,205 - urllib3.connectionpool - DEBUG - https://api.notion.com:443 "POST /v1/databases/2476d3f4f60f8036b8ebd0c45a3fefae/query HTTP/1.1" 400 171
+2025-08-07 17:24:31,206 - urllib3.connectionpool - DEBUG - Starting new HTTPS connection (1): api.notion.com:443
+2025-08-07 17:24:31,620 - urllib3.connectionpool - DEBUG - https://api.notion.com:443 "POST /v1/databases/2476d3f4f60f8036b8ebd0c45a3fefae/query HTTP/1.1" 200 None
+2025-08-07 17:24:31,624 - notion_integration - DEBUG - Page not found in Notion for assignment: III - Welcome to DISCSTRU2 - DISCRETE STRUCTURES 2 (III-ACSAD)
+2025-08-07 17:24:31,625 - urllib3.connectionpool - DEBUG - Starting new HTTPS connection (1): api.notion.com:443
+2025-08-07 17:24:32,269 - urllib3.connectionpool - DEBUG - https://api.notion.com:443 "POST /v1/databases/2476d3f4f60f8036b8ebd0c45a3fefae/query HTTP/1.1" 400 171
+2025-08-07 17:24:32,271 - urllib3.connectionpool - DEBUG - Starting new HTTPS connection (1): api.notion.com:443
+2025-08-07 17:24:32,679 - urllib3.connectionpool - DEBUG - https://api.notion.com:443 "POST /v1/databases/2476d3f4f60f8036b8ebd0c45a3fefae/query HTTP/1.1" 200 None
+2025-08-07 17:24:32,681 - notion_integration - DEBUG - Page not found in Notion for assignment: IAS - Welcome to IAS - INFORMATION ASSURANCE AND SECURITY (III-ACSAD)
+2025-08-07 17:24:32,682 - urllib3.connectionpool - DEBUG - Starting new HTTPS connection (1): api.notion.com:443
+2025-08-07 17:24:33,550 - urllib3.connectionpool - DEBUG - https://api.notion.com:443 "POST /v1/databases/2476d3f4f60f8036b8ebd0c45a3fefae/query HTTP/1.1" 400 171
+2025-08-07 17:24:33,552 - urllib3.connectionpool - DEBUG - Starting new HTTPS connection (1): api.notion.com:443
+2025-08-07 17:24:33,932 - urllib3.connectionpool - DEBUG - https://api.notion.com:443 "POST /v1/databases/2476d3f4f60f8036b8ebd0c45a3fefae/query HTTP/1.1" 200 None
+2025-08-07 17:24:33,934 - notion_integration - DEBUG - Page not found in Notion for assignment: III - Welcome to SOFTENG1 - SOFTWARE ENGINEERING 1 (III-ACSAD)
+2025-08-07 17:24:33,935 - urllib3.connectionpool - DEBUG - Starting new HTTPS connection (1): api.notion.com:443
+2025-08-07 17:24:34,277 - urllib3.connectionpool - DEBUG - https://api.notion.com:443 "POST /v1/databases/2476d3f4f60f8036b8ebd0c45a3fefae/query HTTP/1.1" 400 171
+2025-08-07 17:24:34,279 - urllib3.connectionpool - DEBUG - Starting new HTTPS connection (1): api.notion.com:443
+2025-08-07 17:24:35,096 - urllib3.connectionpool - DEBUG - https://api.notion.com:443 "POST /v1/databases/2476d3f4f60f8036b8ebd0c45a3fefae/query HTTP/1.1" 200 None
+2025-08-07 17:24:35,098 - notion_integration - DEBUG - Page not found in Notion for assignment: HCI - Welcome to HCI - HUMAN COMPUTER INTERACTION (III-ACSAD)
+2025-08-07 17:24:35,099 - urllib3.connectionpool - DEBUG - Starting new HTTPS connection (1): api.notion.com:443
+2025-08-07 17:24:35,505 - urllib3.connectionpool - DEBUG - https://api.notion.com:443 "POST /v1/databases/2476d3f4f60f8036b8ebd0c45a3fefae/query HTTP/1.1" 400 171
+2025-08-07 17:24:35,508 - urllib3.connectionpool - DEBUG - Starting new HTTPS connection (1): api.notion.com:443
+2025-08-07 17:24:35,917 - urllib3.connectionpool - DEBUG - https://api.notion.com:443 "POST /v1/databases/2476d3f4f60f8036b8ebd0c45a3fefae/query HTTP/1.1" 200 None
+2025-08-07 17:24:35,918 - notion_integration - DEBUG - Page not found in Notion for assignment: III - Welcome to ELEC1 - ELECTIVE 1 (III-ACSAD)
+2025-08-07 17:24:35,919 - urllib3.connectionpool - DEBUG - Starting new HTTPS connection (1): api.notion.com:443
+2025-08-07 17:24:36,325 - urllib3.connectionpool - DEBUG - https://api.notion.com:443 "POST /v1/databases/2476d3f4f60f8036b8ebd0c45a3fefae/query HTTP/1.1" 400 171
+2025-08-07 17:24:36,327 - urllib3.connectionpool - DEBUG - Starting new HTTPS connection (1): api.notion.com:443
+2025-08-07 17:24:36,615 - urllib3.connectionpool - DEBUG - https://api.notion.com:443 "POST /v1/databases/2476d3f4f60f8036b8ebd0c45a3fefae/query HTTP/1.1" 200 None
+2025-08-07 17:24:36,616 - notion_integration - DEBUG - Page not found in Notion for assignment: AND - Welcome to MODSIMU - MODELING AND SIMULATION (III-ACSAD)
+2025-08-07 17:24:36,617 - urllib3.connectionpool - DEBUG - Starting new HTTPS connection (1): api.notion.com:443
+2025-08-07 17:24:36,947 - urllib3.connectionpool - DEBUG - https://api.notion.com:443 "POST /v1/databases/2476d3f4f60f8036b8ebd0c45a3fefae/query HTTP/1.1" 400 171
+2025-08-07 17:24:36,948 - urllib3.connectionpool - DEBUG - Starting new HTTPS connection (1): api.notion.com:443
+2025-08-07 17:24:37,283 - urllib3.connectionpool - DEBUG - https://api.notion.com:443 "POST /v1/databases/2476d3f4f60f8036b8ebd0c45a3fefae/query HTTP/1.1" 200 None
+2025-08-07 17:24:37,284 - notion_integration - DEBUG - Page not found in Notion for assignment: HCI - HCI - HUMAN COMPUTER INTERACTION (III-ACSAD) new content
+2025-08-07 17:24:37,285 - urllib3.connectionpool - DEBUG - Starting new HTTPS connection (1): api.notion.com:443
+2025-08-07 17:24:37,963 - urllib3.connectionpool - DEBUG - https://api.notion.com:443 "POST /v1/databases/2476d3f4f60f8036b8ebd0c45a3fefae/query HTTP/1.1" 400 171
+2025-08-07 17:24:37,965 - urllib3.connectionpool - DEBUG - Starting new HTTPS connection (1): api.notion.com:443
+2025-08-07 17:24:38,273 - urllib3.connectionpool - DEBUG - https://api.notion.com:443 "POST /v1/databases/2476d3f4f60f8036b8ebd0c45a3fefae/query HTTP/1.1" 200 None
+2025-08-07 17:24:38,274 - notion_integration - DEBUG - Page not found in Notion for assignment: TBL - University of Makati - TBL Hub: linked login confirmation
+2025-08-07 17:24:38,275 - urllib3.connectionpool - DEBUG - Starting new HTTPS connection (1): api.notion.com:443
+2025-08-07 17:24:38,658 - urllib3.connectionpool - DEBUG - https://api.notion.com:443 "POST /v1/databases/2476d3f4f60f8036b8ebd0c45a3fefae/query HTTP/1.1" 400 171
+2025-08-07 17:24:38,659 - urllib3.connectionpool - DEBUG - Starting new HTTPS connection (1): api.notion.com:443
+2025-08-07 17:24:40,220 - urllib3.connectionpool - DEBUG - https://api.notion.com:443 "POST /v1/databases/2476d3f4f60f8036b8ebd0c45a3fefae/query HTTP/1.1" 200 None
+2025-08-07 17:24:40,224 - notion_integration - DEBUG - Page not found in Notion for assignment: TBL - New sign in to your University of Makati - TBL Hub account
+2025-08-07 17:24:40,228 - urllib3.connectionpool - DEBUG - Starting new HTTPS connection (1): api.todoist.com:443
+2025-08-07 17:24:41,330 - urllib3.connectionpool - DEBUG - https://api.todoist.com:443 "GET /rest/v2/projects HTTP/1.1" 200 None
+2025-08-07 17:24:41,332 - todoist_integration - INFO - Todoist connection test successful
+2025-08-07 17:24:41,332 - todoist_integration - INFO - Todoist integration initialized successfully
+2025-08-07 17:24:41,333 - urllib3.connectionpool - DEBUG - Starting new HTTPS connection (1): api.todoist.com:443
+2025-08-07 17:24:41,831 - urllib3.connectionpool - DEBUG - https://api.todoist.com:443 "GET /rest/v2/projects HTTP/1.1" 200 None
+2025-08-07 17:24:41,832 - todoist_integration - INFO - Found existing project: School Assignments
+2025-08-07 17:24:41,833 - urllib3.connectionpool - DEBUG - Starting new HTTPS connection (1): api.todoist.com:443
+2025-08-07 17:24:42,893 - urllib3.connectionpool - DEBUG - https://api.todoist.com:443 "GET /rest/v2/tasks?project_id=2358015760 HTTP/1.1" 200 3
+2025-08-07 17:24:42,894 - todoist_integration - INFO - Retrieved 0 assignments from Todoist
+2025-08-07 17:24:42,897 - urllib3.connectionpool - DEBUG - Starting new HTTPS connection (1): api.notion.com:443
+2025-08-07 17:24:43,390 - urllib3.connectionpool - DEBUG - https://api.notion.com:443 "GET /v1/databases/2476d3f4f60f8036b8ebd0c45a3fefae HTTP/1.1" 200 None
+2025-08-07 17:24:43,392 - notion_integration - INFO - Notion integration initialized successfully
+2025-08-07 17:24:43,393 - urllib3.connectionpool - DEBUG - Starting new HTTPS connection (1): api.notion.com:443
+2025-08-07 17:24:43,802 - urllib3.connectionpool - DEBUG - https://api.notion.com:443 "POST /v1/databases/2476d3f4f60f8036b8ebd0c45a3fefae/query HTTP/1.1" 200 None
+2025-08-07 17:24:43,803 - notion_integration - INFO - Retrieved 0 assignments from Notion
+2025-08-07 17:25:14,581 - __main__ - INFO - ==================================================
+2025-08-07 17:25:14,581 - __main__ - INFO - MOODLE ASSIGNMENT FETCHER STARTED
+2025-08-07 17:25:14,581 - __main__ - INFO - ==================================================
+2025-08-07 17:25:14,581 - __main__ - INFO - Initializing Moodle email fetcher...
+2025-08-07 17:25:14,583 - __main__ - INFO - Checking for assignments from the past 7 days...
+2025-08-07 17:25:14,583 - moodle_fetcher - INFO - ============================================================
+2025-08-07 17:25:14,584 - moodle_fetcher - INFO - STARTING MOODLE ASSIGNMENT CHECK
+2025-08-07 17:25:14,584 - moodle_fetcher - INFO - Checking emails from last 7 days
+2025-08-07 17:25:14,584 - moodle_fetcher - INFO - ============================================================
+2025-08-07 17:25:15,544 - moodle_fetcher - INFO - Successfully connected to Gmail
+2025-08-07 17:25:15,748 - moodle_fetcher - INFO - Searching for emails: (FROM "noreply-tbl@umak.edu.ph" SINCE "31-Jul-2025")
+2025-08-07 17:25:16,055 - moodle_fetcher - INFO - Found 20 Moodle emails from last 7 days
+2025-08-07 17:25:16,056 - moodle_fetcher - INFO - Processing 20 emails...
+2025-08-07 17:25:16,056 - moodle_fetcher - INFO - Existing assignments in database: 0
+2025-08-07 17:25:16,056 - moodle_fetcher - DEBUG - Processing email 1/20: b'742'
+2025-08-07 17:25:16,273 - moodle_fetcher - DEBUG - ❌ Failed to parse email b'742'
+2025-08-07 17:25:16,274 - moodle_fetcher - DEBUG - Processing email 2/20: b'743'
+2025-08-07 17:25:16,574 - moodle_fetcher - DEBUG - ❌ Failed to parse email b'743'
+2025-08-07 17:25:16,574 - moodle_fetcher - DEBUG - Processing email 3/20: b'744'
+2025-08-07 17:25:16,778 - moodle_fetcher - DEBUG - ❌ Failed to parse email b'744'
+2025-08-07 17:25:16,778 - moodle_fetcher - DEBUG - Processing email 4/20: b'747'
+2025-08-07 17:25:16,979 - moodle_fetcher - DEBUG - ❌ Failed to parse email b'747'
+2025-08-07 17:25:16,980 - moodle_fetcher - DEBUG - Processing email 5/20: b'748'
+2025-08-07 17:25:17,238 - moodle_fetcher - DEBUG - ❌ Failed to parse email b'748'
+2025-08-07 17:25:17,238 - moodle_fetcher - DEBUG - Processing email 6/20: b'749'
+2025-08-07 17:25:17,485 - moodle_fetcher - DEBUG - ❌ Failed to parse email b'749'
+2025-08-07 17:25:17,485 - moodle_fetcher - DEBUG - Processing email 7/20: b'750'
+2025-08-07 17:25:17,697 - moodle_fetcher - DEBUG - ❌ Failed to parse email b'750'
+2025-08-07 17:25:17,697 - moodle_fetcher - DEBUG - Processing email 8/20: b'751'
+2025-08-07 17:25:17,901 - moodle_fetcher - DEBUG - ❌ Failed to parse email b'751'
+2025-08-07 17:25:17,902 - moodle_fetcher - DEBUG - Processing email 9/20: b'752'
+2025-08-07 17:25:18,209 - moodle_fetcher - DEBUG - ❌ Failed to parse email b'752'
+2025-08-07 17:25:18,209 - moodle_fetcher - DEBUG - Processing email 10/20: b'753'
+2025-08-07 17:25:18,517 - moodle_fetcher - DEBUG - ❌ Failed to parse email b'753'
+2025-08-07 17:25:18,517 - moodle_fetcher - DEBUG - Processing email 11/20: b'754'
+2025-08-07 17:25:18,721 - moodle_fetcher - DEBUG - ❌ Failed to parse email b'754'
+2025-08-07 17:25:18,721 - moodle_fetcher - DEBUG - Processing email 12/20: b'755'
+2025-08-07 17:25:18,926 - moodle_fetcher - DEBUG - ❌ Failed to parse email b'755'
+2025-08-07 17:25:18,926 - moodle_fetcher - DEBUG - Processing email 13/20: b'756'
+2025-08-07 17:25:19,131 - moodle_fetcher - DEBUG - Successfully parsed assignment: HCI - Activity 1 (User Story [1])
+2025-08-07 17:25:19,131 - moodle_fetcher - INFO - ✅ New assignment: HCI - Activity 1 (User Story [1])
+2025-08-07 17:25:19,131 - moodle_fetcher - DEBUG - Processing email 14/20: b'757'
+2025-08-07 17:25:19,335 - moodle_fetcher - DEBUG - Successfully parsed assignment: HCI - Activity 1 (User Story [1])
+2025-08-07 17:25:19,335 - moodle_fetcher - DEBUG - Duplicate found by title+course: hci - activity 1 (user story [1])
+2025-08-07 17:25:19,335 - moodle_fetcher - DEBUG - ⏭️  Skipped duplicate: HCI - Activity 1 (User Story [1])
+2025-08-07 17:25:19,335 - moodle_fetcher - DEBUG - Processing email 15/20: b'758'
+2025-08-07 17:25:19,642 - moodle_fetcher - DEBUG - Successfully parsed assignment: HCI - Activity 2 (Mid Fidelity [1])
+2025-08-07 17:25:19,643 - moodle_fetcher - INFO - ✅ New assignment: HCI - Activity 2 (Mid Fidelity [1])
+2025-08-07 17:25:19,647 - moodle_fetcher - DEBUG - Processing email 16/20: b'759'
+2025-08-07 17:25:19,875 - moodle_fetcher - DEBUG - Successfully parsed assignment: HCI - Activity 3 (High Fidelity Prototype [1])
+2025-08-07 17:25:19,875 - moodle_fetcher - INFO - ✅ New assignment: HCI - Activity 3 (High Fidelity Prototype [1])
+2025-08-07 17:25:19,876 - moodle_fetcher - DEBUG - Processing email 17/20: b'760'
+2025-08-07 17:25:20,154 - moodle_fetcher - DEBUG - Successfully parsed assignment: HCI - Activity 4 (Usability Assessment [1])
+2025-08-07 17:25:20,155 - moodle_fetcher - INFO - ✅ New assignment: HCI - Activity 4 (Usability Assessment [1])
+2025-08-07 17:25:20,155 - moodle_fetcher - DEBUG - Processing email 18/20: b'761'
+2025-08-07 17:25:20,359 - moodle_fetcher - DEBUG - ❌ Failed to parse email b'761'
+2025-08-07 17:25:20,360 - moodle_fetcher - DEBUG - Processing email 19/20: b'762'
+2025-08-07 17:25:20,564 - moodle_fetcher - DEBUG - ❌ Failed to parse email b'762'
+2025-08-07 17:25:20,564 - moodle_fetcher - DEBUG - Processing email 20/20: b'769'
+2025-08-07 17:25:20,769 - moodle_fetcher - DEBUG - Successfully parsed assignment: III - Activity 1 (#1)
+2025-08-07 17:25:20,769 - moodle_fetcher - INFO - ✅ New assignment: III - Activity 1 (#1)
+2025-08-07 17:25:20,770 - moodle_fetcher - INFO - 💾 Saved 5 new assignments to files
+2025-08-07 17:25:20,770 - moodle_fetcher - INFO - ============================================================
+2025-08-07 17:25:20,770 - moodle_fetcher - INFO - ASSIGNMENT CHECK COMPLETED
+2025-08-07 17:25:20,770 - moodle_fetcher - INFO - 📧 Emails processed: 20
+2025-08-07 17:25:20,770 - moodle_fetcher - INFO - ✅ New assignments: 5
+2025-08-07 17:25:20,770 - moodle_fetcher - INFO - ⏭️  Duplicates skipped: 1
+2025-08-07 17:25:20,770 - moodle_fetcher - INFO - 📊 Total assignments: 5
+2025-08-07 17:25:20,770 - moodle_fetcher - INFO - ============================================================
+2025-08-07 17:25:20,962 - __main__ - INFO - Successfully added 5 new assignments!
+2025-08-07 17:25:20,962 - __main__ - INFO - Initializing Todoist integration...
+2025-08-07 17:25:20,965 - urllib3.connectionpool - DEBUG - Starting new HTTPS connection (1): api.todoist.com:443
+2025-08-07 17:25:21,996 - urllib3.connectionpool - DEBUG - https://api.todoist.com:443 "GET /rest/v2/projects HTTP/1.1" 200 None
+2025-08-07 17:25:21,997 - todoist_integration - INFO - Todoist connection test successful
+2025-08-07 17:25:21,998 - todoist_integration - INFO - Todoist integration initialized successfully
+2025-08-07 17:25:21,998 - __main__ - INFO - Syncing 5 new assignments to Todoist...
+2025-08-07 17:25:21,999 - urllib3.connectionpool - DEBUG - Starting new HTTPS connection (1): api.todoist.com:443
+2025-08-07 17:25:22,994 - urllib3.connectionpool - DEBUG - https://api.todoist.com:443 "GET /rest/v2/projects HTTP/1.1" 200 None
+2025-08-07 17:25:22,995 - todoist_integration - INFO - Found existing project: School Assignments
+2025-08-07 17:25:22,996 - urllib3.connectionpool - DEBUG - Starting new HTTPS connection (1): api.todoist.com:443
+2025-08-07 17:25:23,517 - urllib3.connectionpool - DEBUG - https://api.todoist.com:443 "GET /rest/v2/tasks?project_id=2358015760 HTTP/1.1" 200 3
+2025-08-07 17:25:23,518 - todoist_integration - INFO - Retrieved 0 assignments from Todoist
+2025-08-07 17:25:23,519 - urllib3.connectionpool - DEBUG - Starting new HTTPS connection (1): api.todoist.com:443
+2025-08-07 17:25:24,644 - urllib3.connectionpool - DEBUG - https://api.todoist.com:443 "GET /rest/v2/projects HTTP/1.1" 200 None
+2025-08-07 17:25:24,646 - todoist_integration - INFO - Found existing project: School Assignments
+2025-08-07 17:25:24,647 - urllib3.connectionpool - DEBUG - Starting new HTTPS connection (1): api.todoist.com:443
+2025-08-07 17:25:25,463 - urllib3.connectionpool - DEBUG - https://api.todoist.com:443 "GET /rest/v2/tasks HTTP/1.1" 200 None
+2025-08-07 17:25:25,465 - todoist_integration - DEBUG - Set reminder for 2025-08-29 (due: 2025-09-05)
+2025-08-07 17:25:25,466 - urllib3.connectionpool - DEBUG - Starting new HTTPS connection (1): api.todoist.com:443
+2025-08-07 17:25:26,592 - urllib3.connectionpool - DEBUG - https://api.todoist.com:443 "POST /rest/v2/tasks HTTP/1.1" 200 None
+2025-08-07 17:25:26,593 - todoist_integration - INFO - Created Todoist task: HCI - Activity 1 (USER STORY)
+2025-08-07 17:25:26,594 - urllib3.connectionpool - DEBUG - Starting new HTTPS connection (1): api.todoist.com:443
+2025-08-07 17:25:27,311 - urllib3.connectionpool - DEBUG - https://api.todoist.com:443 "GET /rest/v2/tasks HTTP/1.1" 200 None
+2025-08-07 17:25:27,313 - todoist_integration - DEBUG - Set reminder for 2025-09-05 (due: 2025-09-19)
+2025-08-07 17:25:27,314 - urllib3.connectionpool - DEBUG - Starting new HTTPS connection (1): api.todoist.com:443
+2025-08-07 17:25:27,989 - urllib3.connectionpool - DEBUG - https://api.todoist.com:443 "POST /rest/v2/tasks HTTP/1.1" 200 None
+2025-08-07 17:25:27,990 - todoist_integration - INFO - Created Todoist task: HCI - Activity 2 (MID FIDELITY)
+2025-08-07 17:25:27,991 - urllib3.connectionpool - DEBUG - Starting new HTTPS connection (1): api.todoist.com:443
+2025-08-07 17:25:29,146 - urllib3.connectionpool - DEBUG - https://api.todoist.com:443 "GET /rest/v2/tasks HTTP/1.1" 200 None
+2025-08-07 17:25:29,148 - todoist_integration - DEBUG - Set reminder for 2025-10-03 (due: 2025-10-17)
+2025-08-07 17:25:29,149 - urllib3.connectionpool - DEBUG - Starting new HTTPS connection (1): api.todoist.com:443
+2025-08-07 17:25:29,985 - urllib3.connectionpool - DEBUG - https://api.todoist.com:443 "POST /rest/v2/tasks HTTP/1.1" 200 None
+2025-08-07 17:25:29,987 - todoist_integration - INFO - Created Todoist task: HCI - Activity 3 (HIGH FIDELITY PROTOTYPE)
+2025-08-07 17:25:29,988 - urllib3.connectionpool - DEBUG - Starting new HTTPS connection (1): api.todoist.com:443
+2025-08-07 17:25:30,746 - urllib3.connectionpool - DEBUG - https://api.todoist.com:443 "GET /rest/v2/tasks HTTP/1.1" 200 None
+2025-08-07 17:25:30,748 - todoist_integration - DEBUG - Set reminder for 2025-10-17 (due: 2025-10-31)
+2025-08-07 17:25:30,749 - urllib3.connectionpool - DEBUG - Starting new HTTPS connection (1): api.todoist.com:443
+2025-08-07 17:25:32,442 - urllib3.connectionpool - DEBUG - https://api.todoist.com:443 "POST /rest/v2/tasks HTTP/1.1" 200 None
+2025-08-07 17:25:32,443 - todoist_integration - INFO - Created Todoist task: HCI - Activity 4 (USABILITY ASSESSMENT)
+2025-08-07 17:25:32,444 - urllib3.connectionpool - DEBUG - Starting new HTTPS connection (1): api.todoist.com:443
+2025-08-07 17:25:34,489 - urllib3.connectionpool - DEBUG - https://api.todoist.com:443 "GET /rest/v2/tasks HTTP/1.1" 200 None
+2025-08-07 17:25:34,492 - todoist_integration - DEBUG - Set reminder for 2025-08-07 (due: 2025-08-08)
+2025-08-07 17:25:34,493 - urllib3.connectionpool - DEBUG - Starting new HTTPS connection (1): api.todoist.com:443
+2025-08-07 17:25:35,924 - urllib3.connectionpool - DEBUG - https://api.todoist.com:443 "POST /rest/v2/tasks HTTP/1.1" 200 None
+2025-08-07 17:25:35,925 - todoist_integration - INFO - Created Todoist task: III - Activity 1 (#1)
+2025-08-07 17:25:35,925 - todoist_integration - INFO - Synced 5 new assignments to Todoist
+2025-08-07 17:25:35,925 - __main__ - INFO - Successfully synced 5 assignments to Todoist
+2025-08-07 17:25:35,925 - __main__ - INFO - Running automatic archive cleanup...
+2025-08-07 17:25:35,925 - assignment_archive - INFO - Starting archive cleanup (completed assignments older than 30 days)
+2025-08-07 17:25:35,925 - __main__ - WARNING - Automatic archive cleanup failed: 'assignments'
+2025-08-07 17:25:35,926 - __main__ - INFO - Syncing assignment status from Todoist...
+2025-08-07 17:25:35,928 - urllib3.connectionpool - DEBUG - Starting new HTTPS connection (1): api.todoist.com:443
+2025-08-07 17:25:36,524 - urllib3.connectionpool - DEBUG - https://api.todoist.com:443 "GET /rest/v2/projects HTTP/1.1" 200 None
+2025-08-07 17:25:36,525 - todoist_integration - INFO - Todoist connection test successful
+2025-08-07 17:25:36,525 - todoist_integration - INFO - Todoist integration initialized successfully
+2025-08-07 17:25:36,527 - urllib3.connectionpool - DEBUG - Starting new HTTPS connection (1): api.todoist.com:443
+2025-08-07 17:25:37,151 - urllib3.connectionpool - DEBUG - https://api.todoist.com:443 "GET /rest/v2/projects HTTP/1.1" 200 None
+2025-08-07 17:25:37,153 - todoist_integration - INFO - Found existing project: School Assignments
+2025-08-07 17:25:37,155 - urllib3.connectionpool - DEBUG - Starting new HTTPS connection (1): api.todoist.com:443
+2025-08-07 17:25:38,380 - urllib3.connectionpool - DEBUG - https://api.todoist.com:443 "GET /rest/v2/tasks?project_id=2358015760 HTTP/1.1" 200 None
+2025-08-07 17:25:38,381 - todoist_integration - INFO - Retrieved 5 assignments from Todoist
+2025-08-07 17:25:38,382 - __main__ - DEBUG - Todoist status sync: No changes needed
+2025-08-07 17:25:38,382 - __main__ - INFO - ==================================================
+2025-08-07 17:25:38,382 - __main__ - INFO - MOODLE ASSIGNMENT FETCHER COMPLETED
+2025-08-07 17:25:38,382 - __main__ - INFO - ==================================================
