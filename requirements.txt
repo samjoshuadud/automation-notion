@@ -1,2 +1,57 @@
-python-dotenv
-requests
+# Core Dependencies
+python-dotenv>=1.0.0          # Environment variable management
+requests>=2.31.0              # HTTP requests for APIs
+email-validator>=2.0.0        # Email validation utilities
+
+# Gmail Integration
+imaplib3>=0.3.0              # IMAP client for Gmail access
+# Note: imaplib is built-in to Python, but imaplib3 provides better features
+
+# Date and Time Handling
+python-dateutil>=2.8.0       # Enhanced date parsing
+pytz>=2023.3                  # Timezone handling
+
+# Text Processing and Parsing
+beautifulsoup4>=4.12.0        # HTML parsing for email content
+lxml>=4.9.0                   # XML/HTML parser backend
+fuzzywuzzy>=0.18.0            # Fuzzy string matching for duplicates
+python-Levenshtein>=0.21.0    # Fast string similarity calculations
+
+# JSON and Data Handling
+jsonschema>=4.17.0            # JSON schema validation
+tabulate>=0.9.0               # Pretty table formatting
+
+# Notion Integration
+notion-client>=2.0.0          # Official Notion API client
+
+# Todoist Integration  
+todoist-api-python>=2.1.0     # Official Todoist API client
+
+# Testing and Development
+pytest>=7.4.0                # Testing framework
+pytest-cov>=4.1.0            # Test coverage reporting
+pytest-mock>=3.11.0          # Mocking for tests
+coverage>=7.2.0              # Code coverage analysis
+
+# Performance and Monitoring
+psutil>=5.9.0                 # System and process utilities
+memory-profiler>=0.61.0      # Memory usage profiling
+
+# Logging and Debugging
+colorlog>=6.7.0              # Colored logging output
+rich>=13.0.0                 # Rich text and beautiful formatting
+
+# Security
+cryptography>=41.0.0         # Cryptographic utilities
+keyring>=24.0.0              # Secure credential storage
+
+# Optional: Advanced Features
+schedule>=1.2.0              # Job scheduling (alternative to cron)
+click>=8.1.0                 # Command-line interface creation
+tqdm>=4.65.0                 # Progress bars for long operations
+
+# Development Tools (optional, for contributors)
+black>=23.0.0                # Code formatting
+flake8>=6.0.0                # Code linting
+mypy>=1.5.0                  # Type checking
+pre-commit>=3.3.0            # Git hooks for code quality
