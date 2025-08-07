@@ -1,0 +1,225 @@
+2025-08-07 15:49:51,832 - assignment_archive - INFO - Created new archive file: data/assignments_archive.json
+2025-08-07 15:51:14,343 - __main__ - INFO - ==================================================
+2025-08-07 15:51:14,344 - __main__ - INFO - MOODLE ASSIGNMENT FETCHER STARTED
+2025-08-07 15:51:14,344 - __main__ - INFO - ==================================================
+2025-08-07 15:51:14,344 - __main__ - INFO - Initializing Moodle email fetcher...
+2025-08-07 15:51:14,345 - __main__ - INFO - Checking for assignments from the past 7 days...
+2025-08-07 15:51:14,346 - moodle_fetcher - INFO - ============================================================
+2025-08-07 15:51:14,346 - moodle_fetcher - INFO - STARTING MOODLE ASSIGNMENT CHECK
+2025-08-07 15:51:14,346 - moodle_fetcher - INFO - Checking emails from last 7 days
+2025-08-07 15:51:14,346 - moodle_fetcher - INFO - ============================================================
+2025-08-07 15:51:15,050 - moodle_fetcher - INFO - Successfully connected to Gmail
+2025-08-07 15:51:15,268 - moodle_fetcher - INFO - Searching for emails: (FROM "noreply-tbl@umak.edu.ph" SINCE "31-Jul-2025")
+2025-08-07 15:51:15,493 - moodle_fetcher - INFO - Found 20 Moodle emails from last 7 days
+2025-08-07 15:51:15,494 - moodle_fetcher - INFO - Processing 20 emails...
+2025-08-07 15:51:15,494 - moodle_fetcher - INFO - Existing assignments in database: 0
+2025-08-07 15:51:15,494 - moodle_fetcher - DEBUG - Processing email 1/20: b'742'
+2025-08-07 15:51:15,718 - moodle_fetcher - DEBUG - ❌ Failed to parse email b'742'
+2025-08-07 15:51:15,718 - moodle_fetcher - DEBUG - Processing email 2/20: b'743'
+2025-08-07 15:51:15,918 - moodle_fetcher - DEBUG - ❌ Failed to parse email b'743'
+2025-08-07 15:51:15,918 - moodle_fetcher - DEBUG - Processing email 3/20: b'744'
+2025-08-07 15:51:16,110 - moodle_fetcher - DEBUG - ❌ Failed to parse email b'744'
+2025-08-07 15:51:16,110 - moodle_fetcher - DEBUG - Processing email 4/20: b'747'
+2025-08-07 15:51:16,304 - moodle_fetcher - DEBUG - ❌ Failed to parse email b'747'
+2025-08-07 15:51:16,304 - moodle_fetcher - DEBUG - Processing email 5/20: b'748'
+2025-08-07 15:51:16,500 - moodle_fetcher - DEBUG - ❌ Failed to parse email b'748'
+2025-08-07 15:51:16,500 - moodle_fetcher - DEBUG - Processing email 6/20: b'749'
+2025-08-07 15:51:16,693 - moodle_fetcher - DEBUG - ❌ Failed to parse email b'749'
+2025-08-07 15:51:16,693 - moodle_fetcher - DEBUG - Processing email 7/20: b'750'
+2025-08-07 15:51:16,884 - moodle_fetcher - DEBUG - ❌ Failed to parse email b'750'
+2025-08-07 15:51:16,885 - moodle_fetcher - DEBUG - Processing email 8/20: b'751'
+2025-08-07 15:51:17,074 - moodle_fetcher - DEBUG - ❌ Failed to parse email b'751'
+2025-08-07 15:51:17,074 - moodle_fetcher - DEBUG - Processing email 9/20: b'752'
+2025-08-07 15:51:17,267 - moodle_fetcher - DEBUG - ❌ Failed to parse email b'752'
+2025-08-07 15:51:17,267 - moodle_fetcher - DEBUG - Processing email 10/20: b'753'
+2025-08-07 15:51:17,460 - moodle_fetcher - DEBUG - ❌ Failed to parse email b'753'
+2025-08-07 15:51:17,461 - moodle_fetcher - DEBUG - Processing email 11/20: b'754'
+2025-08-07 15:51:17,656 - moodle_fetcher - DEBUG - ❌ Failed to parse email b'754'
+2025-08-07 15:51:17,656 - moodle_fetcher - DEBUG - Processing email 12/20: b'755'
+2025-08-07 15:51:17,862 - moodle_fetcher - DEBUG - ❌ Failed to parse email b'755'
+2025-08-07 15:51:17,862 - moodle_fetcher - DEBUG - Processing email 13/20: b'756'
+2025-08-07 15:51:18,056 - moodle_fetcher - DEBUG - Successfully parsed assignment: HCI - Activity 1 (User Story [1])
+2025-08-07 15:51:18,057 - moodle_fetcher - INFO - ✅ New assignment: HCI - Activity 1 (User Story [1])
+2025-08-07 15:51:18,057 - moodle_fetcher - DEBUG - Processing email 14/20: b'757'
+2025-08-07 15:51:18,252 - moodle_fetcher - DEBUG - Successfully parsed assignment: HCI - Activity 1 (User Story [1])
+2025-08-07 15:51:18,252 - moodle_fetcher - DEBUG - Duplicate found by title+course: hci - activity 1 (user story [1])
+2025-08-07 15:51:18,252 - moodle_fetcher - DEBUG - ⏭️  Skipped duplicate: HCI - Activity 1 (User Story [1])
+2025-08-07 15:51:18,252 - moodle_fetcher - DEBUG - Processing email 15/20: b'758'
+2025-08-07 15:51:18,445 - moodle_fetcher - DEBUG - Successfully parsed assignment: HCI - Activity 2 (Mid Fidelity [1])
+2025-08-07 15:51:18,445 - moodle_fetcher - INFO - ✅ New assignment: HCI - Activity 2 (Mid Fidelity [1])
+2025-08-07 15:51:18,445 - moodle_fetcher - DEBUG - Processing email 16/20: b'759'
+2025-08-07 15:51:18,638 - moodle_fetcher - DEBUG - Successfully parsed assignment: HCI - Activity 3 (High Fidelity Prototype [1])
+2025-08-07 15:51:18,639 - moodle_fetcher - INFO - ✅ New assignment: HCI - Activity 3 (High Fidelity Prototype [1])
+2025-08-07 15:51:18,639 - moodle_fetcher - DEBUG - Processing email 17/20: b'760'
+2025-08-07 15:51:18,832 - moodle_fetcher - DEBUG - Successfully parsed assignment: HCI - Activity 4 (Usability Assessment [1])
+2025-08-07 15:51:18,833 - moodle_fetcher - INFO - ✅ New assignment: HCI - Activity 4 (Usability Assessment [1])
+2025-08-07 15:51:18,833 - moodle_fetcher - DEBUG - Processing email 18/20: b'761'
+2025-08-07 15:51:19,026 - moodle_fetcher - DEBUG - ❌ Failed to parse email b'761'
+2025-08-07 15:51:19,026 - moodle_fetcher - DEBUG - Processing email 19/20: b'762'
+2025-08-07 15:51:19,223 - moodle_fetcher - DEBUG - ❌ Failed to parse email b'762'
+2025-08-07 15:51:19,223 - moodle_fetcher - DEBUG - Processing email 20/20: b'769'
+2025-08-07 15:51:19,416 - moodle_fetcher - DEBUG - Successfully parsed assignment: III - Activity 1 (#1)
+2025-08-07 15:51:19,416 - moodle_fetcher - INFO - ✅ New assignment: III - Activity 1 (#1)
+2025-08-07 15:51:19,417 - moodle_fetcher - INFO - 💾 Saved 5 new assignments to files
+2025-08-07 15:51:19,417 - moodle_fetcher - INFO - ============================================================
+2025-08-07 15:51:19,417 - moodle_fetcher - INFO - ASSIGNMENT CHECK COMPLETED
+2025-08-07 15:51:19,417 - moodle_fetcher - INFO - 📧 Emails processed: 20
+2025-08-07 15:51:19,417 - moodle_fetcher - INFO - ✅ New assignments: 5
+2025-08-07 15:51:19,417 - moodle_fetcher - INFO - ⏭️  Duplicates skipped: 1
+2025-08-07 15:51:19,418 - moodle_fetcher - INFO - 📊 Total assignments: 5
+2025-08-07 15:51:19,418 - moodle_fetcher - INFO - ============================================================
+2025-08-07 15:51:19,597 - __main__ - INFO - Successfully added 5 new assignments!
+2025-08-07 15:51:19,597 - __main__ - INFO - Running automatic archive cleanup...
+2025-08-07 15:51:19,597 - assignment_archive - INFO - Starting archive cleanup (completed assignments older than 30 days)
+2025-08-07 15:51:19,597 - assignment_archive - INFO - No assignments need archiving
+2025-08-07 15:51:19,597 - __main__ - DEBUG - Automatic cleanup: No assignments need archiving
+2025-08-07 15:51:19,598 - __main__ - INFO - ==================================================
+2025-08-07 15:51:19,598 - __main__ - INFO - MOODLE ASSIGNMENT FETCHER COMPLETED
+2025-08-07 15:51:19,598 - __main__ - INFO - ==================================================
+2025-08-07 15:51:53,929 - urllib3.connectionpool - DEBUG - Starting new HTTPS connection (1): api.todoist.com:443
+2025-08-07 15:51:55,186 - urllib3.connectionpool - DEBUG - https://api.todoist.com:443 "GET /rest/v2/projects HTTP/1.1" 200 None
+2025-08-07 15:51:55,187 - todoist_integration - INFO - Todoist connection test successful
+2025-08-07 15:51:55,188 - todoist_integration - INFO - Todoist integration initialized successfully
+2025-08-07 15:51:55,189 - urllib3.connectionpool - DEBUG - Starting new HTTPS connection (1): api.todoist.com:443
+2025-08-07 15:51:55,719 - urllib3.connectionpool - DEBUG - https://api.todoist.com:443 "GET /rest/v2/projects HTTP/1.1" 200 None
+2025-08-07 15:51:55,721 - urllib3.connectionpool - DEBUG - Starting new HTTPS connection (1): api.todoist.com:443
+2025-08-07 15:51:57,111 - urllib3.connectionpool - DEBUG - https://api.todoist.com:443 "POST /rest/v2/projects HTTP/1.1" 200 324
+2025-08-07 15:51:57,112 - todoist_integration - INFO - Created new project: Assignments
+2025-08-07 15:51:57,113 - urllib3.connectionpool - DEBUG - Starting new HTTPS connection (1): api.todoist.com:443
+2025-08-07 15:51:57,426 - urllib3.connectionpool - DEBUG - https://api.todoist.com:443 "GET /rest/v2/tasks?project_id=2358019612 HTTP/1.1" 200 3
+2025-08-07 15:51:57,428 - todoist_integration - DEBUG - Task not found in Todoist for assignment: HCI - Activity 1 (User Story [1])
+2025-08-07 15:51:57,429 - urllib3.connectionpool - DEBUG - Starting new HTTPS connection (1): api.todoist.com:443
+2025-08-07 15:51:57,843 - urllib3.connectionpool - DEBUG - https://api.todoist.com:443 "GET /rest/v2/projects HTTP/1.1" 200 None
+2025-08-07 15:51:57,844 - todoist_integration - INFO - Found existing project: Assignments
+2025-08-07 15:51:57,845 - urllib3.connectionpool - DEBUG - Starting new HTTPS connection (1): api.todoist.com:443
+2025-08-07 15:51:58,638 - urllib3.connectionpool - DEBUG - https://api.todoist.com:443 "GET /rest/v2/tasks?project_id=2358019612 HTTP/1.1" 200 3
+2025-08-07 15:51:58,639 - todoist_integration - DEBUG - Task not found in Todoist for assignment: HCI - Activity 2 (Mid Fidelity [1])
+2025-08-07 15:51:58,640 - urllib3.connectionpool - DEBUG - Starting new HTTPS connection (1): api.todoist.com:443
+2025-08-07 15:51:59,103 - urllib3.connectionpool - DEBUG - https://api.todoist.com:443 "GET /rest/v2/projects HTTP/1.1" 200 None
+2025-08-07 15:51:59,104 - todoist_integration - INFO - Found existing project: Assignments
+2025-08-07 15:51:59,106 - urllib3.connectionpool - DEBUG - Starting new HTTPS connection (1): api.todoist.com:443
+2025-08-07 15:52:00,643 - urllib3.connectionpool - DEBUG - https://api.todoist.com:443 "GET /rest/v2/tasks?project_id=2358019612 HTTP/1.1" 200 3
+2025-08-07 15:52:00,644 - todoist_integration - DEBUG - Task not found in Todoist for assignment: HCI - Activity 3 (High Fidelity Prototype [1])
+2025-08-07 15:52:00,645 - urllib3.connectionpool - DEBUG - Starting new HTTPS connection (1): api.todoist.com:443
+2025-08-07 15:52:01,179 - urllib3.connectionpool - DEBUG - https://api.todoist.com:443 "GET /rest/v2/projects HTTP/1.1" 200 None
+2025-08-07 15:52:01,180 - todoist_integration - INFO - Found existing project: Assignments
+2025-08-07 15:52:01,181 - urllib3.connectionpool - DEBUG - Starting new HTTPS connection (1): api.todoist.com:443
+2025-08-07 15:52:02,164 - urllib3.connectionpool - DEBUG - https://api.todoist.com:443 "GET /rest/v2/tasks?project_id=2358019612 HTTP/1.1" 200 3
+2025-08-07 15:52:02,165 - todoist_integration - DEBUG - Task not found in Todoist for assignment: HCI - Activity 4 (Usability Assessment [1])
+2025-08-07 15:52:02,166 - urllib3.connectionpool - DEBUG - Starting new HTTPS connection (1): api.todoist.com:443
+2025-08-07 15:52:03,594 - urllib3.connectionpool - DEBUG - https://api.todoist.com:443 "GET /rest/v2/projects HTTP/1.1" 200 None
+2025-08-07 15:52:03,595 - todoist_integration - INFO - Found existing project: Assignments
+2025-08-07 15:52:03,596 - urllib3.connectionpool - DEBUG - Starting new HTTPS connection (1): api.todoist.com:443
+2025-08-07 15:52:04,238 - urllib3.connectionpool - DEBUG - https://api.todoist.com:443 "GET /rest/v2/tasks?project_id=2358019612 HTTP/1.1" 200 3
+2025-08-07 15:52:04,239 - todoist_integration - DEBUG - Task not found in Todoist for assignment: III - Activity 1 (#1)
+2025-08-07 15:59:55,040 - __main__ - INFO - ==================================================
+2025-08-07 15:59:55,040 - __main__ - INFO - MOODLE ASSIGNMENT FETCHER STARTED
+2025-08-07 15:59:55,040 - __main__ - INFO - ==================================================
+2025-08-07 15:59:55,040 - __main__ - INFO - Initializing Moodle email fetcher...
+2025-08-07 15:59:55,042 - __main__ - INFO - Checking for assignments from the past 7 days...
+2025-08-07 15:59:55,042 - moodle_fetcher - INFO - ============================================================
+2025-08-07 15:59:55,042 - moodle_fetcher - INFO - STARTING MOODLE ASSIGNMENT CHECK
+2025-08-07 15:59:55,042 - moodle_fetcher - INFO - Checking emails from last 7 days
+2025-08-07 15:59:55,042 - moodle_fetcher - INFO - ============================================================
+2025-08-07 15:59:55,822 - moodle_fetcher - INFO - Successfully connected to Gmail
+2025-08-07 15:59:56,053 - moodle_fetcher - INFO - Searching for emails: (FROM "noreply-tbl@umak.edu.ph" SINCE "31-Jul-2025")
+2025-08-07 15:59:56,263 - moodle_fetcher - INFO - Found 20 Moodle emails from last 7 days
+2025-08-07 15:59:56,263 - moodle_fetcher - INFO - Processing 20 emails...
+2025-08-07 15:59:56,263 - moodle_fetcher - INFO - Existing assignments in database: 0
+2025-08-07 15:59:56,264 - moodle_fetcher - DEBUG - Processing email 1/20: b'742'
+2025-08-07 15:59:56,472 - moodle_fetcher - DEBUG - ❌ Failed to parse email b'742'
+2025-08-07 15:59:56,472 - moodle_fetcher - DEBUG - Processing email 2/20: b'743'
+2025-08-07 15:59:56,675 - moodle_fetcher - DEBUG - ❌ Failed to parse email b'743'
+2025-08-07 15:59:56,675 - moodle_fetcher - DEBUG - Processing email 3/20: b'744'
+2025-08-07 15:59:56,876 - moodle_fetcher - DEBUG - ❌ Failed to parse email b'744'
+2025-08-07 15:59:56,876 - moodle_fetcher - DEBUG - Processing email 4/20: b'747'
+2025-08-07 15:59:57,074 - moodle_fetcher - DEBUG - ❌ Failed to parse email b'747'
+2025-08-07 15:59:57,074 - moodle_fetcher - DEBUG - Processing email 5/20: b'748'
+2025-08-07 15:59:57,273 - moodle_fetcher - DEBUG - ❌ Failed to parse email b'748'
+2025-08-07 15:59:57,273 - moodle_fetcher - DEBUG - Processing email 6/20: b'749'
+2025-08-07 15:59:57,472 - moodle_fetcher - DEBUG - ❌ Failed to parse email b'749'
+2025-08-07 15:59:57,472 - moodle_fetcher - DEBUG - Processing email 7/20: b'750'
+2025-08-07 15:59:57,670 - moodle_fetcher - DEBUG - ❌ Failed to parse email b'750'
+2025-08-07 15:59:57,671 - moodle_fetcher - DEBUG - Processing email 8/20: b'751'
+2025-08-07 15:59:57,871 - moodle_fetcher - DEBUG - ❌ Failed to parse email b'751'
+2025-08-07 15:59:57,872 - moodle_fetcher - DEBUG - Processing email 9/20: b'752'
+2025-08-07 15:59:58,127 - moodle_fetcher - DEBUG - ❌ Failed to parse email b'752'
+2025-08-07 15:59:58,128 - moodle_fetcher - DEBUG - Processing email 10/20: b'753'
+2025-08-07 15:59:58,322 - moodle_fetcher - DEBUG - ❌ Failed to parse email b'753'
+2025-08-07 15:59:58,322 - moodle_fetcher - DEBUG - Processing email 11/20: b'754'
+2025-08-07 15:59:58,518 - moodle_fetcher - DEBUG - ❌ Failed to parse email b'754'
+2025-08-07 15:59:58,518 - moodle_fetcher - DEBUG - Processing email 12/20: b'755'
+2025-08-07 15:59:58,715 - moodle_fetcher - DEBUG - ❌ Failed to parse email b'755'
+2025-08-07 15:59:58,715 - moodle_fetcher - DEBUG - Processing email 13/20: b'756'
+2025-08-07 15:59:58,919 - moodle_fetcher - DEBUG - Successfully parsed assignment: HCI - Activity 1 (User Story [1])
+2025-08-07 15:59:58,920 - moodle_fetcher - INFO - ✅ New assignment: HCI - Activity 1 (User Story [1])
+2025-08-07 15:59:58,920 - moodle_fetcher - DEBUG - Processing email 14/20: b'757'
+2025-08-07 15:59:59,148 - moodle_fetcher - DEBUG - Successfully parsed assignment: HCI - Activity 1 (User Story [1])
+2025-08-07 15:59:59,149 - moodle_fetcher - DEBUG - Duplicate found by title+course: hci - activity 1 (user story [1])
+2025-08-07 15:59:59,149 - moodle_fetcher - DEBUG - ⏭️  Skipped duplicate: HCI - Activity 1 (User Story [1])
+2025-08-07 15:59:59,149 - moodle_fetcher - DEBUG - Processing email 15/20: b'758'
+2025-08-07 15:59:59,349 - moodle_fetcher - DEBUG - Successfully parsed assignment: HCI - Activity 2 (Mid Fidelity [1])
+2025-08-07 15:59:59,350 - moodle_fetcher - INFO - ✅ New assignment: HCI - Activity 2 (Mid Fidelity [1])
+2025-08-07 15:59:59,350 - moodle_fetcher - DEBUG - Processing email 16/20: b'759'
+2025-08-07 15:59:59,552 - moodle_fetcher - DEBUG - Successfully parsed assignment: HCI - Activity 3 (High Fidelity Prototype [1])
+2025-08-07 15:59:59,552 - moodle_fetcher - INFO - ✅ New assignment: HCI - Activity 3 (High Fidelity Prototype [1])
+2025-08-07 15:59:59,552 - moodle_fetcher - DEBUG - Processing email 17/20: b'760'
+2025-08-07 15:59:59,751 - moodle_fetcher - DEBUG - Successfully parsed assignment: HCI - Activity 4 (Usability Assessment [1])
+2025-08-07 15:59:59,751 - moodle_fetcher - INFO - ✅ New assignment: HCI - Activity 4 (Usability Assessment [1])
+2025-08-07 15:59:59,751 - moodle_fetcher - DEBUG - Processing email 18/20: b'761'
+2025-08-07 15:59:59,950 - moodle_fetcher - DEBUG - ❌ Failed to parse email b'761'
+2025-08-07 15:59:59,950 - moodle_fetcher - DEBUG - Processing email 19/20: b'762'
+2025-08-07 16:00:00,148 - moodle_fetcher - DEBUG - ❌ Failed to parse email b'762'
+2025-08-07 16:00:00,148 - moodle_fetcher - DEBUG - Processing email 20/20: b'769'
+2025-08-07 16:00:00,351 - moodle_fetcher - DEBUG - Successfully parsed assignment: III - Activity 1 (#1)
+2025-08-07 16:00:00,351 - moodle_fetcher - INFO - ✅ New assignment: III - Activity 1 (#1)
+2025-08-07 16:00:00,352 - moodle_fetcher - INFO - 💾 Saved 5 new assignments to files
+2025-08-07 16:00:00,352 - moodle_fetcher - INFO - ============================================================
+2025-08-07 16:00:00,352 - moodle_fetcher - INFO - ASSIGNMENT CHECK COMPLETED
+2025-08-07 16:00:00,352 - moodle_fetcher - INFO - 📧 Emails processed: 20
+2025-08-07 16:00:00,352 - moodle_fetcher - INFO - ✅ New assignments: 5
+2025-08-07 16:00:00,352 - moodle_fetcher - INFO - ⏭️  Duplicates skipped: 1
+2025-08-07 16:00:00,352 - moodle_fetcher - INFO - 📊 Total assignments: 5
+2025-08-07 16:00:00,352 - moodle_fetcher - INFO - ============================================================
+2025-08-07 16:00:00,537 - __main__ - INFO - Successfully added 5 new assignments!
+2025-08-07 16:00:00,537 - __main__ - INFO - Running automatic archive cleanup...
+2025-08-07 16:00:00,537 - assignment_archive - INFO - Starting archive cleanup (completed assignments older than 30 days)
+2025-08-07 16:00:00,537 - assignment_archive - INFO - No assignments need archiving
+2025-08-07 16:00:00,537 - __main__ - DEBUG - Automatic cleanup: No assignments need archiving
+2025-08-07 16:00:00,537 - __main__ - INFO - ==================================================
+2025-08-07 16:00:00,537 - __main__ - INFO - MOODLE ASSIGNMENT FETCHER COMPLETED
+2025-08-07 16:00:00,537 - __main__ - INFO - ==================================================
+2025-08-07 16:09:11,364 - urllib3.connectionpool - DEBUG - Starting new HTTPS connection (1): api.todoist.com:443
+2025-08-07 16:09:12,344 - urllib3.connectionpool - DEBUG - https://api.todoist.com:443 "GET /rest/v2/projects HTTP/1.1" 200 None
+2025-08-07 16:09:12,345 - todoist_integration - INFO - Todoist connection test successful
+2025-08-07 16:09:12,345 - todoist_integration - INFO - Todoist integration initialized successfully
+2025-08-07 16:09:12,345 - urllib3.connectionpool - DEBUG - Starting new HTTPS connection (1): api.todoist.com:443
+2025-08-07 16:09:13,535 - urllib3.connectionpool - DEBUG - https://api.todoist.com:443 "GET /rest/v2/projects HTTP/1.1" 200 None
+2025-08-07 16:09:13,536 - todoist_integration - INFO - Found existing project: School Assignments
+2025-08-07 16:09:13,537 - urllib3.connectionpool - DEBUG - Starting new HTTPS connection (1): api.todoist.com:443
+2025-08-07 16:09:13,925 - urllib3.connectionpool - DEBUG - https://api.todoist.com:443 "GET /rest/v2/tasks?project_id=2358015760 HTTP/1.1" 200 None
+2025-08-07 16:09:13,926 - todoist_integration - DEBUG - Task not found in Todoist for assignment: HCI - Activity 1 (User Story [1])
+2025-08-07 16:09:13,927 - urllib3.connectionpool - DEBUG - Starting new HTTPS connection (1): api.todoist.com:443
+2025-08-07 16:09:14,467 - urllib3.connectionpool - DEBUG - https://api.todoist.com:443 "GET /rest/v2/projects HTTP/1.1" 200 None
+2025-08-07 16:09:14,468 - todoist_integration - INFO - Found existing project: School Assignments
+2025-08-07 16:09:14,469 - urllib3.connectionpool - DEBUG - Starting new HTTPS connection (1): api.todoist.com:443
+2025-08-07 16:09:15,045 - urllib3.connectionpool - DEBUG - https://api.todoist.com:443 "GET /rest/v2/tasks?project_id=2358015760 HTTP/1.1" 200 None
+2025-08-07 16:09:15,046 - todoist_integration - DEBUG - Task not found in Todoist for assignment: HCI - Activity 2 (Mid Fidelity [1])
+2025-08-07 16:09:15,047 - urllib3.connectionpool - DEBUG - Starting new HTTPS connection (1): api.todoist.com:443
+2025-08-07 16:09:15,567 - urllib3.connectionpool - DEBUG - https://api.todoist.com:443 "GET /rest/v2/projects HTTP/1.1" 200 None
+2025-08-07 16:09:15,567 - todoist_integration - INFO - Found existing project: School Assignments
+2025-08-07 16:09:15,568 - urllib3.connectionpool - DEBUG - Starting new HTTPS connection (1): api.todoist.com:443
+2025-08-07 16:09:16,863 - urllib3.connectionpool - DEBUG - https://api.todoist.com:443 "GET /rest/v2/tasks?project_id=2358015760 HTTP/1.1" 200 None
+2025-08-07 16:09:16,865 - todoist_integration - DEBUG - Task not found in Todoist for assignment: HCI - Activity 3 (High Fidelity Prototype [1])
+2025-08-07 16:09:16,865 - urllib3.connectionpool - DEBUG - Starting new HTTPS connection (1): api.todoist.com:443
+2025-08-07 16:09:17,379 - urllib3.connectionpool - DEBUG - https://api.todoist.com:443 "GET /rest/v2/projects HTTP/1.1" 200 None
+2025-08-07 16:09:17,380 - todoist_integration - INFO - Found existing project: School Assignments
+2025-08-07 16:09:17,381 - urllib3.connectionpool - DEBUG - Starting new HTTPS connection (1): api.todoist.com:443
+2025-08-07 16:09:18,045 - urllib3.connectionpool - DEBUG - https://api.todoist.com:443 "GET /rest/v2/tasks?project_id=2358015760 HTTP/1.1" 200 None
+2025-08-07 16:09:18,046 - todoist_integration - DEBUG - Task not found in Todoist for assignment: HCI - Activity 4 (Usability Assessment [1])
+2025-08-07 16:09:18,047 - urllib3.connectionpool - DEBUG - Starting new HTTPS connection (1): api.todoist.com:443
+2025-08-07 16:09:18,597 - urllib3.connectionpool - DEBUG - https://api.todoist.com:443 "GET /rest/v2/projects HTTP/1.1" 200 None
+2025-08-07 16:09:18,598 - todoist_integration - INFO - Found existing project: School Assignments
+2025-08-07 16:09:18,599 - urllib3.connectionpool - DEBUG - Starting new HTTPS connection (1): api.todoist.com:443
+2025-08-07 16:09:19,989 - urllib3.connectionpool - DEBUG - https://api.todoist.com:443 "GET /rest/v2/tasks?project_id=2358015760 HTTP/1.1" 200 None
+2025-08-07 16:09:19,990 - todoist_integration - DEBUG - Task not found in Todoist for assignment: III - Activity 1 (#1)

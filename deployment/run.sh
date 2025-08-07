@@ -4,7 +4,8 @@
 # This script handles virtual environment activation automatically
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-cd "$SCRIPT_DIR"
+PROJECT_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
+cd "$PROJECT_DIR"
 
 # Colors for output
 RED='\033[0;31m'
@@ -45,7 +46,7 @@ show_usage() {
     echo "  debug [cmd]       Run any command with maximum debug output"
     echo "  duplicates        Show duplicate detection analysis"
     echo "  archive-stats     Show archive statistics"
-    echo "  delete-all        Delete all assignments (and from Todoist) - DEBUG ONLY"
+    echo "  delete-all [target] [--include-local]   Delete assignments - target: notion, todoist, both (default: both)"
     echo ""
     echo "Examples:"
     echo "  ./run.sh test                    # Test connections"
@@ -56,6 +57,9 @@ show_usage() {
     echo "  ./run.sh status                 # Detailed status report"
     echo "  ./run.sh duplicates             # Check for duplicate assignments"
     echo "  ./run.sh delete-all             # Delete all assignments (DEBUG)"
+    echo "  ./run.sh delete-all notion      # Delete only from Notion"
+    echo "  ./run.sh delete-all todoist     # Delete only from Todoist"
+    echo "  ./run.sh delete-all both --include-local  # Delete from both + local database"
     echo "  ./run.sh logs                   # View recent activity"
 }
 
@@ -136,12 +140,39 @@ case "$1" in
         $PYTHON_CMD run_fetcher.py --archive-stats
         ;;
     "delete-all")
-        echo -e "${RED}🗑️ DANGER: Deleting all assignments from database, Todoist, and Notion...${NC}"
-        echo -e "${YELLOW}⚠️ This will NOT delete your emails - only synced assignments${NC}"
-        echo -e "${YELLOW}Press Ctrl+C in the next 5 seconds to cancel...${NC}"
-        sleep 5
-        echo -e "${RED}🗑️ Proceeding with deletion...${NC}"
-        $PYTHON_CMD run_fetcher.py --delete-all-assignments --verbose
+        TARGET=${2:-both}
+        INCLUDE_LOCAL=""
+        
+        # Check if --include-local flag is provided (can be 2nd or 3rd argument)
+        if [[ "$2" == "--include-local" ]] || [[ "$3" == "--include-local" ]]; then
+            INCLUDE_LOCAL="--include-local"
+        fi
+        
+        # If 2nd arg is --include-local, use default target
+        if [[ "$2" == "--include-local" ]]; then
+            TARGET="both"
+        fi
+        
+        case "$TARGET" in
+            "notion"|"todoist"|"both")
+                LOCAL_TEXT=""
+                if [[ -n "$INCLUDE_LOCAL" ]]; then
+                    LOCAL_TEXT=" + local database"
+                fi
+                echo -e "${RED}🗑️ DANGER: Deleting all assignments from $TARGET$LOCAL_TEXT...${NC}"
+                echo -e "${YELLOW}⚠️ This will NOT delete your emails - only synced assignments${NC}"
+                echo -e "${YELLOW}Press Ctrl+C in the next 5 seconds to cancel...${NC}"
+                sleep 5
+                echo -e "${RED}🗑️ Proceeding with $TARGET deletion$LOCAL_TEXT...${NC}"
+                $PYTHON_CMD run_fetcher.py --delete-all-assignments --delete-from $TARGET $INCLUDE_LOCAL --verbose
+                ;;
+            *)
+                echo -e "${RED}❌ Invalid target: $TARGET${NC}"
+                echo "Valid targets: notion, todoist, both"
+                echo "Usage: ./run.sh delete-all [notion|todoist|both] [--include-local]"
+                exit 1
+                ;;
+        esac
         ;;
     "logs")
         echo -e "${YELLOW}📋 Recent logs:${NC}"

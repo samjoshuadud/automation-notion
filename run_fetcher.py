@@ -74,59 +74,6 @@ def setup_logging(verbose: bool = False, debug: bool = False):
     )
 
 def main():
-    if args.delete_all_assignments:
-        print("\n🗑️ DANGER: Deleting all assignments from local database, Todoist, and Notion...")
-        print("⚠️ This will NOT delete your emails - only synced assignments")
-        print("⚠️ Press Ctrl+C in the next 5 seconds to cancel...")
-        time.sleep(5)
-        print("🗑️ Proceeding with deletion...")
-
-        fetcher = MoodleEmailFetcher()
-        assignments = fetcher.load_existing_assignments()
-        notion = NotionIntegration()
-        todoist = TodoistIntegration()
-
-        deleted_notion = 0
-        deleted_todoist = 0
-        failed_notion = 0
-        failed_todoist = 0
-
-        for assignment in assignments:
-            # Delete from Notion
-            if notion.enabled:
-                try:
-                    if notion.delete_assignment_page(assignment):
-                        deleted_notion += 1
-                    else:
-                        failed_notion += 1
-                except Exception as e:
-                    failed_notion += 1
-                    print(f"❌ Notion delete failed for {assignment.get('title', 'Unknown')}: {e}")
-            # Delete from Todoist
-            if todoist.enabled:
-                try:
-                    task_id = todoist.task_exists_in_todoist(assignment)
-                    if task_id:
-                        url = f"https://api.todoist.com/rest/v2/tasks/{task_id}"
-                        response = requests.delete(url, headers=todoist.headers, timeout=10)
-                        if response.status_code == 204:
-                            deleted_todoist += 1
-                        else:
-                            failed_todoist += 1
-                    else:
-                        # No task found, skip
-                        pass
-                except Exception as e:
-                    failed_todoist += 1
-                    print(f"❌ Todoist delete failed for {assignment.get('title', 'Unknown')}: {e}")
-
-        # Clear local assignments.json
-        fetcher.save_assignments([])
-        print(f"\n✅ Deleted {deleted_notion} from Notion, {deleted_todoist} from Todoist.")
-        if failed_notion or failed_todoist:
-            print(f"❌ {failed_notion} Notion and {failed_todoist} Todoist deletions failed.")
-        print("🗑️ Local assignments.json cleared.")
-        return 0
     parser = argparse.ArgumentParser(description='Fetch Moodle assignments from Gmail')
     parser.add_argument('--days', type=int, default=7, 
                        help='Number of days back to search for emails (default: 7)')
@@ -162,6 +109,10 @@ def main():
                        help='Show detailed status report of all assignments')
     parser.add_argument('--delete-all-assignments', action='store_true',
                        help='DELETE ALL assignments from database, Todoist, and Notion (DEBUG ONLY - emails are NOT touched)')
+    parser.add_argument('--delete-from', type=str, choices=['notion', 'todoist', 'both'], default='both',
+                       help='Choose where to delete assignments from: notion, todoist, or both (default: both)')
+    parser.add_argument('--include-local', action='store_true',
+                       help='Also delete assignments from local database when using selective deletion')
     
     args = parser.parse_args()
     
@@ -381,12 +332,29 @@ def main():
     if args.delete_all_assignments:
         print("\n🗑️ DELETING ALL ASSIGNMENTS")
         print("=" * 40)
+        
+        # Show what will be deleted based on --delete-from option
+        delete_from = args.delete_from
+        include_local = args.include_local
         print("⚠️ WARNING: This will delete assignments from:")
-        print("  📄 Local database (assignments.json)")
-        print("  ✅ Todoist (if configured)")
-        print("  📝 Notion (if configured)")
+        if include_local or delete_from == 'both':
+            print("  📄 Local database (assignments.json)")
+        if delete_from in ['todoist', 'both']:
+            print("  ✅ Todoist (if configured)")
+        if delete_from in ['notion', 'both']:
+            print("  📝 Notion (if configured)")
         print("  ✅ Your Gmail emails will NOT be touched!")
         print()
+        
+        if delete_from != 'both':
+            mode_text = f"{delete_from.upper()}"
+            if include_local:
+                mode_text += " + LOCAL DATABASE"
+            print(f"🎯 SELECTIVE MODE: Only deleting from {mode_text}")
+            print()
+        elif include_local:
+            print("🎯 FULL MODE: Deleting from both platforms + local database")
+            print()
         
         # Double confirmation
         try:
@@ -401,15 +369,16 @@ def main():
         deleted_counts = {"local": 0, "todoist": 0, "notion": 0}
         
         try:
-            # First, get list of assignments to delete
+            # Get assignments from local database as the authoritative source
             fetcher = MoodleEmailFetcher()
             assignments = fetcher.load_existing_assignments()
             
             if not assignments:
-                print("📄 No assignments found in local database")
+                print("❌ No assignments found in local database")
+                print("💡 Run './deployment/run.sh check' first to populate the database")
                 return 0
             
-            print(f"\n🔍 Found {len(assignments)} assignments to delete")
+            print(f"\n� Found {len(assignments)} assignments to delete from local database")
             
             if args.verbose:
                 print("\n📋 Assignments to be deleted:")
@@ -419,8 +388,8 @@ def main():
                     print(f"      Due: {assignment.get('due_date', 'Unknown')}")
                 print()
             
-            # Delete from Todoist first (if configured)
-            if not args.skip_todoist:
+            # Delete from Todoist first (if configured and requested)
+            if not args.skip_todoist and delete_from in ['todoist', 'both']:
                 try:
                     print("✅ Deleting from Todoist...")
                     todoist = TodoistIntegration()
@@ -442,9 +411,11 @@ def main():
                         print("⚠️ Todoist not configured - skipping")
                 except Exception as e:
                     print(f"❌ Error deleting from Todoist: {e}")
+            elif delete_from == 'notion':
+                print("⏭️ Skipping Todoist deletion (notion-only mode)")
             
-            # Delete from Notion (if configured)
-            if not args.skip_notion:
+            # Delete from Notion (if configured and requested)
+            if not args.skip_notion and delete_from in ['notion', 'both']:
                 try:
                     print("📝 Deleting from Notion...")
                     notion = NotionIntegration()
@@ -466,44 +437,72 @@ def main():
                         print("⚠️ Notion not configured - skipping")
                 except Exception as e:
                     print(f"❌ Error deleting from Notion: {e}")
+            elif delete_from == 'todoist':
+                print("⏭️ Skipping Notion deletion (todoist-only mode)")
             
-            # Delete from local database
-            print("📄 Deleting from local database...")
-            try:
-                import os
-                import json
-                
-                # Backup before deletion
-                backup_file = f"data/assignments_backup_before_delete_{int(time.time())}.json"
-                with open(backup_file, 'w') as f:
-                    json.dump(assignments, f, indent=2)
-                print(f"💾 Backup created: {backup_file}")
-                
-                # Clear assignments
-                with open('data/assignments.json', 'w') as f:
-                    json.dump([], f, indent=2)
-                
-                # Clear markdown file
-                with open('data/assignments.md', 'w') as f:
-                    f.write("# Moodle Assignments\n\n")
-                    f.write("| Assignment | Due Date | Course | Status | Added Date |\n")
-                    f.write("|------------|----------|--------|--------|-----------|\n")
-                
-                deleted_counts["local"] = len(assignments)
-                print(f"📄 Deleted {deleted_counts['local']} assignments from local database")
-                
-            except Exception as e:
-                print(f"❌ Error deleting from local database: {e}")
-                return 1
+            # Delete from local database (only if requested)
+            if include_local or delete_from == 'both':
+                print("📄 Deleting from local database...")
+                try:
+                    import os
+                    import json
+                    
+                    # Get current local assignments for backup
+                    local_assignments = fetcher.load_existing_assignments()
+                    
+                    if local_assignments:
+                        # Backup before deletion
+                        backup_file = f"data/assignments_backup_before_delete_{int(time.time())}.json"
+                        with open(backup_file, 'w') as f:
+                            json.dump(local_assignments, f, indent=2)
+                        print(f"💾 Backup created: {backup_file}")
+                        
+                        # Clear assignments
+                        with open('data/assignments.json', 'w') as f:
+                            json.dump([], f, indent=2)
+                        
+                        # Clear markdown file
+                        with open('data/assignments.md', 'w') as f:
+                            f.write("# Moodle Assignments\n\n")
+                            f.write("| Assignment | Due Date | Course | Status | Added Date |\n")
+                            f.write("|------------|----------|--------|--------|-----------|\n")
+                        
+                        deleted_counts["local"] = len(local_assignments)
+                        print(f"📄 Deleted {deleted_counts['local']} assignments from local database")
+                    else:
+                        print("📄 Local database was already empty")
+                    
+                except Exception as e:
+                    print(f"❌ Error deleting from local database: {e}")
+                    return 1
+            else:
+                print("⏭️ Skipping local database deletion (not requested)")
             
             # Summary
             print(f"\n🎯 DELETION SUMMARY")
             print("=" * 30)
-            print(f"📄 Local database: {deleted_counts['local']} deleted")
-            print(f"✅ Todoist: {deleted_counts['todoist']} deleted")
-            print(f"📝 Notion: {deleted_counts['notion']} deleted")
+            if include_local or delete_from == 'both':
+                print(f"📄 Local database: {deleted_counts['local']} deleted")
+            else:
+                print(f"📄 Local database: skipped (not requested)")
+            if delete_from in ['todoist', 'both']:
+                print(f"✅ Todoist: {deleted_counts['todoist']} deleted")
+            else:
+                print(f"✅ Todoist: skipped (not requested)")
+            if delete_from in ['notion', 'both']:
+                print(f"📝 Notion: {deleted_counts['notion']} deleted")
+            else:
+                print(f"📝 Notion: skipped (not requested)")
             print()
-            print("✅ All assignments deleted successfully!")
+            if delete_from == 'both' and include_local:
+                print("✅ All assignments deleted successfully!")
+            elif delete_from == 'both':
+                print("✅ Assignments deleted from both platforms successfully!")
+            else:
+                mode_text = delete_from.upper()
+                if include_local:
+                    mode_text += " + LOCAL DATABASE"
+                print(f"✅ Assignments deleted from {mode_text} successfully!")
             print("💡 Your Gmail emails are completely untouched")
             print("🔄 Run './deployment/run.sh check' to fetch fresh assignments")
             

@@ -723,8 +723,8 @@ class TodoistIntegration:
             str or None: Task ID if found, None otherwise
         """
         try:
-            # Get all tasks from the assignments project
-            project_id = self.get_or_create_project("Assignments")
+            # Get all tasks from the assignments project (use same project as creation)
+            project_id = self.get_or_create_project()
             url = f'{self.base_url}/tasks'
             params = {'project_id': project_id}
             
