@@ -660,7 +660,68 @@ class MoodleDirectScraper:
                 logger.info(f"🔄 Merge summary: new={new_count} updated={updated} total_main={len(merged)}")
             except Exception as e:
                 logger.warning(f"Merge failed: {e}")
+        # NEW: summary output
+        try:
+            self._print_scrape_summary(all_items)
+        except Exception as e:
+            logger.debug(f"Summary generation failed: {e}")
         return all_items
+
+    # ---------------- Summary Helper ---------------- #
+    def _print_scrape_summary(self, items: List[Dict]):
+        """Print/log a concise summary of scraped items.
+        Includes counts per activity type and per course with titles.
+        Always prints a human-readable summary to stdout regardless of log verbosity."""
+        if not items:
+            logger.info("📊 Scrape summary: No items found.")
+            print("📊 Scrape summary: No items found.")
+            return
+        from collections import Counter, defaultdict
+        type_counter = Counter()
+        course_titles = defaultdict(list)
+        course_name_map = {}
+        for it in items:
+            atype = (it.get('activity_type') or 'unknown').lower()
+            type_counter[atype] += 1
+            code = it.get('course_code') or it.get('course') or 'UNKNOWN'
+            course_name_map[code] = it.get('course') or code
+            course_titles[code].append(it.get('title') or it.get('raw_title') or 'Untitled')
+        total_items = len(items)
+        distinct_courses = len(course_titles)
+        type_parts = [f"{t}:{c}" for t, c in sorted(type_counter.items(), key=lambda x: (-x[1], x[0]))]
+        logger.info(f"📊 Scrape summary: {total_items} items across {distinct_courses} courses | Activity types -> " + ", ".join(type_parts))
+        # Build stdout summary (always)
+        print("\n📊 SCRAPE SUMMARY")
+        print(f"Total: {total_items} items | Courses: {distinct_courses}")
+        print("Activity types:")
+        for t, c in sorted(type_counter.items(), key=lambda x: (-x[1], x[0])):
+            print(f"  - {t}: {c}")
+        print("Courses & Items:")
+        for code, titles in sorted(course_titles.items(), key=lambda x: (-len(x[1]), x[0])):
+            cname = course_name_map.get(code, code)
+            # Truncate course name if too long for better readability
+            display_cname = cname[:40] + "..." if len(cname) > 40 else cname
+            print(f"  - {code} ({display_cname}): {len(titles)} items")
+            
+            # Show items in a more readable format (max 3 per line, truncate long titles)
+            max_show = 8 if not self.debug_scrape else 15
+            shown = titles[:max_show]
+            more = len(titles) - len(shown)
+            
+            for i, title in enumerate(shown):
+                # Truncate very long titles for readability
+                display_title = title[:60] + "..." if len(title) > 60 else title
+                prefix = "    " if i == 0 else "      "
+                print(f"{prefix}• {display_title}")
+            
+            if more > 0:
+                print(f"      ... and {more} more items")
+            
+            # Log the full version for debugging/logs
+            title_list = '; '.join(titles[:15])
+            if len(titles) > 15:
+                title_list += f" ... (+{len(titles) - 15} more)"
+            logger.info(f"  • {code}: {len(titles)} items ({cname}) -> {title_list}")
 
     # ---------------- Course & Activity Scraping ---------------- #
     def fetch_courses(self) -> List[Dict]:  # override placeholder with basic implementation
