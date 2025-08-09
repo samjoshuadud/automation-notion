@@ -184,6 +184,24 @@ class NotionIntegration:
             logger.warning(f"Could not parse dates for smart reminder calculation: {e}")
             return None
     
+    def _validate_assignment_data(self, assignment: Dict) -> Dict:
+        """Validate and clean assignment data before sending to Notion"""
+        cleaned = assignment.copy()
+        
+        # Validate due date format
+        due_date = cleaned.get('due_date', '')
+        if due_date and due_date != 'No due date':
+            try:
+                # Test if it's a valid YYYY-MM-DD format
+                datetime.strptime(due_date, '%Y-%m-%d')
+                # Valid format, keep as is
+            except ValueError:
+                # Invalid format, log and clear
+                logger.warning(f"Invalid due date format for assignment '{cleaned.get('title', '')}': '{due_date}' - will be excluded from Notion")
+                cleaned['due_date'] = None
+                
+        return cleaned
+
     def create_assignment_page(self, assignment: Dict) -> bool:
         """Create a new page in Notion database for the assignment with reminder"""
         if not self.enabled:
@@ -191,16 +209,19 @@ class NotionIntegration:
             return False
         
         try:
+            # Validate and clean the assignment data first
+            cleaned_assignment = self._validate_assignment_data(assignment)
+            
             url = 'https://api.notion.com/v1/pages'
             
-            # Get due date from assignment
-            due_date_str = assignment.get('due_date')
+            # Get due date from cleaned assignment
+            due_date_str = cleaned_assignment.get('due_date')
             
             # Calculate smart reminder date based on opening and due dates
-            reminder_date = self.calculate_smart_reminder_date(assignment)
+            reminder_date = self.calculate_smart_reminder_date(cleaned_assignment)
             
             # Prepare the page data with enhanced properties
-            formatted_title = self.format_task_content(assignment)
+            formatted_title = self.format_task_content(cleaned_assignment)
             page_data = {
                 "parent": {"database_id": self.database_id},
                 "properties": {
@@ -217,21 +238,21 @@ class NotionIntegration:
                         "rich_text": [
                             {
                                 "text": {
-                                    "content": assignment.get('course', 'Unknown Course')
+                                    "content": cleaned_assignment.get('course', 'Unknown Course')
                                 }
                             }
                         ]
                     },
                     "Status": {
                         "select": {
-                            "name": assignment.get('status', 'Pending')
+                            "name": cleaned_assignment.get('status', 'Pending')
                         }
                     },
                     "Source": {
                         "rich_text": [
                             {
                                 "text": {
-                                    "content": assignment.get('source', 'email')
+                                    "content": cleaned_assignment.get('source', 'email')
                                 }
                             }
                         ]
@@ -242,34 +263,23 @@ class NotionIntegration:
             # Add due date if available
             if due_date_str and due_date_str != 'No due date':
                 try:
-                    # Validate date format for Notion
-                    datetime.strptime(due_date_str, '%Y-%m-%d')
+                    # Validate date format for Notion (must be YYYY-MM-DD)
+                    parsed_date = datetime.strptime(due_date_str, '%Y-%m-%d')
                     page_data["properties"]["Due Date"] = {
                         "date": {
                             "start": due_date_str
                         }
                     }
+                    logger.debug(f"Valid date format for '{cleaned_assignment.get('title', '')}': {due_date_str}")
                 except ValueError:
-                    # Fallback to rich text if date parsing fails
-                    page_data["properties"]["Due Date"] = {
-                        "rich_text": [
-                            {
-                                "text": {
-                                    "content": due_date_str
-                                }
-                            }
-                        ]
-                    }
+                    # Log the invalid date and skip the Due Date property entirely
+                    # This prevents Notion API errors while preserving other assignment data
+                    logger.warning(f"Invalid date format for assignment '{cleaned_assignment.get('title', '')}': '{due_date_str}' - skipping Due Date field")
+                    # Don't add Due Date property at all if invalid
             else:
-                page_data["properties"]["Due Date"] = {
-                    "rich_text": [
-                        {
-                            "text": {
-                                "content": "No due date"
-                            }
-                        }
-                    ]
-                }
+                # Only set "No due date" if we explicitly want to track that state
+                # For now, skip the Due Date property if no valid date
+                logger.debug(f"No due date for assignment '{cleaned_assignment.get('title', '')}' - skipping Due Date field")
             
             # Add reminder date if calculated
             if reminder_date:
@@ -280,12 +290,12 @@ class NotionIntegration:
                 }
             
             # Add course code if available
-            if assignment.get('course_code'):
+            if cleaned_assignment.get('course_code'):
                 page_data["properties"]["Course Code"] = {
                     "rich_text": [
                         {
                             "text": {
-                                "content": assignment.get('course_code')
+                                "content": cleaned_assignment.get('course_code')
                             }
                         }
                     ]
@@ -298,14 +308,25 @@ class NotionIntegration:
                     response = requests.post(url, headers=self.headers, json=page_data, timeout=30)
                     
                     if response.status_code == 200:
-                        logger.info(f"Successfully added assignment to Notion: {assignment['title']}")
+                        logger.info(f"Successfully added assignment to Notion: {cleaned_assignment['title']}")
                         return True
                     elif response.status_code == 400:
-                        logger.error(f"Bad request to Notion API: {response.text}")
-                        # Try to parse error and fix if possible
-                        error_data = response.json() if response.text else {}
-                        if 'message' in error_data:
-                            logger.error(f"Notion API error: {error_data['message']}")
+                        error_text = response.text
+                        assignment_title = cleaned_assignment.get('title', 'Unknown')
+                        logger.error(f"Bad request to Notion API for '{assignment_title}': {error_text}")
+                        
+                        # Try to parse error and provide helpful context
+                        try:
+                            error_data = response.json() if error_text else {}
+                            if 'message' in error_data:
+                                logger.error(f"Notion API error for '{assignment_title}': {error_data['message']}")
+                                
+                                # Provide specific help for common errors
+                                if "Due Date is expected to be date" in error_data['message']:
+                                    logger.error(f"Due date value causing error: '{cleaned_assignment.get('due_date', 'N/A')}'")
+                                    logger.info("Hint: Due dates must be in YYYY-MM-DD format for Notion")
+                        except:
+                            pass
                         return False
                     elif response.status_code == 401:
                         logger.error("Notion API authentication failed. Check your token.")

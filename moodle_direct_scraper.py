@@ -7,6 +7,7 @@ import sys
 import logging
 import time
 import pickle
+import random
 from pathlib import Path
 from typing import Dict, List, Optional, Tuple
 from datetime import datetime, timedelta
@@ -44,10 +45,12 @@ logger = logging.getLogger(__name__)
 class MoodleSession:
     """Handles Moodle login sessions and cookie management with human-like behavior"""
     
-    def __init__(self, moodle_url: str = None, headless: bool = False):
+    def __init__(self, moodle_url: str = None, headless: bool = False, google_email: str = None, google_password: str = None):
         load_dotenv()
         self.moodle_url = moodle_url or os.getenv('MOODLE_URL', 'https://your-moodle-site.com')
         self.headless = headless
+        self.google_email = google_email
+        self.google_password = google_password
         base_dir = Path(__file__).resolve().parent  # absolute base to avoid CWD issues
         self.session_dir = (base_dir / 'data' / 'moodle_session')
         self.session_dir.mkdir(exist_ok=True, parents=True)
@@ -69,6 +72,8 @@ class MoodleSession:
         self._last_login_debug: dict = {}
         self.on_login_callback = None  # callback to trigger once when login confirmed
         self._login_announced = False
+        # Flag to remember if we've detected a device confirmation flow
+        self._device_confirmation_active = False
 
     
     def _random_delay(self, min_ms: int, max_ms: int):
@@ -296,6 +301,724 @@ class MoodleSession:
             logger.error(f"Failed to open login page: {e}")
             return False
 
+    def automated_google_login(self, timeout_minutes: int = 10) -> bool:
+        """Automated Google login with 2FA detection"""
+        if not self.google_email or not self.google_password:
+            logger.info("No Google credentials provided, falling back to manual login")
+            return self.wait_for_user_login(timeout_minutes)
+        
+        logger.info(f"🤖 Starting automated Google login for {self.google_email}")
+        
+        try:
+            page = self.page
+            if not page:
+                logger.error("Browser page not available")
+                return False
+            
+            # First, check if we're on Moodle login page and need to click Google SSO button
+            current_url = page.url.lower()
+            if 'login' in current_url and 'moodle' in current_url or 'tbl.umak.edu.ph' in current_url:
+                logger.info("🔍 Detected Moodle login page, looking for Google SSO button...")
+                
+                # Try to click Google SSO button first
+                if self._attempt_auto_sso_login():
+                    logger.info("✅ Clicked Google SSO button, waiting for redirect...")
+                    # Wait for redirect to Google
+                    time.sleep(3)
+                    
+                    # Wait for Google login page to load
+                    try:
+                        page.wait_for_url("**/accounts.google.com/**", timeout=10000)
+                        logger.info("🔗 Successfully redirected to Google login")
+                    except:
+                        logger.info("⏳ Waiting for Google login page...")
+                        time.sleep(2)
+                else:
+                    logger.warning("❌ Could not find or click Google SSO button")
+                    logger.info("🔄 Falling back to manual login...")
+                    return self.wait_for_user_login(timeout_minutes)
+            
+            # Now wait for Google login form to appear
+            logger.info("🔍 Looking for Google email input field...")
+            time.sleep(2)
+            
+            # Try to find email input field
+            email_selectors = [
+                'input[type="email"]',
+                'input[name="identifier"]',
+                'input[id="identifierId"]',
+                '#Email', '#email',
+                'input[placeholder*="email" i]'
+            ]
+            
+            email_input = None
+            for selector in email_selectors:
+                try:
+                    email_input = page.wait_for_selector(selector, timeout=8000)
+                    if email_input:
+                        logger.info(f"✅ Found email input field: {selector}")
+                        break
+                except:
+                    continue
+            
+            if not email_input:
+                logger.warning("Could not find Google email input field, falling back to manual login")
+                return self.wait_for_user_login(timeout_minutes)
+            
+            # Enter email
+            logger.info("📧 Entering email address")
+            email_input.fill(self.google_email)
+            min_delay, max_delay = self.typing_delay
+            time.sleep(random.uniform(min_delay/1000, max_delay/1000))
+            
+            # Click Next/Continue button
+            next_selectors = [
+                '#identifierNext',
+                'button[type="submit"]',
+                'input[type="submit"]',
+                'button:has-text("Next")',
+                'button:has-text("Continue")',
+                '[data-test-id="next-button"]'
+            ]
+            
+            next_button = None
+            for selector in next_selectors:
+                try:
+                    next_button = page.wait_for_selector(selector, timeout=3000)
+                    if next_button:
+                        break
+                except:
+                    continue
+            
+            if next_button:
+                logger.info("👆 Clicking Next button")
+                next_button.click()
+                time.sleep(3)
+            
+            # Wait for password field
+            password_selectors = [
+                'input[type="password"]',
+                'input[name="password"]',
+                '#password', '#Password',
+                'input[placeholder*="password" i]'
+            ]
+            
+            password_input = None
+            for selector in password_selectors:
+                try:
+                    password_input = page.wait_for_selector(selector, timeout=8000)
+                    if password_input:
+                        break
+                except:
+                    continue
+            
+            if not password_input:
+                logger.warning("Could not find password input field, may need manual intervention")
+                return self._handle_login_continuation(timeout_minutes)
+            
+            # Enter password
+            logger.info("🔐 Entering password")
+            password_input.fill(self.google_password)
+            time.sleep(random.uniform(min_delay/1000, max_delay/1000))
+            
+            # Click Next/Sign in button
+            signin_selectors = [
+                '#passwordNext',
+                'button[type="submit"]',
+                'input[type="submit"]',
+                'button:has-text("Next")',
+                'button:has-text("Sign in")',
+                'button:has-text("Continue")'
+            ]
+            
+            signin_button = None
+            for selector in signin_selectors:
+                try:
+                    signin_button = page.wait_for_selector(selector, timeout=3000)
+                    if signin_button:
+                        break
+                except:
+                    continue
+            
+            if signin_button:
+                logger.info("👆 Clicking Sign in button")
+                signin_button.click()
+                time.sleep(3)
+            
+            # Check for 2FA or successful login
+            return self._handle_login_continuation(timeout_minutes)
+            
+        except Exception as e:
+            logger.error(f"Error during automated login: {e}")
+            logger.info("Falling back to manual login")
+            return self.wait_for_user_login(timeout_minutes)
+
+    def _handle_login_continuation(self, timeout_minutes: int) -> bool:
+        """Handle post-password login (2FA detection, success, etc.)"""
+        logger.info("🔍 Checking for 2FA requirements or login success...")
+        # Dynamic overall timeout: allow longer window if device confirmation engaged later
+        base_deadline = time.time() + max(60, timeout_minutes * 60)
+        # Hard cap only if not device confirmation; once device confirmation detected we extend up to 15m total
+        max_cap_without_device = 300  # 5m
+        device_cap = 900  # 15m
+        self._device_confirmation_active = False  # reset each invocation
+
+        while True:
+            # Compute remaining time budget
+            elapsed = time.time()
+            remaining = (base_deadline - elapsed)
+            if remaining <= 0:
+                if self._device_confirmation_active and (elapsed - (base_deadline - max_cap_without_device)) < (device_cap - max_cap_without_device):
+                    # We previously hit base deadline but device confirmation started; extend once up to device_cap
+                    base_deadline = time.time() + (device_cap - (elapsed - (base_deadline - max_cap_without_device)))
+                else:
+                    logger.warning("⏰ Login continuation window exhausted")
+                    if self._device_confirmation_active:
+                        logger.warning("⚠️ Device confirmation still pending. Keeping browser open. You can approve on device and rerun status check.")
+                        # Do not force manual fallback—just continue short polling for another 2 minutes grace
+                        grace_deadline = time.time() + 120
+                        while time.time() < grace_deadline:
+                            if self._check_login_status():
+                                logger.info("✅ Login completed during grace period after device approval")
+                                self._save_session()
+                                return True
+                            time.sleep(5)
+                        logger.warning("⌛ Grace period expired; falling back to manual login wait")
+                    return self.wait_for_user_login(timeout_minutes)
+            try:
+                page = self.page
+                if not page:
+                    logger.error("Page object missing during login continuation")
+                    return False
+                page_text = page.content().lower()
+
+                # Success check first
+                if self._check_login_status():
+                    logger.info("✅ Automated login successful!")
+                    self._save_session()
+                    return True
+
+                # Detect 2FA
+                tfa_detected = self._detect_and_handle_2fa(page)
+                if tfa_detected:
+                    # If device confirmation just became active, mark and log
+                    if not self._device_confirmation_active and any(p in page_text for p in [
+                        'check your', 'tap yes', 'galaxy tab', 'ipad', 'iphone', 'google sent a notification', 'notification to verify'
+                    ]):
+                        self._device_confirmation_active = True
+                        logger.info("📱 Device confirmation flow engaged — extending monitoring window")
+                    # Passive wait loop (short) before re-evaluating
+                    time.sleep(4 if self._device_confirmation_active else 2)
+                    continue
+
+                # Error heuristics
+                if any(err in page_text for err in ['incorrect', 'wrong password', 'couldn\'t find your', 'invalid password']):
+                    logger.error("❌ Credential error detected on login page")
+                    return False
+
+                # If device confirmation active, use slower poll cadence
+                time.sleep(5 if self._device_confirmation_active else 2)
+            except Exception as e:
+                logger.debug(f"Error during login continuation loop: {e}")
+                time.sleep(3)
+        
+    def _detect_and_handle_2fa(self, page) -> bool:
+        """
+        Intelligently detect and handle various 2FA scenarios with interactive CLI prompts
+        """
+        import time
+        
+        # Get page text for pattern detection
+        page_text = page.content().lower()
+        
+        # Wait a bit for any 2FA prompts to appear
+        time.sleep(2)
+        
+        # Debug: Print page URL and key text snippets
+        current_url = page.url if page else "unknown"
+        logger.debug(f"2FA Detection - URL: {current_url}")
+        logger.debug(f"2FA Detection - Page contains '2-step': {'2-step' in page_text}")
+        logger.debug(f"2FA Detection - Page contains 'verification': {'verification' in page_text}")
+        logger.debug(f"2FA Detection - Page contains 'check your': {'check your' in page_text}")
+        
+        # First check if we're even on a 2FA page anymore (user might have already completed it)
+        if not any(phrase in page_text for phrase in [
+            '2-step', 'two-step', '2fa', 'two-factor', 'verification', 
+            'verify', 'code', 'authenticator', 'device', 'confirm'
+        ]):
+            logger.debug("2FA Detection - No 2FA patterns found in page")
+            return False
+        
+        logger.info("🔍 2FA patterns detected, analyzing page...")
+        
+        # Check for phone number verification setup
+        if self._handle_phone_verification_setup(page):
+            return True
+            
+        # Check for verification method selection
+        if self._handle_verification_method_selection(page):
+            return True
+            
+        # Handle specific 2FA scenarios
+        return self._handle_specific_2fa_scenarios(page, page_text)
+    
+    def _handle_phone_verification_setup(self, page):
+        """Handle phone number setup for 2FA"""
+        phone_setup_patterns = [
+            'text=Add a phone number',
+            'text=Enter your phone number',
+            'text=Phone number verification',
+            'input[type="tel"]',
+            'input[placeholder*="phone"]',
+            'text=We need to verify your phone number'
+        ]
+        
+        for pattern in phone_setup_patterns:
+            try:
+                if page.locator(pattern).is_visible(timeout=1000):
+                    print("\n📱 Phone Number Verification Required")
+                    
+                    # Check if phone input field exists
+                    phone_input = page.locator('input[type="tel"], input[placeholder*="phone"], input[name*="phone"]').first
+                    if phone_input.is_visible():
+                        phone_number = input("Please enter your phone number (with country code, e.g., +1234567890): ")
+                        phone_input.fill(phone_number)
+                        
+                        # Click next/continue button
+                        next_btn = page.locator('button:has-text("Next"), button:has-text("Continue"), button:has-text("Send"), button[type="submit"]').first
+                        if next_btn.is_visible():
+                            next_btn.click()
+                            time.sleep(3)
+                            
+                            # Now handle the SMS code
+                            return self._handle_sms_code_entry(page)
+                    return True
+            except Exception:
+                continue
+        return False
+    
+    def _handle_verification_method_selection(self, page):
+        """Handle when user needs to choose verification method"""
+        selection_patterns = [
+            'text=How would you like to verify',
+            'text=Choose a verification method',
+            'text=Select how to get your code',
+            'text=Try another way',
+            'text=More ways to verify',
+            'text=Choose how you want to sign in',  # From actual HTML
+            'span[jsname="I74d0c"]'  # The span containing "Choose how you want to sign in:"
+        ]
+        
+        for pattern in selection_patterns:
+            try:
+                if page.locator(pattern).is_visible(timeout=1000):
+                    print("\n🔐 Verification Method Selection")
+                    
+                    # Look for available options using the actual HTML structure
+                    available_options = []
+                    
+                    # Check for device confirmation option (challengetype="39")
+                    try:
+                        if page.locator('div[data-challengetype="39"]').is_visible(timeout=500):
+                            device_text = page.locator('div[data-challengetype="39"] .l5PPKe').text_content()
+                            available_options.append(('div[data-challengetype="39"]', f'Device confirmation: {device_text}'))
+                    except:
+                        pass
+                    
+                    # Check for authenticator app option (challengetype="5")
+                    try:
+                        if page.locator('div[data-challengetype="5"]').is_visible(timeout=500):
+                            auth_text = page.locator('div[data-challengetype="5"] .l5PPKe').text_content()
+                            available_options.append(('div[data-challengetype="5"]', f'Authenticator app: {auth_text}'))
+                    except:
+                        pass
+                    
+                    # Check for SMS option (challengetype="9") - PRIORITY AUTO-SELECT
+                    sms_found = False
+                    try:
+                        if page.locator('div[data-challengetype="9"]').is_visible(timeout=500):
+                            sms_text = page.locator('div[data-challengetype="9"] .l5PPKe').text_content()
+                            available_options.append(('div[data-challengetype="9"]', f'SMS code: {sms_text}'))
+                            sms_found = True
+                    except Exception as e:
+                        logger.debug(f"SMS detection failed: {e}")
+                    
+                    # AUTO-SELECT SMS IMMEDIATELY if found
+                    if sms_found:
+                        # Extract phone number hint from SMS option
+                        phone_hint = "your phone"
+                        try:
+                            phone_span = page.query_selector('div[data-challengetype="9"] span[jsname="wKtwcc"]')
+                            if phone_span:
+                                phone_text = phone_span.inner_text().strip()
+                                if phone_text:
+                                    # Convert patterns like "•••• ••• ••51" to "***-***-51"
+                                    import re
+                                    # Extract last 2-4 digits
+                                    match = re.search(r'(\d{2,4})$', phone_text)
+                                    if match:
+                                        phone_hint = f"***-***-{match.group(1)}"
+                                    else:
+                                        phone_hint = phone_text  # Use as-is if pattern doesn't match
+                        except Exception as e:
+                            logger.debug(f"Phone hint extraction failed: {e}")
+                        
+                        print(f"📱 Auto-selecting SMS verification...")
+                        print(f"💬 SMS will be sent to {phone_hint}")
+                        
+                        # Try multiple ways to click the SMS option
+                        click_success = False
+                        try:
+                            # Method 1: Direct click on the SMS div
+                            sms_element = page.locator('div[data-challengetype="9"]').first
+                            sms_element.click()
+                            click_success = True
+                        except Exception as e1:
+                            try:
+                                # Method 2: Click using role=link attribute
+                                sms_element = page.locator('div[role="link"][data-challengetype="9"]').first
+                                sms_element.click()
+                                click_success = True
+                            except Exception as e2:
+                                try:
+                                    # Method 3: Click using jsname
+                                    sms_element = page.locator('div[jsname="EBHGs"][data-challengetype="9"]').first
+                                    sms_element.click()
+                                    click_success = True
+                                except Exception as e3:
+                                    logger.debug(f"All SMS click methods failed: {e1}, {e2}, {e3}")
+                        
+                        if click_success:
+                            time.sleep(3)  # Give more time for page transition
+                            print("✅ SMS verification selected successfully")
+                            return True  # This will trigger SMS code detection
+                        else:
+                            print("❌ SMS auto-selection failed - falling back to manual selection")
+                    
+                    # Check for backup codes (challengetype="8")
+                    try:
+                        if page.locator('div[data-challengetype="8"]').is_visible(timeout=500):
+                            backup_text = page.locator('div[data-challengetype="8"] .l5PPKe').text_content()
+                            available_options.append(('div[data-challengetype="8"]', f'Backup codes: {backup_text}'))
+                    except:
+                        pass
+                    
+                    # Check for passkey option (challengetype="53")
+                    try:
+                        if page.locator('div[data-challengetype="53"]').is_visible(timeout=500):
+                            passkey_text = page.locator('div[data-challengetype="53"] .l5PPKe').text_content()
+                            available_options.append(('div[data-challengetype="53"]', f'Passkey: {passkey_text}'))
+                    except:
+                        pass
+                    
+                    # Fallback to generic text-based detection if structured detection fails
+                    if not available_options:
+                        option_selectors = [
+                            ('text*=text message', 'SMS'),
+                            ('text*=phone call', 'Phone Call'),
+                            ('text*=authenticator', 'Authenticator App'),
+                            ('text*=backup code', 'Backup Code'),
+                            ('text*=security key', 'Security Key'),
+                            ('text*=another device', 'Another Device'),
+                            ('text*=passkey', 'Passkey')
+                        ]
+                        
+                        for selector, option_name in option_selectors:
+                            try:
+                                if page.locator(selector).is_visible(timeout=500):
+                                    available_options.append((selector, option_name))
+                            except:
+                                continue
+                    
+                    if available_options:
+                        print("Available verification methods:")
+                        for i, (_, option_name) in enumerate(available_options, 1):
+                            print(f"{i}. {option_name}")
+                        
+                        while True:
+                            try:
+                                choice = input("Please select a verification method (number): ").strip()
+                                if choice.isdigit():
+                                    choice_num = int(choice) - 1
+                                    if 0 <= choice_num < len(available_options):
+                                        selector, option_name = available_options[choice_num]
+                                        print(f"Selected: {option_name}")
+                                        
+                                        # Click the selected option
+                                        page.locator(selector).first.click()
+                                        time.sleep(2)
+                                        
+                                        # Handle the specific verification type based on challengetype or text
+                                        if 'data-challengetype="9"' in selector or 'SMS' in option_name or 'text message' in option_name.lower():
+                                            return self._handle_sms_code_entry(page)
+                                        elif 'data-challengetype="5"' in selector or 'authenticator' in option_name.lower():
+                                            return self._handle_authenticator_code(page)
+                                        elif 'data-challengetype="8"' in selector or 'backup' in option_name.lower():
+                                            return self._handle_backup_code(page)
+                                        elif 'data-challengetype="39"' in selector or 'device' in option_name.lower():
+                                            # Device confirmation - let it be handled by the main detection loop
+                                            return True
+                                        elif 'data-challengetype="53"' in selector or 'passkey' in option_name.lower():
+                                            print("🔐 Passkey authentication initiated. Please follow the browser prompts.")
+                                            return self._handle_generic_verification(page)
+                                        else:
+                                            return self._handle_generic_verification(page)
+                                    else:
+                                        print(f"Please enter a number between 1 and {len(available_options)}")
+                                else:
+                                    print("Please enter a valid number")
+                            except KeyboardInterrupt:
+                                print("\n⏸️ Skipping method selection...")
+                                return False
+                            except ValueError:
+                                print("Please enter a valid number")
+                    else:
+                        return self._handle_generic_verification(page)
+                    
+                    return True
+            except Exception:
+                continue
+        return False
+    
+    def _handle_sms_code_entry(self, page):
+        """Handle SMS code entry"""
+        print("\n📱 SMS Verification")
+        code = input("Please enter the verification code sent to your phone: ")
+        
+        # Find SMS code input field
+        sms_inputs = [
+            'input[type="tel"]',
+            'input[placeholder*="code"]',
+            'input[aria-label*="code"]',
+            'input[name*="code"]',
+            'input[autocomplete="one-time-code"]'
+        ]
+        
+        for selector in sms_inputs:
+            try:
+                input_field = page.locator(selector).first
+                if input_field.is_visible():
+                    input_field.fill(code)
+                    break
+            except:
+                continue
+        
+        # Submit the code
+        self._click_submit_button(page)
+        return True
+    
+    def _handle_authenticator_code(self, page):
+        """Handle authenticator app code entry"""
+        print("\n� Authenticator App Verification")
+        code = input("Please enter the 6-digit code from your authenticator app: ")
+        
+        # Find authenticator input field
+        auth_inputs = [
+            'input[type="text"]',
+            'input[type="tel"]',
+            'input[placeholder*="code"]',
+            'input[maxlength="6"]'
+        ]
+        
+        for selector in auth_inputs:
+            try:
+                input_field = page.locator(selector).first
+                if input_field.is_visible():
+                    input_field.fill(code)
+                    break
+            except:
+                continue
+        
+        self._click_submit_button(page)
+        return True
+    
+    def _handle_backup_code(self, page):
+        """Handle backup code entry"""
+        print("\n🔑 Backup Code Verification")
+        code = input("Please enter one of your 8-digit backup codes: ")
+        
+        # Find backup code input
+        input_field = page.locator('input').first
+        if input_field.is_visible():
+            input_field.fill(code)
+        
+        self._click_submit_button(page)
+        return True
+    
+    def _handle_generic_verification(self, page):
+        """Handle generic verification scenarios"""
+        print("\n🔐 Manual Verification Required")
+        print("Please complete the verification process manually in the browser.")
+        input("Press Enter once you've completed verification...")
+        return True
+    
+    def _click_submit_button(self, page):
+        """Find and click the appropriate submit button"""
+        submit_buttons = [
+            'button[type="submit"]',
+            'button:has-text("Next")',
+            'button:has-text("Verify")',
+            'button:has-text("Continue")',
+            'button:has-text("Submit")',
+            'input[type="submit"]'
+        ]
+        
+        for selector in submit_buttons:
+            try:
+                btn = page.locator(selector).first
+                if btn.is_visible():
+                    btn.click()
+                    page.wait_for_load_state('networkidle', timeout=10000)
+                    return True
+            except:
+                continue
+        return False
+    
+    def _handle_specific_2fa_scenarios(self, page, page_text):
+        """Handle other specific 2FA scenarios using page text analysis"""
+        logger.debug("Checking specific 2FA scenarios...")
+        device_confirmation_detected = False
+        device_name = "your device"
+        device_confirmation_phrases = [
+            'check your', 'tap yes', 'confirm', 'approve', 'device notification', 'push notification', 'phone notification',
+            'galaxy tab', 'ipad', 'tablet', 'android device', 'iphone', 'your phone', 'your device', 'notification to verify',
+            'gmail app', 'tap yes on your', 'google sent a notification'
+        ]
+        text_detected = any(p in page_text for p in device_confirmation_phrases)
+        logger.debug(f"Device confirmation text patterns detected: {text_detected}")
+        # Element-based detection (robust visibility handling — Playwright's is_visible has no timeout param)
+        device_elements = [
+            'h1:has-text("2-Step Verification")',
+            'h2[jsname="Ud7fr"]',
+            'span[jsname="Ud7fr"]:has-text("Check your")',
+            'div[jsname="NhJ5Dd"]:has-text("Google sent a notification")',
+            'text=Google sent a notification',
+            'text=Tap Yes on the notification',
+            'div:has-text("notification to verify")'
+        ]
+        for sel in device_elements:
+            try:
+                loc = page.locator(sel).first
+                loc.wait_for(state='visible', timeout=800)
+                device_confirmation_detected = True
+                logger.info(f"✅ Device confirmation detected via element: {sel}")
+                # Extract device heading if present
+                try:
+                    heading = page.locator('h2[jsname="Ud7fr"]').first.text_content()
+                    if heading and 'check your' in heading.lower():
+                        device_name = heading.strip()
+                except Exception:
+                    pass
+                break
+            except Exception:
+                continue
+        if not device_confirmation_detected and text_detected:
+            device_confirmation_detected = True
+            logger.info("✅ Device confirmation detected via text heuristics")
+        if device_confirmation_detected:
+            # Mark session state so continuation logic knows
+            self._device_confirmation_active = True
+            if device_name == 'your device':
+                try:
+                    match = re.search(r'galaxy tab[^.<\n]*', page_text, re.IGNORECASE)
+                    if match:
+                        device_name = match.group(0)
+                    elif 'ipad' in page_text:
+                        device_name = 'your iPad'
+                    elif 'iphone' in page_text:
+                        device_name = 'your iPhone'
+                    elif 'android' in page_text:
+                        device_name = 'your Android device'
+                    elif 'tablet' in page_text:
+                        device_name = 'your tablet'
+                except Exception:
+                    pass
+            print(f"\n📱 Device Confirmation Detected")
+            print(f"🔔 Approve the sign-in on {device_name}.")
+            print("💡 You can also choose to resend or pick another method below.")
+            # Offer resend / alternate method
+            resend = False
+            try_another = False
+            try:
+                if page.locator('span[jsname="V67aGc"]:has-text("Resend it")').first.is_visible():
+                    resend = True
+                if page.locator('span[jsname="V67aGc"]:has-text("Try another way")').first.is_visible():
+                    try_another = True
+            except Exception:
+                pass
+            if resend or try_another:
+                opts = ["Wait for approval"]
+                if resend: opts.append("Resend notification")
+                if try_another: opts.append("Try another way")
+                for i, o in enumerate(opts, 1):
+                    print(f"{i}. {o}")
+                choice = input("Select option (Enter to wait): ").strip()
+                if choice == '2' and resend:
+                    try:
+                        page.locator('span[jsname="V67aGc"]:has-text("Resend it")').first.click()
+                        print("📤 Notification resent.")
+                    except Exception:
+                        print("⚠️ Failed to resend notification.")
+                elif ((choice == '2' and not resend) or (choice == '3')) and try_another:
+                    try:
+                        page.locator('span[jsname="V67aGc"]:has-text("Try another way")').first.click()
+                        print("🔄 Loading alternative methods...")
+                        time.sleep(2)
+                        return True  # Re-run detection on new UI
+                    except Exception:
+                        print("⚠️ Failed to open alternative methods.")
+            print("⏳ Waiting for device approval...")
+            return True
+        # SMS/Text codes - now with more specific detection to avoid false positives
+        sms_specific_phrases = [
+            'enter the code', 'verification code sent', 'code sent to',
+            'enter code', 'text message code', '6-digit code',
+            'sms code', 'phone number ending in'
+        ]
+        
+        if any(phrase in page_text for phrase in sms_specific_phrases):
+            # Try to extract phone number hint
+            phone_hint = "your phone"
+            if 'ending in' in page_text:
+                import re
+                match = re.search(r'ending in (\d+)', page_text)
+                if match:
+                    phone_hint = f"***-***-{match.group(1)}"
+            
+            print(f"\n📱 SMS Code Required")
+            print(f"💬 A verification code was sent to {phone_hint}")
+            return self._handle_sms_code_entry(page)
+        
+        # Authenticator apps - now with interactive input
+        if any(phrase in page_text for phrase in [
+            'authenticator', 'google authenticator', 'auth app',
+            'verification app', 'time-based'
+        ]):
+            print("\n🔐 Authenticator App Required")
+            print("📲 Please use your authenticator app")
+            return self._handle_authenticator_code(page)
+        
+        # Backup codes - now with interactive input
+        if any(phrase in page_text for phrase in [
+            'backup code', 'recovery code', 'backup verification'
+        ]):
+            print("\n🔑 Backup Code Required")
+            print("📄 Please use one of your backup codes")
+            return self._handle_backup_code(page)
+        
+        # Generic 2FA detection - last resort
+        if any(phrase in page_text for phrase in [
+            '2-step', 'two-step', '2fa', 'two-factor',
+            'security code', 'verify', 'verification'
+        ]):
+            logger.warning("⚠️ Generic 2FA detected - no specific scenario matched")
+            print("\n🔐 Additional Verification Required")
+            print("🛡️  Please complete the security verification")
+            return self._handle_generic_verification(page)
+        
+        logger.debug("No specific 2FA scenarios detected")
+        return False
+
     def wait_for_user_login(self, timeout_minutes: int = 10) -> bool:
         """Wait for user to manually login and detect when they're logged in"""
         logger.info(f"⏳ Waiting for user to login (timeout: {timeout_minutes} minutes)")
@@ -414,10 +1137,10 @@ class MoodleSession:
         except Exception as e:
             logger.debug(f"Snapshot error: {e}")
 
-    def _attempt_auto_sso_login(self) -> bool:
+    def _attempt_auto_sso_login(self, force_retry: bool = False) -> bool:
         """Attempt automatic Google SSO click if login form is present.
         Returns True if a click was issued (then we wait for redirects)."""
-        if getattr(self, '_sso_attempted', False):
+        if getattr(self, '_sso_attempted', False) and not force_retry:
             return False
         if not self.page:
             return False
@@ -427,6 +1150,10 @@ class MoodleSession:
                 'a.login-identityprovider-btn[href*="oauth2/login.php"][href*="id=1"]',
                 'a.login-identityprovider-btn[href*="oauth2/login.php"]',
                 'a[href*="auth/oauth2/login.php"][class*="identityprovider"]',
+                'a[href*="oauth2"][class*="btn"]',
+                'a[class*="google"][class*="btn"]',
+                'button[class*="google"]',
+                'input[value*="Google"]'
             ]
             for sel in selectors:
                 el = None
@@ -437,11 +1164,33 @@ class MoodleSession:
                 if el:
                     text_content = (el.text_content() or '').strip().lower()
                     # Heuristic: must contain university or google context
-                    if any(k in text_content for k in ['university', 'google', 'makati']):
+                    if any(k in text_content for k in ['university', 'google', 'makati', 'sso', 'login']):
                         logger.info(f"⚡ Auto-clicking SSO button via selector: {sel}")
+                        logger.info(f"🔍 Button text: '{text_content}'")
                         self._sso_attempted = True
                         el.click()
                         return True
+            
+            # If no specific SSO button found, look for generic patterns
+            generic_selectors = [
+                'a[href*="oauth2"]',
+                'a[href*="google"]',
+                'button:has-text("Google")',
+                'a:has-text("Google")'
+            ]
+            
+            for sel in generic_selectors:
+                try:
+                    el = self.page.query_selector(sel)
+                    if el:
+                        logger.info(f"⚡ Auto-clicking generic SSO button: {sel}")
+                        self._sso_attempted = True
+                        el.click()
+                        return True
+                except Exception:
+                    continue
+            
+            logger.warning("❌ No Google SSO button found on the page")
             return False
         except Exception as e:
             logger.debug(f"Auto SSO attempt failed: {e}")
@@ -606,17 +1355,30 @@ class MoodleSession:
 class MoodleDirectScraper:
     """Main class for scraping Moodle content directly with human-like behavior"""
     
-    def __init__(self, moodle_url: str = None, headless: bool = False, auto_scrape_on_login: Optional[bool] = None, auto_scrape_background: bool = True):
+    def __init__(self, moodle_url: str = None, headless: bool = False, auto_scrape_on_login: Optional[bool] = None, auto_scrape_background: bool = True, click_delay: tuple = None, page_wait: tuple = None, typing_delay: tuple = None, google_email: str = None, google_password: str = None):
         """Create a scraper.
         auto_scrape_on_login:
           True  -> always auto-scrape right after login
           False -> never auto-scrape (you must call scrape_all_due_items manually)
           None  -> infer: auto-scrape only when headless (recommended so interactive sessions stay manual)
         auto_scrape_background: if auto-scrape enabled, run in background thread (non-blocking)
+        click_delay: tuple of (min_ms, max_ms) for click delays (default: (100, 300))
+        page_wait: tuple of (min_sec, max_sec) for page load waits (default: (2, 5))
+        typing_delay: tuple of (min_ms, max_ms) for typing delays (default: (50, 150))
+        google_email: Google email for automated login
+        google_password: Google password for automated login
         """
         load_dotenv()
         self.moodle_url = moodle_url or os.getenv('MOODLE_URL')
-        self.session = MoodleSession(self.moodle_url, headless)
+        self.session = MoodleSession(self.moodle_url, headless, google_email, google_password)
+        
+        # Configure timing parameters
+        if click_delay:
+            self.session.click_delay = click_delay
+        if page_wait:
+            self.session.page_load_wait = page_wait
+        if typing_delay:
+            self.session.typing_delay = typing_delay
         if not self.moodle_url:
             raise ValueError("Moodle URL not provided. Set MOODLE_URL environment variable or pass moodle_url parameter.")
         # Decide auto-scrape behavior (default only in headless mode)
@@ -841,7 +1603,9 @@ class MoodleDirectScraper:
                 driver = self.session.driver
                 if page:
                     page.goto(dashboard, wait_until='domcontentloaded')
-                    time.sleep(random.uniform(0.8, 1.6))
+                    # Use configurable page load wait
+                    min_wait, max_wait = self.session.page_load_wait
+                    time.sleep(random.uniform(min_wait, max_wait))
                     anchors = []
                     sel_list = [
                         'a[href*="/course/view.php?id="]',  # generic
@@ -947,7 +1711,9 @@ class MoodleDirectScraper:
                     print(f"🔍 DEBUG: Navigating to {course.get('code', 'UNKNOWN')} at {url}")
                 
                 page.goto(url, wait_until='domcontentloaded')
-                time.sleep(random.uniform(1.0, 2.0))
+                # Use configurable page load wait
+                min_wait, max_wait = self.session.page_load_wait
+                time.sleep(random.uniform(min_wait, max_wait))
                 html = page.content()
                 
                 if self.debug_scrape:
@@ -1422,12 +2188,17 @@ class MoodleDirectScraper:
         }
 
     def interactive_login(self, timeout_minutes: int = 10) -> bool:
-        """Open login page and wait for manual (or auto-SSO) completion."""
+        """Open login page and wait for manual (or automated) completion."""
         if not self.session.start_browser():
             return False
         if not self.session.open_login_page():
             return False
-        return self.session.wait_for_user_login(timeout_minutes)
+        
+        # Use automated login if credentials are provided
+        if self.session.google_email and self.session.google_password:
+            return self.session.automated_google_login(timeout_minutes)
+        else:
+            return self.session.wait_for_user_login(timeout_minutes)
 
     def close(self):
         """Close underlying session/browser resources (compatibility with run_fetcher)."""

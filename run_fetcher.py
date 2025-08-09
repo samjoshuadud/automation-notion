@@ -382,6 +382,20 @@ def main():
     parser.add_argument('--login-timeout', type=int, default=10,
                        help='Timeout for manual login in minutes (default: 10)')
     
+    # Timing configuration for better reliability
+    parser.add_argument('--click-delay', type=int, nargs=2, default=[100, 300], metavar=('MIN', 'MAX'),
+                       help='Click delay range in milliseconds (default: 100 300)')
+    parser.add_argument('--page-wait', type=int, nargs=2, default=[2, 5], metavar=('MIN', 'MAX'),
+                       help='Page load wait range in seconds (default: 2 5)')
+    parser.add_argument('--typing-delay', type=int, nargs=2, default=[50, 150], metavar=('MIN', 'MAX'),
+                       help='Typing delay range in milliseconds (default: 50 150)')
+    
+    # Automated Google login
+    parser.add_argument('--email', type=str,
+                       help='Google email for automated login')
+    parser.add_argument('--password', type=str,
+                       help='Google password for automated login')
+    
     args = parser.parse_args()
     
     # Debug mode implies verbose
@@ -426,7 +440,15 @@ def main():
             return 1
         
         try:
-            scraper = MoodleDirectScraper(moodle_url=args.moodle_url, headless=args.headless)
+            scraper = MoodleDirectScraper(
+                moodle_url=args.moodle_url, 
+                headless=args.headless,
+                click_delay=tuple(args.click_delay),
+                page_wait=tuple(args.page_wait),
+                typing_delay=tuple(args.typing_delay),
+                google_email=args.email,
+                google_password=args.password
+            )
             
             # Handle clear session
             if args.clear_moodle_session:
