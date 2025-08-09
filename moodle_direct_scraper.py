@@ -11,6 +11,14 @@ from pathlib import Path
 from typing import Dict, List, Optional, Tuple
 from datetime import datetime, timedelta
 from dotenv import load_dotenv
+import re
+import json
+import random
+try:
+    from bs4 import BeautifulSoup  # optional for robust parsing
+    BS4_AVAILABLE = True
+except ImportError:  # noqa
+    BS4_AVAILABLE = False
 
 # Try to import playwright first, fall back to selenium
 try:
@@ -58,6 +66,9 @@ class MoodleSession:
         
         # Internal flags
         self._last_login_debug: dict = {}
+        self.on_login_callback = None  # callback to trigger once when login confirmed
+        self._login_announced = False
+
     
     def _random_delay(self, min_ms: int, max_ms: int):
         """Add random human-like delay"""
@@ -582,16 +593,660 @@ class MoodleDirectScraper:
         self.session = MoodleSession(self.moodle_url, headless)
         if not self.moodle_url:
             raise ValueError("Moodle URL not provided. Set MOODLE_URL environment variable or pass moodle_url parameter.")
-    
+        # Register login callback so scraping can auto-start once login detected
+        self.session.on_login_callback = self._on_session_logged_in
+        # Storage paths
+        self.scraped_file = 'data/assignments_scraped.json'
+        self.main_file = 'data/assignments.json'
+        # In-memory cache
+        self._scraped_items: List[Dict] = []
+        # Duplicate thresholds
+        self._fuzzy_threshold_same = 0.85
+        self._fuzzy_threshold_update = 0.90
+        self.debug_scrape = os.getenv('MOODLE_SCRAPE_DEBUG', '0') in ['1','true','yes','on']
+
+    # ---------------- Scraping Orchestration ---------------- #
+    def _on_session_logged_in(self):
+        """Triggered automatically once after login is confirmed."""
+        try:
+            logger.info("🚀 Starting automatic scrape of due items...")
+            self.scrape_all_due_items(auto_merge=True)
+        except Exception as e:
+            logger.warning(f"Automatic scrape failed: {e}")
+
+    def scrape_all_due_items(self, auto_merge: bool = False) -> List[Dict]:
+        if not self.session._check_login_status(skip_navigation=True):
+            raise Exception("Not logged in to Moodle")
+        courses = self.fetch_courses()
+        
+        if self.debug_scrape:
+            print(f"🔍 DEBUG: Starting to iterate through {len(courses)} courses")
+            for i, course in enumerate(courses, 1):
+                print(f"   {i}. {course.get('code', 'UNKNOWN')} - {course.get('name', 'Unknown')}")
+                print(f"      URL: {course.get('url', 'No URL')}")
+        
+        all_items: List[Dict] = []
+        for i, course in enumerate(courses, 1):
+            try:
+                if self.debug_scrape:
+                    print(f"🔍 DEBUG: Processing course {i}/{len(courses)}: {course.get('code', 'UNKNOWN')}")
+                
+                items = self._scrape_course_due_items(course)
+                all_items.extend(items)
+                
+                if self.debug_scrape:
+                    print(f"🔍 DEBUG: Course {course.get('code', 'UNKNOWN')} yielded {len(items)} items")
+                    if items:
+                        for item in items[:3]:  # Show first 3 items
+                            print(f"      - {item.get('title', 'Unknown')} (due: {item.get('due_date', 'N/A')})")
+                        if len(items) > 3:
+                            print(f"      ... and {len(items) - 3} more items")
+                
+            except Exception as e:
+                logger.warning(f"Course scrape failed for {course.get('name')}: {e}")
+                if self.debug_scrape:
+                    print(f"❌ DEBUG: Error processing course {course.get('code', 'UNKNOWN')}: {e}")
+        
+        if self.debug_scrape:
+            print(f"🔍 DEBUG: Total items found across all courses: {len(all_items)}")
+        
+        # Save raw scraped list separately
+        self._scraped_items = all_items
+        self._save_json(self.scraped_file, all_items)
+        logger.info(f"💾 Saved {len(all_items)} scraped items to {self.scraped_file}")
+        if auto_merge:
+            try:
+                merged, new_count, updated = self.merge_into_main()
+                logger.info(f"🔄 Merge summary: new={new_count} updated={updated} total_main={len(merged)}")
+            except Exception as e:
+                logger.warning(f"Merge failed: {e}")
+        return all_items
+
+    # ---------------- Course & Activity Scraping ---------------- #
+    def fetch_courses(self) -> List[Dict]:  # override placeholder with basic implementation
+        if not self.session._check_login_status(skip_navigation=True):
+            raise Exception("Not logged in to Moodle")
+        courses: List[Dict] = []
+        tried_urls = []
+        course_pages = [f"{self.moodle_url.rstrip('/')}/my/courses.php", f"{self.moodle_url.rstrip('/')}/my/"]
+        for dashboard in course_pages:
+            tried_urls.append(dashboard)
+            try:
+                page = self.session.page
+                driver = self.session.driver
+                if page:
+                    page.goto(dashboard, wait_until='domcontentloaded')
+                    time.sleep(random.uniform(0.8, 1.6))
+                    anchors = []
+                    sel_list = [
+                        'a[href*="/course/view.php?id="]',  # generic
+                        'div.card.course-card a.aalink.coursename',  # card theme primary
+                        'div.card.course-card a[href*="/course/view.php?id="]',
+                        '.coursebox a[href*="/course/view.php?id="]',
+                        'a.course-title'
+                    ]
+                    seen = set()
+                    for sel in sel_list:
+                        try:
+                            anchors.extend(page.query_selector_all(sel) or [])
+                        except Exception:
+                            continue
+                    logger.debug(f"Course anchor candidates: {len(anchors)} (dedup pending)")
+                    for a in anchors:
+                        try:
+                            href = (a.get_attribute('href') or '').split('#')[0]
+                            if '/course/view.php?id=' not in href:
+                                continue
+                            if href in seen:
+                                continue
+                            seen.add(href)
+                            # Prefer visible multiline span text
+                            name = ''
+                            try:
+                                multiline = a.query_selector('span.multiline span[aria-hidden="true"]')
+                                if multiline:
+                                    name = (multiline.text_content() or '').strip()
+                            except Exception:
+                                pass
+                            if not name:
+                                name = (a.text_content() or '').strip()
+                            # Clean excessive whitespace / hidden labels
+                            name = re.sub(r'\s+', ' ', name)
+                            name = re.sub(r'(?i)course name', '', name).strip()
+                            if not name:
+                                continue
+                            code, cname = self._extract_course_code_name(name)
+                            courses.append({'name': cname, 'code': code, 'url': href})
+                        except Exception:
+                            continue
+                elif driver:
+                    driver.get(dashboard)
+                    time.sleep(2)
+                    from selenium.webdriver.common.by import By
+                    anchors = []
+                    sel_list = [
+                        'div.card.course-card a.aalink.coursename',
+                        'div.card.course-card a[href*="/course/view.php?id="]',
+                        'a[href*="/course/view.php?id="]',
+                        '.coursebox a[href*="/course/view.php?id="]',
+                        'a.course-title'
+                    ]
+                    for sel in sel_list:
+                        try:
+                            anchors.extend(driver.find_elements(By.CSS_SELECTOR, sel))
+                        except Exception:
+                            continue
+                    logger.debug(f"(Selenium) Course anchor candidates: {len(anchors)}")
+                    seen = set()
+                    for a in anchors:
+                        try:
+                            href = (a.get_attribute('href') or '').split('#')[0]
+                            if '/course/view.php?id=' not in href or href in seen:
+                                continue
+                            seen.add(href)
+                            name = a.text.strip()
+                            # Fallback: look inside multiline span if empty
+                            if not name:
+                                try:
+                                    multiline = a.find_element(By.CSS_SELECTOR, 'span.multiline span[aria-hidden="true"]')
+                                    name = multiline.text.strip()
+                                except Exception:
+                                    pass
+                            name = re.sub(r'\s+', ' ', name)
+                            name = re.sub(r'(?i)course name', '', name).strip()
+                            if not name:
+                                continue
+                            code, cname = self._extract_course_code_name(name)
+                            courses.append({'name': cname, 'code': code, 'url': href})
+                        except Exception:
+                            continue
+            except Exception as e:
+                logger.debug(f"Course fetch attempt failed for {dashboard}: {e}")
+            if courses:
+                break
+        logger.info(f"📚 Found {len(courses)} courses (tried: {', '.join(tried_urls)})")
+        if os.getenv('MOODLE_SCRAPE_DEBUG','0') in ['1','true','yes','on'] and self.session.page:
+            logger.debug("Course list: " + ", ".join([c.get('code') or c.get('name') for c in courses]))
+        return courses
+
+    def _scrape_course_due_items(self, course: Dict) -> List[Dict]:
+        items: List[Dict] = []
+        page = self.session.page
+        driver = self.session.driver
+        url = course.get('url')
+        if not url:
+            return items
+        try:
+            if page:
+                if self.debug_scrape:
+                    print(f"🔍 DEBUG: Navigating to {course.get('code', 'UNKNOWN')} at {url}")
+                
+                page.goto(url, wait_until='domcontentloaded')
+                time.sleep(random.uniform(1.0, 2.0))
+                html = page.content()
+                
+                if self.debug_scrape:
+                    try:
+                        # Save course page HTML for debugging
+                        course_code = course.get('code', 'nocode').replace('/', '_')
+                        snap = Path('data/moodle_session') / f"course_{course_code}_page_{int(time.time())}.html"
+                        snap.parent.mkdir(exist_ok=True, parents=True)
+                        with open(snap, 'w', encoding='utf-8') as f: 
+                            f.write(html)
+                        print(f"🔍 DEBUG: Saved course page HTML to {snap}")
+                        
+                        # Quick check for activities
+                        if 'activity' in html.lower():
+                            print(f"🔍 DEBUG: Course page contains 'activity' text")
+                        else:
+                            print(f"⚠️ DEBUG: Course page does NOT contain 'activity' text")
+                        
+                    except Exception as e:
+                        print(f"⚠️ DEBUG: Could not save course HTML: {e}")
+                
+                items.extend(self._extract_due_items_from_html(html, course))
+                
+            elif driver:
+                driver.get(url)
+                time.sleep(random.uniform(1.5, 2.5))
+                html = driver.page_source
+                items.extend(self._extract_due_items_from_html(html, course))
+            time.sleep(random.uniform(0.6, 1.2))
+        except Exception as e:
+            logger.debug(f"Activity scrape error ({course.get('code')}): {e}")
+            if self.debug_scrape:
+                print(f"❌ DEBUG: Exception in course scraping: {e}")
+        
+        if items:
+            logger.info(f"  • {course.get('code', course.get('name'))}: {len(items)} items with due/open dates")
+        else:
+            logger.debug(f"No dated items found for course {course.get('code', course.get('name'))}")
+            if self.debug_scrape:
+                print(f"⚠️ DEBUG: No items found for {course.get('code', 'UNKNOWN')}")
+        return items
+
+    # ---------------- Extraction Helpers ---------------- #
+    def _extract_due_items_from_html(self, html: str, course: Dict) -> List[Dict]:
+        # Prefer structured parsing with BeautifulSoup if available
+        if BS4_AVAILABLE:
+            try:
+                return self._extract_with_bs4(html, course)
+            except Exception as e:
+                logger.debug(f"BeautifulSoup parsing failed, falling back to regex: {e}")
+        return self._extract_with_regex(html, course)
+
+    def _extract_with_bs4(self, html: str, course: Dict) -> List[Dict]:
+        results: List[Dict] = []
+        soup = BeautifulSoup(html, 'html.parser')
+        containers = soup.select('div.activity-grid, li.activity, [class*="modtype_"], div.activity-item, div.section li.activity')
+        seen_keys = set()
+        for cont in containers:
+            try:
+                classes = cont.get('class', [])
+                modtype = None
+                for c in classes:
+                    if c.startswith('modtype_'):
+                        modtype = c.replace('modtype_', '')
+                        break
+                if not modtype:
+                    # try descendant with modtype_
+                    mod_el = cont.select_one('[class*="modtype_"]')
+                    if mod_el:
+                        for c in mod_el.get('class', []):
+                            if c.startswith('modtype_'):
+                                modtype = c.replace('modtype_', '')
+                                break
+                anchor = (cont.select_one('.activityname a, .activitytitle a, a.aalink, a.activityname') or cont.find('a'))
+                if not anchor:
+                    continue
+                link = anchor.get('href') or ''
+                inst_name_el = anchor.select_one('.instancename') or anchor
+                raw_title = inst_name_el.get_text(separator=' ', strip=True)
+                raw_title = re.sub(r'\s+(Assignment|Quiz|URL)$', '', raw_title, flags=re.IGNORECASE)
+                if not raw_title:
+                    continue
+                # Deduplicate early by link+title
+                dedup_key = (raw_title.lower(), link.split('#')[0])
+                if dedup_key in seen_keys:
+                    continue
+                seen_keys.add(dedup_key)
+                # Date regions (multiple fallbacks)
+                date_region = cont.select_one('[data-region="activity-dates"], .activity-dates, .activity-dates-container')
+                opening_date, due_date = self._extract_dates_from_region(date_region, cont)
+                if not (opening_date or due_date):
+                    # Fallback: fuzzy scan text for date lines
+                    text_block = cont.get_text("\n", strip=True)
+                    opening_date, due_date = self._fuzzy_extract_dates(text_block)
+                if not (opening_date or due_date):
+                    continue  # still nothing useful
+                course_code = course.get('code')
+                formatted = self._format_assignment_title(raw_title, course_code)
+                if modtype == 'url' and re.search(r'\b(quiz|exam|test)\b', raw_title, re.IGNORECASE):
+                    modtype = 'quiz_link'
+                assignment = {
+                    'title': formatted.get('display') or raw_title,
+                    'title_normalized': formatted.get('normalized') or raw_title.lower(),
+                    'raw_title': raw_title,
+                    'due_date': due_date or 'No due date',
+                    'opening_date': opening_date or 'No opening date',
+                    'course': course.get('name'),
+                    'course_code': course_code,
+                    'status': 'Pending',
+                    'source': 'scrape',
+                    'added_date': datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
+                    'activity_type': (modtype or '').lower(),
+                    'origin_url': link
+                }
+                results.append(assignment)
+            except Exception as e:
+                logger.debug(f"Activity parse error: {e}")
+                continue
+        if self.debug_scrape:
+            logger.info(f"Debug: Extracted {len(results)} candidate items before merge for course {course.get('code')}")
+        return results
+
+    def _extract_dates_from_region(self, dates_region, grid) -> Tuple[Optional[str], Optional[str]]:
+        opening = None
+        due = None
+        if dates_region:
+            for div in dates_region.select('div'):  # each date line
+                text = div.get_text(separator=' ', strip=True)
+                # Normalize
+                text_clean = re.sub(r'\s+', ' ', text)
+                m = re.match(r'(?i)(Opened|Opens|Available on)[:]?\s*(.+)', text_clean)
+                if m:
+                    opening_candidate = m.group(2).strip()
+                    opening = self._parse_date(opening_candidate) or opening_candidate
+                m2 = re.match(r'(?i)(Due|Closes|Closing date|Deadline|Until)[:]?\s*(.+)', text_clean)
+                if m2:
+                    due_candidate = m2.group(2).strip()
+                    due = self._parse_date(due_candidate) or due_candidate
+        # Look for availability window sentences in alt content
+        if not (opening and due):
+            alt = grid.select_one('.activity-altcontent, .activity-description')
+            if alt:
+                window_text = alt.get_text(separator=' ', strip=True)
+                # Pattern: Available on October 30, 2024, from 9:30 AM to 11:59 PM
+                w = re.search(r'Available on\s+([^,]+\s+\d{4}),?\s+from\s+\d{1,2}:\d{2}\s*[AP]M\s+to\s+\d{1,2}:\d{2}\s*[AP]M', window_text, re.IGNORECASE)
+                if w:
+                    date_part = w.group(1).strip()
+                    parsed = self._parse_date(date_part)
+                    if parsed:
+                        if not opening:
+                            opening = parsed
+                        if not due:
+                            due = parsed
+        return opening, due
+
+    def _fuzzy_extract_dates(self, text: str) -> Tuple[Optional[str], Optional[str]]:
+        """Fallback heuristic to find opening/due date lines in raw text."""
+        opening = None
+        due = None
+        if not text:
+            return opening, due
+        lines = [l.strip() for l in text.splitlines() if l.strip()]
+        for line in lines:
+            low = line.lower()
+            if any(k in low for k in ['due', 'deadline', 'closes', 'closing date', 'until']) and not due:
+                # Extract date fragment
+                frag = re.sub(r'(?i)(due|deadline|closes|closing date|until)[:\s-]*', '', line).strip()
+                due = self._parse_date(frag) or frag
+            if any(k in low for k in ['opens', 'opened', 'available on', 'start date']) and not opening:
+                frag = re.sub(r'(?i)(opens|opened|available on|start date)[:\s-]*', '', line).strip()
+                opening = self._parse_date(frag) or frag
+        return opening, due
+
+    def _extract_course_code_name(self, full_name: str) -> Tuple[str, str]:
+        """Extract course code and clean name from full course title."""
+        if not full_name:
+            return 'UNKNOWN', 'Unknown Course'
+        
+        # Try to extract course code patterns like "ALGOCOM - ALGORITHMS AND COMPLEXITY (III-ACSAD)"
+        # Pattern 1: CODE - NAME (SECTION)
+        match = re.match(r'^([A-Z]{2,10})\s*[-–]\s*(.+?)\s*\(([^)]+)\)$', full_name.strip())
+        if match:
+            code, name, section = match.groups()
+            return code.strip(), f"{name.strip()} ({section.strip()})"
+        
+        # Pattern 2: CODE - NAME
+        match = re.match(r'^([A-Z]{2,10})\s*[-–]\s*(.+)$', full_name.strip())
+        if match:
+            code, name = match.groups()
+            return code.strip(), name.strip()
+        
+        # Pattern 3: Look for course code at start
+        match = re.match(r'^([A-Z]{2,10}[0-9]*)\b(.*)$', full_name.strip())
+        if match:
+            code, rest = match.groups()
+            name = rest.strip(' -()').strip()
+            return code.strip(), name if name else full_name
+        
+        # Fallback: use first word as code if it looks like one
+        words = full_name.split()
+        if words and len(words[0]) <= 10 and re.match(r'^[A-Z][A-Z0-9]*$', words[0]):
+            return words[0], ' '.join(words[1:]) if len(words) > 1 else full_name
+        
+        return 'COURSE', full_name
+
+    def _extract_with_regex(self, html: str, course: Dict) -> List[Dict]:
+        results: List[Dict] = []
+        # Existing li-based pattern (legacy)
+        li_pattern = re.compile(r'<li[^>]*class="[^"]*activity[^"]*modtype_([a-z0-9]+)[^"]*"[\s\S]*?<a[^>]*href="([^"]+)"[^>]*>([\s\S]*?)</a>[\s\S]*?</li>', re.IGNORECASE)
+        # New div.activity-grid pattern
+        div_pattern = re.compile(r'<div[^>]*class="[^"]*activity-grid[^"]*"[\s\S]*?</div>\s*</div>', re.IGNORECASE)
+        blocks = []
+        blocks.extend(li_pattern.finditer(html))
+        # For div based, just capture raw blocks then parse per-block
+        for m in li_pattern.finditer(html):
+            # Already processed via iteration above (kept for structural similarity)
+            pass
+        # Parse li-based results first
+        for m in li_pattern.finditer(html):
+            try:
+                modtype, link, anchor_inner = m.groups()
+                title_match = re.search(r'<span[^>]*class="[^"]*instancename[^"]*"[^>]*>([\s\S]*?)</span>', anchor_inner, re.IGNORECASE)
+                raw_title = self._clean_html(title_match.group(1)) if title_match else self._clean_html(anchor_inner)
+                if not raw_title:
+                    continue
+                li_block = m.group(0)
+                due_text = self._find_due_text(li_block)
+                opening_date = None
+                parsed_due = None
+                if due_text:
+                    parsed_due = self._parse_date(due_text)
+                course_code = course.get('code')
+                formatted = self._format_assignment_title(raw_title, course_code)
+                assignment = {
+                    'title': formatted.get('display') or raw_title,
+                    'title_normalized': formatted.get('normalized') or raw_title.lower(),
+                    'raw_title': raw_title,
+                    'due_date': parsed_due or (due_text or 'No due date'),
+                    'opening_date': opening_date or 'No opening date',
+                    'course': course.get('name'),
+                    'course_code': course_code,
+                    'status': 'Pending',
+                    'source': 'scrape',
+                    'added_date': datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
+                    'origin_url': link,
+                    'activity_type': modtype.lower()
+                }
+                if due_text:
+                    results.append(assignment)
+            except Exception:
+                continue
+        # Parse div.activity-grid blocks if BeautifulSoup unavailable
+        if not BS4_AVAILABLE:
+            for dm in re.finditer(r'<div[^>]*class="[^"]*activity-grid[^"]*"[\s\S]*?</div>\s*</div>', html, re.IGNORECASE):
+                block = dm.group(0)
+                try:
+                    # modtype
+                    mod_match = re.search(r'modtype_([a-z0-9]+)', block, re.IGNORECASE)
+                    modtype = mod_match.group(1) if mod_match else 'activity'
+                    # link
+                    link_match = re.search(r'<a[^>]*href="([^"]+)"[^>]*>\s*<span[^>]*class="[^"]*instancename', block, re.IGNORECASE)
+                    if not link_match:
+                        continue
+                    link = link_match.group(1)
+                    title_match = re.search(r'<span[^>]*class="[^"]*instancename[^"]*"[^>]*>([\s\S]*?)</span>', block, re.IGNORECASE)
+                    raw_title = self._clean_html(title_match.group(1)) if title_match else ''
+                    raw_title = re.sub(r'\s+(Assignment|Quiz|URL)$', '', raw_title, flags=re.IGNORECASE)
+                    # dates lines
+                    opening_date, due_date = None, None
+                    for line in re.findall(r'<div>\s*<strong>([^<:]+):</strong>\s*([^<]+)</div>', block, re.IGNORECASE):
+                        label, value = line
+                        label_low = label.lower().strip()
+                        value = value.strip()
+                        if label_low in ['opened', 'opens', 'available on'] and not opening_date:
+                            opening_date = self._parse_date(value) or value
+                        elif label_low in ['due', 'closes', 'closing date', 'deadline', 'until'] and not due_date:
+                            due_date = self._parse_date(value) or value
+                    if not (due_date or opening_date):
+                        continue
+                    course_code = course.get('code')
+                    formatted = self._format_assignment_title(raw_title, course_code)
+                    if modtype == 'url' and re.search(r'\b(quiz|exam|test)\b', raw_title, re.IGNORECASE):
+                        modtype = 'quiz_link'
+                    assignment = {
+                        'title': formatted.get('display') or raw_title,
+                        'title_normalized': formatted.get('normalized') or raw_title.lower(),
+                        'raw_title': raw_title,
+                        'due_date': due_date or 'No due date',
+                        'opening_date': opening_date or 'No opening date',
+                        'course': course.get('name'),
+                        'course_code': course_code,
+                        'status': 'Pending',
+                        'source': 'scrape',
+                        'added_date': datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
+                        'origin_url': link,
+                        'activity_type': modtype.lower()
+                    }
+                    results.append(assignment)
+                except Exception:
+                    continue
+        return results
+
+    # ---------------- Formatting & Duplicate Logic (adapted from email fetcher) ---------------- #
+    def _format_assignment_title(self, title: str, course_code: str) -> Dict[str, str]:
+        if not title:
+            return {"display": "", "normalized": ""}
+        try:
+            t = title.strip()
+            t = re.sub(r'\s+', ' ', t)
+            activity_match = re.search(r'(ACTIVITY\s+\d+)', t, re.IGNORECASE)
+            display = t.title()
+            normalized = t.lower()
+            if activity_match and course_code:
+                act = activity_match.group(1).title()
+                remainder = t[activity_match.end():].strip(' -:')
+                if remainder:
+                    formatted_main = f"{course_code.upper()} - {act.title()} ({remainder.title()})"
+                else:
+                    formatted_main = f"{course_code.upper()} - {act.title()}"
+                display = formatted_main
+                normalized = formatted_main.lower()
+            else:
+                number_match = re.search(r'(\d+)', t)
+                if number_match and course_code:
+                    num = number_match.group(1)
+                    name_part = re.sub(r'(?i)activity\s+\d+', '', t).strip(' -:')
+                    if name_part:
+                        display = f"{course_code.upper()} - Activity {num} ({name_part.title()})"
+                        normalized = display.lower()
+                    else:
+                        display = f"{course_code.upper()} - Activity {num}"
+                        normalized = display.lower()
+            return {"display": display, "normalized": normalized}
+        except Exception:
+            return {"display": title, "normalized": title.lower()}
+
+    def _normalize_title(self, title: str) -> str:
+        if not title:
+            return ''
+        title = title.lower().strip()
+        title = re.sub(r'\s+', ' ', title)
+        title = re.sub(r'[^\w\s-]', '', title)
+        title = re.sub(r'\b(activity|assignment|task|project)\s*', '', title, flags=re.IGNORECASE)
+        title = re.sub(r'\s*-\s*', ' ', title)
+        return title.strip()
+
+    def _fuzzy_match(self, a: str, b: str, threshold: float) -> bool:
+        if not a or not b:
+            return False
+        a = self._normalize_title(a)
+        b = self._normalize_title(b)
+        if a == b:
+            return True
+        def bigrams(s):
+            return set(s[i:i+2] for i in range(len(s)-1))
+        bg_a, bg_b = bigrams(a), bigrams(b)
+        if not bg_a and not bg_b:
+            return True
+        if not bg_a or not bg_b:
+            return False
+        sim = len(bg_a & bg_b) / len(bg_a | bg_b)
+        return sim >= threshold
+
+    # ---------------- Date Parsing (adapted) ---------------- #
+    def _parse_date(self, date_string: str) -> Optional[str]:
+        if not date_string:
+            return None
+        try:
+            ds = date_string.strip()
+            date_patterns = [
+                (r'(\d{4}-\d{2}-\d{2})', ['%Y-%m-%d']),
+                (r'(\d{1,2}/\d{1,2}/\d{4})', ['%m/%d/%Y', '%d/%m/%Y']),
+                (r'(\d{1,2}-\d{1,2}-\d{4})', ['%m-%d-%Y', '%d-%m-%Y']),
+                (r'([A-Za-z]+\s+\d{1,2},\s+\d{4})', ['%B %d, %Y', '%b %d, %Y']),
+                (r'(\d{1,2}\s+[A-Za-z]+\s+\d{4})', ['%d %B %Y', '%d %b %Y']),
+                (r'[A-Za-z]+,\s*(\d{1,2}\s+[A-Za-z]+\s+\d{4})', ['%d %B %Y', '%d %b %Y'])
+            ]
+            from datetime import datetime as _dt
+            for pat, fmts in date_patterns:
+                m = re.search(pat, ds)
+                if m:
+                    frag = m.group(1)
+                    for fmt in fmts:
+                        try:
+                            dt = _dt.strptime(frag, fmt)
+                            return dt.date().isoformat()
+                        except Exception:
+                            continue
+            direct = ['%Y-%m-%d','%d/%m/%Y','%m/%d/%Y','%d-%m-%Y','%m-%d-%Y','%B %d, %Y','%b %d, %Y','%d %B %Y','%d %b %Y']
+            for fmt in direct:
+                try:
+                    dt = _dt.strptime(ds, fmt)
+                    return dt.date().isoformat()
+                except Exception:
+                    continue
+        except Exception:
+            pass
+        return date_string
+
+    # ---------------- Persistence & Merge ---------------- #
+    def _save_json(self, path: str, data: List[Dict]):
+        os.makedirs(os.path.dirname(path), exist_ok=True)
+        with open(path, 'w') as f:
+            json.dump(data, f, indent=2)
+
+    def _load_json(self, path: str) -> List[Dict]:
+        try:
+            with open(path, 'r') as f:
+                return json.load(f)
+        except Exception:
+            return []
+
+    def merge_into_main(self) -> Tuple[List[Dict], int, int]:
+        existing = self._load_json(self.main_file)
+        scraped = self._scraped_items or self._load_json(self.scraped_file)
+        new_count = 0
+        updated = 0
+        index = {}
+        for a in existing:
+            key = (a.get('title_normalized') or a.get('title','')).lower(), a.get('course_code','')
+            index[key] = a
+        for item in scraped:
+            key = (item.get('title_normalized') or item.get('title','')).lower(), item.get('course_code','')
+            current = index.get(key)
+            if not current:
+                existing.append(item)
+                index[key] = item
+                new_count += 1
+            else:
+                changed = False
+                # Update due date if changed
+                if item.get('due_date') and item.get('due_date') != current.get('due_date'):
+                    current['due_date'] = item['due_date']
+                    changed = True
+                # Add opening date if current lacks it or has placeholder
+                if item.get('opening_date') and (not current.get('opening_date') or current.get('opening_date') in [None, 'No opening date']):
+                    current['opening_date'] = item['opening_date']
+                    changed = True
+                # Merge source label if not already present
+                if current.get('source') == 'email' and 'scrape' not in current.get('source',''):
+                    current['source'] = 'email+scrape'
+                if changed:
+                    current['last_updated'] = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+                    updated += 1
+        self._save_json(self.main_file, existing)
+        return existing, new_count, updated
+
+    # ---------------- Public Convenience ---------------- #
+    def manual_scrape(self, merge: bool = True):
+        items = self.scrape_all_due_items(auto_merge=merge)
+        return items
+
     def check_login_status(self) -> Dict[str, any]:
+        """Lightweight status check used by run_fetcher.
+        Starts browser if needed and evaluates current login signals."""
         if not (self.session.page or self.session.driver):
-            browser_started = self.session.start_browser()
-            if not browser_started:
+            started = self.session.start_browser()
+            if not started:
                 return {
                     'logged_in': False,
                     'error': 'Could not start browser',
                     'login_url': f"{self.moodle_url.rstrip('/')}/login/index.php",
-                    'moodle_url': self.moodle_url
+                    'moodle_url': self.moodle_url,
+                    'browser_ready': False
                 }
         is_logged_in = self.session._check_login_status(skip_navigation=True)
         return {
@@ -600,33 +1255,18 @@ class MoodleDirectScraper:
             'moodle_url': self.moodle_url,
             'browser_ready': True
         }
-    
+
     def interactive_login(self, timeout_minutes: int = 10) -> bool:
+        """Open login page and wait for manual (or auto-SSO) completion."""
         if not self.session.start_browser():
             return False
         if not self.session.open_login_page():
             return False
         return self.session.wait_for_user_login(timeout_minutes)
-    
-    def fetch_courses(self) -> List[Dict]:
-        if not self.session._check_login_status(skip_navigation=True):
-            raise Exception("Not logged in to Moodle")
-        # TODO: implement actual scraping
-        return []
-    
-    def fetch_assignments(self) -> List[Dict]:
-        if not self.session._check_login_status(skip_navigation=True):
-            raise Exception("Not logged in to Moodle")
-        # TODO: implement actual scraping
-        return []
-    
-    def fetch_forum_posts(self) -> List[Dict]:
-        if not self.session._check_login_status(skip_navigation=True):
-            raise Exception("Not logged in to Moodle")
-        # TODO: implement actual scraping
-        return []
-    
-    def close(self):
-        self.session.close()
 
-__all__ = ["MoodleDirectScraper", "MoodleSession"]
+    def close(self):
+        """Close underlying session/browser resources (compatibility with run_fetcher)."""
+        try:
+            self.session.close()
+        except Exception:
+            pass

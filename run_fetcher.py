@@ -445,6 +445,7 @@ def main():
             if args.login_type:
                 print("\n🔍 MOODLE LOGIN STATUS CHECK")
                 print("=" * 40)
+                print("🔄 Checking existing Moodle session...")
                 
                 status = scraper.check_login_status()
                 
@@ -453,22 +454,58 @@ def main():
                     return 1
                 
                 if status['logged_in']:
-                    print("✅ Status: LOGGED IN")
+                    print("✅ Status: LOGGED IN (existing session active)")
                     print(f"🌐 Moodle URL: {status['moodle_url']}")
                     print("🎉 Ready to scrape Moodle content!")
+                    # If user passed scrape flags, run automatically; otherwise prompt
+                    if args.scrape_assignments or args.scrape_forums:
+                        try:
+                            print("\n🚀 Scraping Moodle now (auto-trigger)...")
+                            items = scraper.scrape_all_due_items(auto_merge=True)
+                            print(f"✅ Scrape complete: {len(items)} items processed (merged).")
+                        except Exception as e:
+                            print(f"❌ Scrape failed: {e}")
+                    else:
+                        choice = input("\n❓ Scrape assignments now? (y/N): ").strip().lower()
+                        if choice in ['y', 'yes']:
+                            try:
+                                print("\n🚀 Scraping Moodle now...")
+                                items = scraper.scrape_all_due_items(auto_merge=True)
+                                print(f"✅ Scrape complete: {len(items)} items processed (merged).")
+                            except Exception as e:
+                                print(f"❌ Scrape failed: {e}")
                 else:
                     print("❌ Status: NOT LOGGED IN")
                     print(f"🌐 Moodle URL: {status['moodle_url']}")
                     print(f"🔗 Login URL: {status['login_url']}")
+                    print("ℹ️ No active Moodle session detected. You will need to login manually.")
                     
                     # Offer interactive login
-                    choice = input("\n❓ Would you like to login now? (y/N): ").strip().lower()
+                    choice = input("\n❓ Proceed to browser login now? (y/N): ").strip().lower()
                     if choice in ['y', 'yes']:
                         print("\n🚀 Starting interactive login process...")
-                        print("💡 A browser window will open - please login manually")
+                        print("💡 A browser window will open - complete Moodle (and Google SSO) login")
+                        print("🔁 Re-using existing browser profile if present")
                         
                         if scraper.interactive_login(timeout_minutes=args.login_timeout):
-                            print("✅ Login successful! You can now scrape Moodle content.")
+                            print("✅ Login successful (session saved). You can now scrape Moodle content.")
+                            # After successful login, auto-scrape if flags provided else prompt
+                            if args.scrape_assignments or args.scrape_forums:
+                                try:
+                                    print("\n🚀 Scraping Moodle now (auto-trigger)...")
+                                    items = scraper.scrape_all_due_items(auto_merge=True)
+                                    print(f"✅ Scrape complete: {len(items)} items processed (merged).")
+                                except Exception as e:
+                                    print(f"❌ Scrape failed: {e}")
+                            else:
+                                choice2 = input("\n❓ Scrape assignments now? (y/N): ").strip().lower()
+                                if choice2 in ['y', 'yes']:
+                                    try:
+                                        print("\n🚀 Scraping Moodle now...")
+                                        items = scraper.scrape_all_due_items(auto_merge=True)
+                                        print(f"✅ Scrape complete: {len(items)} items processed (merged).")
+                                    except Exception as e:
+                                        print(f"❌ Scrape failed: {e}")
                         else:
                             print("❌ Login failed or timed out.")
                             return 1
