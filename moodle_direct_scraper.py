@@ -628,6 +628,9 @@ class MoodleDirectScraper:
         self.auto_scrape_background = auto_scrape_background and resolved_auto  # only relevant if auto enabled
         self._scrape_executed = False  # guard to avoid double scraping in a single session
         self._auto_scrape_thread: Optional[threading.Thread] = None
+        # NEW: concurrency + state flags
+        self._scrape_lock = threading.Lock()
+        self._scrape_in_progress = False
         # Register login callback only if auto enabled
         if self.auto_scrape_on_login:
             self.session.on_login_callback = self._on_session_logged_in
@@ -645,20 +648,50 @@ class MoodleDirectScraper:
         if self.auto_scrape_on_login and not headless:
             logger.info("ℹ️ Auto-scrape enabled in non-headless mode (override default).")
 
+    # ---------------- Internal Helpers ---------------- #
+    def _ensure_logged_in(self, retries: int = 5, delay: float = 1.0) -> bool:
+        """Retry login detection briefly to avoid race where callback fires before signals stabilize."""
+        for attempt in range(retries + 1):
+            if self.session._check_login_status(skip_navigation=True):
+                # One extra short settle check
+                time.sleep(0.3)
+                if self.session._check_login_status(skip_navigation=True):
+                    return True
+            if attempt < retries:
+                time.sleep(delay)
+        return False
+
     # ---------------- Scraping Orchestration ---------------- #
     def _on_session_logged_in(self):
         """Triggered automatically once after login is confirmed (if auto_scrape_on_login).
-        Runs in background (non-blocking) if auto_scrape_background=True so interactive login message isn't delayed."""
-        if self._scrape_executed:
-            logger.info("⚠️ Auto-scrape skipped (scrape already executed this session)")
-            return
+        Ensures Playwright sync API stays on original thread (no background thread) to avoid greenlet errors.
+        Runs in background only when safe (e.g., selenium) and auto_scrape_background=True."""
+        with self._scrape_lock:
+            if self._scrape_executed or self._scrape_in_progress:
+                logger.info("⚠️ Auto-scrape skipped (already executed or in progress)")
+                return
+            self._scrape_in_progress = True  # reserve slot early
+        using_playwright = bool(getattr(self.session, 'page', None))
+        # Playwright sync objects are NOT thread-safe; disable background threading if active
+        if using_playwright and self.auto_scrape_background:
+            logger.info("⚠️ Playwright detected – running auto scrape on main thread (background disabled to avoid greenlet thread switch error)")
+            self.auto_scrape_background = False
         def _do_scrape():
             try:
-                logger.info("🚀 (Background) Starting automatic scrape of due items...")
+                # small delay to let Moodle UI fully load after redirect
+                time.sleep(1.0)
+                if not self._ensure_logged_in():
+                    logger.warning("⛔ Auto-scrape aborted: login not fully detected after retries")
+                    return
+                logger.info("🚀 Starting automatic scrape of due items...") if not self.auto_scrape_background else logger.info("🚀 (Background) Starting automatic scrape of due items...")
                 self.scrape_all_due_items(auto_merge=True)
             except Exception as e:
                 logger.warning(f"Automatic scrape failed: {e}")
-        if self.auto_scrape_background:
+            finally:
+                with self._scrape_lock:
+                    if not self._scrape_executed:
+                        self._scrape_in_progress = False
+        if self.auto_scrape_background and not using_playwright:
             if self._auto_scrape_thread and self._auto_scrape_thread.is_alive():
                 logger.debug("Auto-scrape thread already running")
                 return
@@ -669,63 +702,74 @@ class MoodleDirectScraper:
             _do_scrape()
 
     def scrape_all_due_items(self, auto_merge: bool = False) -> List[Dict]:
-        # One-time execution guard
-        if self._scrape_executed:
-            logger.info("⏩ Scrape skipped (already executed this session)")
-            return self._scraped_items
-        if not self.session._check_login_status(skip_navigation=True):
-            raise Exception("Not logged in to Moodle")
-        courses = self.fetch_courses()
-        
-        if self.debug_scrape:
-            print(f"🔍 DEBUG: Starting to iterate through {len(courses)} courses")
-            for i, course in enumerate(courses, 1):
-                print(f"   {i}. {course.get('code', 'UNKNOWN')} - {course.get('name', 'Unknown')}")
-                print(f"      URL: {course.get('url', 'No URL')}")
-        
-        all_items: List[Dict] = []
-        for i, course in enumerate(courses, 1):
-            try:
-                if self.debug_scrape:
-                    print(f"🔍 DEBUG: Processing course {i}/{len(courses)}: {course.get('code', 'UNKNOWN')}")
-                
-                items = self._scrape_course_due_items(course)
-                all_items.extend(items)
-                
-                if self.debug_scrape:
-                    print(f"🔍 DEBUG: Course {course.get('code', 'UNKNOWN')} yielded {len(items)} items")
-                    if items:
-                        for item in items[:3]:  # Show first 3 items
-                            print(f"      - {item.get('title', 'Unknown')} (due: {item.get('due_date', 'N/A')})")
-                        if len(items) > 3:
-                            print(f"      ... and {len(items) - 3} more items")
-                
-            except Exception as e:
-                logger.warning(f"Course scrape failed for {course.get('name')}: {e}")
-                if self.debug_scrape:
-                    print(f"❌ DEBUG: Error processing course {course.get('code', 'UNKNOWN')}: {e}")
-        
-        if self.debug_scrape:
-            print(f"🔍 DEBUG: Total items found across all courses: {len(all_items)}")
-        
-        # Save raw scraped list separately
-        self._scraped_items = all_items
-        self._save_json(self.scraped_file, all_items)
-        logger.info(f"💾 Saved {len(all_items)} scraped items to {self.scraped_file}")
-        if auto_merge:
-            try:
-                merged, new_count, updated = self.merge_into_main()
-                logger.info(f"🔄 Merge summary: new={new_count} updated={updated} total_main={len(merged)}")
-            except Exception as e:
-                logger.warning(f"Merge failed: {e}")
-        # NEW: summary output
+        # Concurrency + one-time execution guard
+        with self._scrape_lock:
+            if self._scrape_executed:
+                logger.info("⏩ Scrape skipped (already executed this session)")
+                return self._scraped_items
+            if self._scrape_in_progress:
+                logger.info("⏳ Scrape already in progress (second trigger skipped)")
+                return self._scraped_items
+            self._scrape_in_progress = True
         try:
-            self._print_scrape_summary(all_items)
-        except Exception as e:
-            logger.debug(f"Summary generation failed: {e}")
-        # Mark as executed so subsequent triggers (manual or auto) won't duplicate work/summary
-        self._scrape_executed = True
-        return all_items
+            # Stabilize login (helps manual trigger right after UI shows logged in)
+            if not self._ensure_logged_in():
+                raise Exception("Not logged in to Moodle")
+            courses = self.fetch_courses()
+            
+            if self.debug_scrape:
+                print(f"🔍 DEBUG: Starting to iterate through {len(courses)} courses")
+                for i, course in enumerate(courses, 1):
+                    print(f"   {i}. {course.get('code', 'UNKNOWN')} - {course.get('name', 'Unknown')}")
+                    print(f"      URL: {course.get('url', 'No URL')}")
+            
+            all_items: List[Dict] = []
+            for i, course in enumerate(courses, 1):
+                try:
+                    if self.debug_scrape:
+                        print(f"🔍 DEBUG: Processing course {i}/{len(courses)}: {course.get('code', 'UNKNOWN')}")
+                    
+                    items = self._scrape_course_due_items(course)
+                    all_items.extend(items)
+                    
+                    if self.debug_scrape:
+                        print(f"🔍 DEBUG: Course {course.get('code', 'UNKNOWN')} yielded {len(items)} items")
+                        if items:
+                            for item in items[:3]:  # Show first 3 items
+                                print(f"      - {item.get('title', 'Unknown')} (due: {item.get('due_date', 'N/A')})")
+                            if len(items) > 3:
+                                print(f"      ... and {len(items) - 3} more items")
+                
+                except Exception as e:
+                    logger.warning(f"Course scrape failed for {course.get('name')}: {e}")
+                    if self.debug_scrape:
+                        print(f"❌ DEBUG: Error processing course {course.get('code', 'UNKNOWN')}: {e}")
+            
+            if self.debug_scrape:
+                print(f"🔍 DEBUG: Total items found across all courses: {len(all_items)}")
+            
+            # Save raw scraped list separately
+            self._scraped_items = all_items
+            self._save_json(self.scraped_file, all_items)
+            logger.info(f"💾 Saved {len(all_items)} scraped items to {self.scraped_file}")
+            if auto_merge:
+                try:
+                    merged, new_count, updated = self.merge_into_main()
+                    logger.info(f"🔄 Merge summary: new={new_count} updated={updated} total_main={len(merged)}")
+                except Exception as e:
+                    logger.warning(f"Merge failed: {e}")
+            # NEW: summary output
+            try:
+                self._print_scrape_summary(all_items)
+            except Exception as e:
+                logger.debug(f"Summary generation failed: {e}")
+            # Mark as executed so subsequent triggers (manual or auto) won't duplicate work/summary
+            with self._scrape_lock:
+                self._scrape_executed = True
+            return all_items
+        finally:
+            with self._scrape_lock:
+                self._scrape_in_progress = False
 
     # ---------------- Summary Helper ---------------- #
     def _print_scrape_summary(self, items: List[Dict]):
