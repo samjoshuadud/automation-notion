@@ -5,6 +5,7 @@ Enhanced Moodle Assignment Fetcher with Notion Integration
 
 import sys
 import os
+import traceback  # added
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 
 from moodle_fetcher import MoodleEmailFetcher
@@ -12,12 +13,16 @@ from notion_integration import NotionIntegration
 from todoist_integration import TodoistIntegration
 from assignment_archive import AssignmentArchiveManager
 
-# Try to import Moodle direct scraper (optional)
+# Try to import Moodle direct scraper (optional) with diagnostics
 try:
     from moodle_direct_scraper import MoodleDirectScraper
     MOODLE_SCRAPER_AVAILABLE = True
-except ImportError:
+    MOODLE_SCRAPER_IMPORT_ERROR = None
+    MOODLE_SCRAPER_IMPORT_TRACEBACK = None
+except Exception as e:  # broaden to capture any runtime error on import
     MOODLE_SCRAPER_AVAILABLE = False
+    MOODLE_SCRAPER_IMPORT_ERROR = e
+    MOODLE_SCRAPER_IMPORT_TRACEBACK = traceback.format_exc()
 
 import argparse
 import logging
@@ -403,6 +408,21 @@ def main():
             print("💡 Please install required packages:")
             print("   pip install playwright selenium")
             print("   playwright install chromium")
+            if MOODLE_SCRAPER_IMPORT_ERROR:
+                print("--- Import diagnostic ---")
+                print(f"Error: {MOODLE_SCRAPER_IMPORT_ERROR}")
+                if args.debug:
+                    print("Traceback:")
+                    print(MOODLE_SCRAPER_IMPORT_TRACEBACK)
+                # Quick environment hints
+                print("Environment diagnostics:")
+                print(f"Python executable: {sys.executable}")
+                try:
+                    import pkgutil
+                    print("playwright installed:" , bool(pkgutil.find_loader('playwright')))
+                    print("selenium installed:" , bool(pkgutil.find_loader('selenium')))
+                except Exception:
+                    pass
             return 1
         
         try:
