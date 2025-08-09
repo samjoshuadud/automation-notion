@@ -307,6 +307,11 @@ class MoodleSession:
             logger.info("No Google credentials provided, falling back to manual login")
             return self.wait_for_user_login(timeout_minutes)
         
+        # CRITICAL: Double-check login status before proceeding with automation
+        if self._check_login_status(skip_navigation=True):
+            logger.info("✅ Already logged in, skipping automated Google login")
+            return True
+        
         logger.info(f"🤖 Starting automated Google login for {self.google_email}")
         
         try:
@@ -317,7 +322,13 @@ class MoodleSession:
             
             # First, check if we're on Moodle login page and need to click Google SSO button
             current_url = page.url.lower()
-            if 'login' in current_url and 'moodle' in current_url or 'tbl.umak.edu.ph' in current_url:
+            logger.debug(f"Current URL at start of automated login: {current_url}")
+            
+            # Only try to click SSO if we're on Moodle, not if we're already on Google
+            if ('accounts.google.com' not in current_url and 
+                (('login' in current_url and ('moodle' in current_url or 'tbl.umak.edu.ph' in current_url)) or
+                 'tbl.umak.edu.ph' in current_url)):
+                
                 logger.info("🔍 Detected Moodle login page, looking for Google SSO button...")
                 
                 # Try to click Google SSO button first
@@ -334,40 +345,101 @@ class MoodleSession:
                         logger.info("⏳ Waiting for Google login page...")
                         time.sleep(2)
                 else:
-                    logger.warning("❌ Could not find or click Google SSO button")
+                    logger.warning("❌ Could not find or click Google SSO button on Moodle page")
                     logger.info("🔄 Falling back to manual login...")
                     return self.wait_for_user_login(timeout_minutes)
+            elif 'accounts.google.com' in current_url:
+                logger.info("✅ Already on Google accounts page, skipping SSO button click")
+            else:
+                logger.info("🔍 Not on expected Moodle login page, proceeding with Google login flow")
             
             # Now wait for Google login form to appear
             logger.info("🔍 Looking for Google email input field...")
             time.sleep(2)
             
-            # Try to find email input field
+            # First check if we're actually on Google login page
+            current_url = page.url.lower()
+            logger.debug(f"Current URL after SSO redirect: {current_url}")
+            
+            if 'accounts.google.com' not in current_url:
+                logger.warning("⚠️ Not on Google accounts page, waiting for redirect...")
+                try:
+                    page.wait_for_url("**/accounts.google.com/**", timeout=15000)
+                    logger.info("✅ Successfully reached Google accounts page")
+                except Exception as e:
+                    logger.warning(f"Failed to reach Google accounts page: {e}")
+                    return self.wait_for_user_login(timeout_minutes)
+            
+            # Try to find email input field with enhanced detection
             email_selectors = [
                 'input[type="email"]',
-                'input[name="identifier"]',
+                'input[name="identifier"]', 
                 'input[id="identifierId"]',
                 '#Email', '#email',
-                'input[placeholder*="email" i]'
+                'input[placeholder*="email" i]',
+                'input[autocomplete="username"]',
+                'input[aria-label*="email" i]'
             ]
             
             email_input = None
-            for selector in email_selectors:
+            logger.info("🔍 Searching for email input field...")
+            
+            # Try each selector with detailed logging
+            for i, selector in enumerate(email_selectors, 1):
                 try:
-                    email_input = page.wait_for_selector(selector, timeout=8000)
-                    if email_input:
-                        logger.info(f"✅ Found email input field: {selector}")
+                    logger.debug(f"Trying email selector {i}/{len(email_selectors)}: {selector}")
+                    email_input = page.wait_for_selector(selector, timeout=3000)
+                    if email_input and email_input.is_visible():
+                        logger.info(f"✅ Found visible email input field: {selector}")
                         break
-                except:
+                    elif email_input:
+                        logger.debug(f"Found email input but not visible: {selector}")
+                        email_input = None
+                except Exception as e:
+                    logger.debug(f"Email selector {selector} failed: {e}")
                     continue
             
+            # If still no input found, try waiting longer and check page content
             if not email_input:
-                logger.warning("Could not find Google email input field, falling back to manual login")
+                logger.warning("❌ Initial email input search failed, trying extended search...")
+                page_content = page.content()
+                
+                # Check if we're on the right page
+                if 'sign in' not in page_content.lower() and 'email' not in page_content.lower():
+                    logger.error("❌ Page doesn't appear to be Google login page")
+                    logger.debug(f"Page URL: {page.url}")
+                    logger.debug(f"Page title: {page.title()}")
+                    return self.wait_for_user_login(timeout_minutes)
+                
+                # Try waiting longer
+                for selector in email_selectors[:3]:  # Try top 3 selectors with longer wait
+                    try:
+                        logger.debug(f"Extended wait for email selector: {selector}")
+                        email_input = page.wait_for_selector(selector, timeout=10000)
+                        if email_input and email_input.is_visible():
+                            logger.info(f"✅ Found email input with extended wait: {selector}")
+                            break
+                    except:
+                        continue
+            
+            if not email_input:
+                logger.error("❌ Could not find Google email input field after extended search")
+                logger.info("🔄 Falling back to manual login...")
                 return self.wait_for_user_login(timeout_minutes)
             
-            # Enter email
+            # Clear any existing text and enter email
             logger.info("📧 Entering email address")
-            email_input.fill(self.google_email)
+            try:
+                # Clear field first
+                email_input.fill("")
+                time.sleep(0.5)
+                # Type email character by character for better reliability
+                email_input.type(self.google_email)
+                logger.info(f"✅ Successfully entered email: {self.google_email}")
+            except Exception as e:
+                logger.error(f"Failed to enter email: {e}")
+                return self.wait_for_user_login(timeout_minutes)
+            
             min_delay, max_delay = self.typing_delay
             time.sleep(random.uniform(min_delay/1000, max_delay/1000))
             
@@ -378,47 +450,110 @@ class MoodleSession:
                 'input[type="submit"]',
                 'button:has-text("Next")',
                 'button:has-text("Continue")',
-                '[data-test-id="next-button"]'
+                '[data-test-id="next-button"]',
+                'button[id*="next"]',
+                'input[value*="Next"]'
             ]
             
             next_button = None
-            for selector in next_selectors:
+            logger.info("🔍 Looking for Next button...")
+            for i, selector in enumerate(next_selectors, 1):
                 try:
-                    next_button = page.wait_for_selector(selector, timeout=3000)
-                    if next_button:
+                    logger.debug(f"Trying Next button selector {i}/{len(next_selectors)}: {selector}")
+                    next_button = page.wait_for_selector(selector, timeout=2000)
+                    if next_button and next_button.is_visible():
+                        logger.info(f"✅ Found Next button: {selector}")
                         break
                 except:
                     continue
             
             if next_button:
                 logger.info("👆 Clicking Next button")
-                next_button.click()
-                time.sleep(3)
+                try:
+                    next_button.click()
+                    logger.info("✅ Successfully clicked Next button")
+                    time.sleep(3)
+                except Exception as e:
+                    logger.error(f"Failed to click Next button: {e}")
+                    return self.wait_for_user_login(timeout_minutes)
+            else:
+                logger.warning("⚠️ Could not find Next button, trying to submit form with Enter key")
+                try:
+                    email_input.press("Enter")
+                    time.sleep(3)
+                except Exception as e:
+                    logger.error(f"Failed to submit email form: {e}")
+                    return self.wait_for_user_login(timeout_minutes)
             
             # Wait for password field
+            logger.info("🔍 Looking for password input field...")
             password_selectors = [
                 'input[type="password"]',
                 'input[name="password"]',
                 '#password', '#Password',
-                'input[placeholder*="password" i]'
+                'input[placeholder*="password" i]',
+                'input[aria-label*="password" i]',
+                'input[autocomplete="current-password"]'
             ]
             
             password_input = None
-            for selector in password_selectors:
+            # Try each password selector with detailed logging
+            for i, selector in enumerate(password_selectors, 1):
                 try:
-                    password_input = page.wait_for_selector(selector, timeout=8000)
-                    if password_input:
+                    logger.debug(f"Trying password selector {i}/{len(password_selectors)}: {selector}")
+                    password_input = page.wait_for_selector(selector, timeout=3000)
+                    if password_input and password_input.is_visible():
+                        logger.info(f"✅ Found visible password input field: {selector}")
                         break
-                except:
+                    elif password_input:
+                        logger.debug(f"Found password input but not visible: {selector}")
+                        password_input = None
+                except Exception as e:
+                    logger.debug(f"Password selector {selector} failed: {e}")
                     continue
             
+            # Extended search if no password field found
             if not password_input:
-                logger.warning("Could not find password input field, may need manual intervention")
+                logger.warning("❌ Initial password search failed, trying extended search...")
+                
+                # Check if we're on the right page
+                current_url = page.url.lower()
+                page_content = page.content()
+                
+                if 'password' not in page_content.lower():
+                    logger.warning("Page doesn't contain password field yet, may need to wait...")
+                    # Sometimes there's a delay before password field appears
+                    time.sleep(2)
+                
+                # Try with longer timeout
+                for selector in password_selectors[:3]:
+                    try:
+                        logger.debug(f"Extended wait for password selector: {selector}")
+                        password_input = page.wait_for_selector(selector, timeout=10000)
+                        if password_input and password_input.is_visible():
+                            logger.info(f"✅ Found password input with extended wait: {selector}")
+                            break
+                    except:
+                        continue
+            
+            if not password_input:
+                logger.error("❌ Could not find password input field after extended search")
+                logger.warning("⚠️ Password field not found, may need manual intervention")
                 return self._handle_login_continuation(timeout_minutes)
             
-            # Enter password
+            # Clear any existing text and enter password
             logger.info("🔐 Entering password")
-            password_input.fill(self.google_password)
+            try:
+                # Clear field first
+                password_input.fill("")
+                time.sleep(0.5)
+                # Type password character by character for better reliability
+                password_input.type(self.google_password)
+                logger.info("✅ Successfully entered password")
+            except Exception as e:
+                logger.error(f"Failed to enter password: {e}")
+                return self._handle_login_continuation(timeout_minutes)
+            
             time.sleep(random.uniform(min_delay/1000, max_delay/1000))
             
             # Click Next/Sign in button
@@ -428,22 +563,40 @@ class MoodleSession:
                 'input[type="submit"]',
                 'button:has-text("Next")',
                 'button:has-text("Sign in")',
-                'button:has-text("Continue")'
+                'button:has-text("Continue")',
+                'button[id*="next"]',
+                'input[value*="Sign in"]'
             ]
             
             signin_button = None
-            for selector in signin_selectors:
+            logger.info("🔍 Looking for Sign in button...")
+            for i, selector in enumerate(signin_selectors, 1):
                 try:
-                    signin_button = page.wait_for_selector(selector, timeout=3000)
-                    if signin_button:
+                    logger.debug(f"Trying Sign in button selector {i}/{len(signin_selectors)}: {selector}")
+                    signin_button = page.wait_for_selector(selector, timeout=2000)
+                    if signin_button and signin_button.is_visible():
+                        logger.info(f"✅ Found Sign in button: {selector}")
                         break
                 except:
                     continue
             
             if signin_button:
                 logger.info("👆 Clicking Sign in button")
-                signin_button.click()
-                time.sleep(3)
+                try:
+                    signin_button.click()
+                    logger.info("✅ Successfully clicked Sign in button")
+                    time.sleep(3)
+                except Exception as e:
+                    logger.error(f"Failed to click Sign in button: {e}")
+                    return self._handle_login_continuation(timeout_minutes)
+            else:
+                logger.warning("⚠️ Could not find Sign in button, trying to submit form with Enter key")
+                try:
+                    password_input.press("Enter")
+                    time.sleep(3)
+                except Exception as e:
+                    logger.error(f"Failed to submit password form: {e}")
+                    return self._handle_login_continuation(timeout_minutes)
             
             # Check for 2FA or successful login
             return self._handle_login_continuation(timeout_minutes)
@@ -876,50 +1029,163 @@ class MoodleSession:
     
     def _handle_specific_2fa_scenarios(self, page, page_text):
         """Handle other specific 2FA scenarios using page text analysis"""
-        logger.debug("Checking specific 2FA scenarios...")
+        logger.debug("=== 2FA SCENARIO DETECTION START ===")
+        logger.debug(f"Page URL: {page.url}")
+        logger.debug(f"Page text length: {len(page_text)} characters")
+        
         device_confirmation_detected = False
         device_name = "your device"
+        
+        # CRITICAL: Check if we're already logged in successfully to avoid false positives
+        current_url = page.url.lower()
+        login_success_indicators = [
+            'umak.edu.ph',
+            'dashboard',
+            'my courses',
+            'site home',
+            'university of makati',
+            'course overview'
+        ]
+        if any(indicator in current_url for indicator in login_success_indicators) or any(indicator in page_text for indicator in login_success_indicators):
+            logger.debug("Already logged in successfully - skipping device confirmation detection")
+            return False
+        
+        # DEVICE CONFIRMATION DETECTION - HIGHEST PRIORITY
         device_confirmation_phrases = [
             'check your', 'tap yes', 'confirm', 'approve', 'device notification', 'push notification', 'phone notification',
             'galaxy tab', 'ipad', 'tablet', 'android device', 'iphone', 'your phone', 'your device', 'notification to verify',
             'gmail app', 'tap yes on your', 'google sent a notification'
         ]
-        text_detected = any(p in page_text for p in device_confirmation_phrases)
-        logger.debug(f"Device confirmation text patterns detected: {text_detected}")
-        # Element-based detection (robust visibility handling — Playwright's is_visible has no timeout param)
-        device_elements = [
-            'h1:has-text("2-Step Verification")',
-            'h2[jsname="Ud7fr"]',
-            'span[jsname="Ud7fr"]:has-text("Check your")',
-            'div[jsname="NhJ5Dd"]:has-text("Google sent a notification")',
-            'text=Google sent a notification',
-            'text=Tap Yes on the notification',
-            'div:has-text("notification to verify")'
+        
+        # CRITICAL: Must NOT be a method selection page
+        method_selection_indicators = [
+            'choose how you want to sign in',
+            'choose a verification method', 
+            'how would you like to verify',
+            'select how to get your code',
+            'more ways to verify'
         ]
-        for sel in device_elements:
-            try:
-                loc = page.locator(sel).first
-                loc.wait_for(state='visible', timeout=800)
+        
+        # Debug all pattern matches
+        matched_device_phrases = [p for p in device_confirmation_phrases if p in page_text]
+        matched_selection_phrases = [p for p in method_selection_indicators if p in page_text]
+        
+        logger.debug(f"Device confirmation phrases found: {matched_device_phrases}")
+        logger.debug(f"Method selection phrases found: {matched_selection_phrases}")
+        
+        # If this is a method selection page, don't treat as device confirmation
+        is_method_selection = any(phrase in page_text for phrase in method_selection_indicators)
+        if is_method_selection:
+            logger.debug("❌ This is a method selection page, not device confirmation")
+            # Don't return False yet - continue to other detection methods
+        else:
+            text_detected = any(p in page_text for p in device_confirmation_phrases)
+            logger.debug(f"✅ Device confirmation text patterns detected: {text_detected}")
+            
+            # FAST TRACK: If text patterns match AND it's not method selection, show immediately
+            if text_detected:
                 device_confirmation_detected = True
-                logger.info(f"✅ Device confirmation detected via element: {sel}")
-                # Extract device heading if present
+                logger.info("🎯 DEVICE CONFIRMATION DETECTED via text patterns!")
+                print(f"✅ DEBUG: Device confirmation detected! Phrases: {matched_device_phrases}")
+                
+                # Mark session state so continuation logic knows
+                self._device_confirmation_active = True
+                
+                # Extract device name if possible
+                if device_name == 'your device':
+                    try:
+                        import re
+                        match = re.search(r'galaxy tab[^.<\n]*', page_text, re.IGNORECASE)
+                        if match:
+                            device_name = match.group(0)
+                        elif 'ipad' in page_text:
+                            device_name = 'your iPad'
+                        elif 'iphone' in page_text:
+                            device_name = 'your iPhone'
+                        elif 'android' in page_text:
+                            device_name = 'your Android device'
+                        elif 'tablet' in page_text:
+                            device_name = 'your tablet'
+                    except Exception:
+                        pass
+                
+                print(f"\n📱 Device Confirmation Detected")
+                print(f"🔔 Approve the sign-in on {device_name}.")
+                print("💡 You can also choose to resend or pick another method below.")
+                
+                # Offer resend / alternate method
+                resend = False
+                try_another = False
                 try:
-                    heading = page.locator('h2[jsname="Ud7fr"]').first.text_content()
-                    if heading and 'check your' in heading.lower():
-                        device_name = heading.strip()
+                    if page.locator('span[jsname="V67aGc"]:has-text("Resend it")').first.is_visible():
+                        resend = True
+                    if page.locator('span[jsname="V67aGc"]:has-text("Try another way")').first.is_visible():
+                        try_another = True
                 except Exception:
                     pass
-                break
-            except Exception:
-                continue
-        if not device_confirmation_detected and text_detected:
-            device_confirmation_detected = True
-            logger.info("✅ Device confirmation detected via text heuristics")
-        if device_confirmation_detected:
+                
+                if resend or try_another:
+                    opts = ["Wait for approval"]
+                    if resend: opts.append("Resend notification")
+                    if try_another: opts.append("Try another way")
+                    for i, o in enumerate(opts, 1):
+                        print(f"{i}. {o}")
+                    choice = input("Select option (Enter to wait): ").strip()
+                    if choice == '2' and resend:
+                        try:
+                            page.locator('span[jsname="V67aGc"]:has-text("Resend it")').first.click()
+                            print("📤 Notification resent.")
+                        except Exception:
+                            print("⚠️ Failed to resend notification.")
+                    elif ((choice == '2' and not resend) or (choice == '3')) and try_another:
+                        try:
+                            page.locator('span[jsname="V67aGc"]:has-text("Try another way")').first.click()
+                            print("🔄 Loading alternative methods...")
+                            time.sleep(2)
+                            return True  # Re-run detection on new UI
+                        except Exception:
+                            print("⚠️ Failed to open alternative methods.")
+                
+                print("⏳ Waiting for device approval...")
+                return True
+        
+        # Element-based detection (only if text wasn't detected - avoid duplicate delays)
+        if not device_confirmation_detected:
+            logger.debug("🔍 Trying element-based device confirmation detection...")
+            device_elements = [
+                'h1:has-text("2-Step Verification")',
+                'h2[jsname="Ud7fr"]',
+                'span[jsname="Ud7fr"]:has-text("Check your")',
+                'div[jsname="NhJ5Dd"]:has-text("Google sent a notification")',
+                'text=Google sent a notification',
+                'text=Tap Yes on the notification',
+                'div:has-text("notification to verify")'
+            ]
+            for sel in device_elements:
+                try:
+                    loc = page.locator(sel).first
+                    loc.wait_for(state='visible', timeout=300)
+                    device_confirmation_detected = True
+                    logger.info(f"✅ Device confirmation detected via element: {sel}")
+                    # Extract device heading if present
+                    try:
+                        heading = page.locator('h2[jsname="Ud7fr"]').first.text_content()
+                        if heading and 'check your' in heading.lower():
+                            device_name = heading.strip()
+                    except Exception:
+                        pass
+                    break
+                except Exception:
+                    continue
+        
+        # If device confirmation was detected by elements, show UI
+        if device_confirmation_detected and not self._device_confirmation_active:
             # Mark session state so continuation logic knows
             self._device_confirmation_active = True
+            print(f"✅ DEBUG: Device confirmation detected via elements!")
             if device_name == 'your device':
                 try:
+                    import re
                     match = re.search(r'galaxy tab[^.<\n]*', page_text, re.IGNORECASE)
                     if match:
                         device_name = match.group(0)
@@ -969,6 +1235,11 @@ class MoodleSession:
                         print("⚠️ Failed to open alternative methods.")
             print("⏳ Waiting for device approval...")
             return True
+        
+        # If device confirmation already detected, just return True
+        if device_confirmation_detected:
+            logger.debug("Device confirmation already handled, returning True")
+            return True
         # SMS/Text codes - now with more specific detection to avoid false positives
         sms_specific_phrases = [
             'enter the code', 'verification code sent', 'code sent to',
@@ -977,6 +1248,7 @@ class MoodleSession:
         ]
         
         if any(phrase in page_text for phrase in sms_specific_phrases):
+            logger.debug(f"🔍 SMS code detection triggered by: {[p for p in sms_specific_phrases if p in page_text]}")
             # Try to extract phone number hint
             phone_hint = "your phone"
             if 'ending in' in page_text:
@@ -990,33 +1262,59 @@ class MoodleSession:
             return self._handle_sms_code_entry(page)
         
         # Authenticator apps - now with interactive input
-        if any(phrase in page_text for phrase in [
+        authenticator_phrases = [
             'authenticator', 'google authenticator', 'auth app',
             'verification app', 'time-based'
-        ]):
+        ]
+        if any(phrase in page_text for phrase in authenticator_phrases):
+            logger.debug(f"🔍 Authenticator detection triggered by: {[p for p in authenticator_phrases if p in page_text]}")
             print("\n🔐 Authenticator App Required")
             print("📲 Please use your authenticator app")
             return self._handle_authenticator_code(page)
         
         # Backup codes - now with interactive input
-        if any(phrase in page_text for phrase in [
+        backup_phrases = [
             'backup code', 'recovery code', 'backup verification'
-        ]):
+        ]
+        if any(phrase in page_text for phrase in backup_phrases):
+            logger.debug(f"🔍 Backup code detection triggered by: {[p for p in backup_phrases if p in page_text]}")
             print("\n🔑 Backup Code Required")
             print("📄 Please use one of your backup codes")
             return self._handle_backup_code(page)
         
-        # Generic 2FA detection - last resort
-        if any(phrase in page_text for phrase in [
-            '2-step', 'two-step', '2fa', 'two-factor',
-            'security code', 'verify', 'verification'
-        ]):
-            logger.warning("⚠️ Generic 2FA detected - no specific scenario matched")
+        # Generic 2FA detection - VERY RESTRICTIVE last resort (avoid false positives with device confirmation)
+        # Only trigger if it's clearly 2FA but NOT any of the above specific scenarios
+        generic_2fa_phrases = [
+            '2-step', 'two-step', '2fa', 'two-factor'
+        ]
+        # EXCLUDE common words that might appear in device confirmation pages - EXPANDED LIST
+        device_exclusion_phrases = [
+            'check your', 'tap yes', 'notification', 'approve', 'confirm your identity',
+            'google sent a notification', 'galaxy tab', 'ipad', 'iphone', 'android device',
+            'your phone', 'your device', 'notification to verify', 'gmail app', 'push notification'
+        ]
+        
+        has_generic_2fa = any(phrase in page_text for phrase in generic_2fa_phrases)
+        has_device_indicators = any(phrase in page_text for phrase in device_exclusion_phrases)
+        
+        logger.debug(f"🔍 Generic 2FA check: has_generic={has_generic_2fa}, has_device_indicators={has_device_indicators}")
+        logger.debug(f"🔍 Device exclusion phrases found: {[p for p in device_exclusion_phrases if p in page_text]}")
+        
+        # CRITICAL: If device indicators are present, DO NOT trigger generic 2FA
+        if has_generic_2fa and not has_device_indicators:
+            matching_generic_phrases = [phrase for phrase in generic_2fa_phrases if phrase in page_text]
+            logger.warning(f"⚠️ Generic 2FA detected - no specific scenario matched. Phrases: {matching_generic_phrases}")
+            print(f"❌ DEBUG: Generic 2FA fallback triggered by: {matching_generic_phrases}")
+            print(f"❌ DEBUG: Device indicators present: {[p for p in device_exclusion_phrases if p in page_text]}")
             print("\n🔐 Additional Verification Required")
             print("🛡️  Please complete the security verification")
             return self._handle_generic_verification(page)
+        elif has_generic_2fa and has_device_indicators:
+            logger.debug(f"🚫 Generic 2FA patterns found BUT device indicators present - skipping generic fallback")
+            logger.debug(f"🚫 This appears to be device confirmation that wasn't caught earlier")
+            print(f"✅ DEBUG: Skipped generic 2FA because device indicators found: {[p for p in device_exclusion_phrases if p in page_text]}")
         
-        logger.debug("No specific 2FA scenarios detected")
+        logger.debug("=== 2FA SCENARIO DETECTION END - No scenarios detected ===")
         return False
 
     def wait_for_user_login(self, timeout_minutes: int = 10) -> bool:
@@ -2191,6 +2489,12 @@ class MoodleDirectScraper:
         """Open login page and wait for manual (or automated) completion."""
         if not self.session.start_browser():
             return False
+        
+        # CRITICAL: Check if already logged in FIRST before attempting any login flow
+        if self.session._check_login_status(skip_navigation=True):
+            logger.info("✅ Already logged in with valid session, skipping login flow")
+            return True
+        
         if not self.session.open_login_page():
             return False
         
