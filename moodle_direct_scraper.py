@@ -10,6 +10,7 @@ import pickle
 from pathlib import Path
 from typing import Dict, List, Optional, Tuple
 from datetime import datetime, timedelta
+import threading
 from dotenv import load_dotenv
 import re
 import json
@@ -453,9 +454,10 @@ class MoodleSession:
                 current_url = (self.page.url or '').lower()
                 if (not skip_navigation and 'login' not in current_url and not current_url.startswith(dashboard_url.lower())):
                     try:
-                        self.page.goto(dashboard_url, wait_until='domcontentloaded', timeout=10000)
+                        # Navigate to dashboard to stabilize DOM for detection
+                        self.page.goto(dashboard_url, wait_until='domcontentloaded')
                     except Exception as nav_e:
-                        logger.debug(f"Dashboard nav error: {nav_e}")
+                        logger.debug(f"Nav error (playwright): {nav_e}")
                 signals = self._compute_login_signals()
                 logger.debug(f"Login signals: {signals} body_class={getattr(self, '_last_body_class', None)}")
                 strict_logged_in = all([
@@ -471,24 +473,17 @@ class MoodleSession:
                     not signals['login_form'],
                     not signals['url_has_login']
                 ]) and (signals['user_avatar'] or True)
-                # Auto SSO if on login page, have Moodle cookie OR Google cookies (heuristic) and not logged
                 if not (strict_logged_in or relaxed_candidate) and signals['login_form']:
                     if self._attempt_auto_sso_login():
-                        logger.info("🔄 Waiting for SSO redirect...")
-                        time.sleep(2)
-                        return False  # next iteration will re-evaluate
+                        logger.debug("Auto SSO click issued")
                 if strict_logged_in:
                     self._relaxed_success_count = 0
-                    if not getattr(self, '_first_login_snapshot', False):
-                        self._capture_debug_snapshot('strict_detect')
-                        self._first_login_snapshot = True
+                    self._after_login_success_once()
                     return True
                 if relaxed_candidate:
                     self._relaxed_success_count = getattr(self, '_relaxed_success_count', 0) + 1
                     if self._relaxed_success_count >= 3:
-                        if not getattr(self, '_first_login_snapshot', False):
-                            self._capture_debug_snapshot('relaxed_detect')
-                            self._first_login_snapshot = True
+                        self._after_login_success_once(relaxed=True)
                         return True
                 else:
                     self._relaxed_success_count = 0
@@ -499,7 +494,7 @@ class MoodleSession:
                     try:
                         self.driver.get(dashboard_url)
                     except Exception as nav_e:
-                        logger.debug(f"Dashboard nav error (selenium): {nav_e}")
+                        logger.debug(f"Nav error (selenium): {nav_e}")
                 signals = self._compute_login_signals()
                 logger.debug(f"Login signals (selenium): {signals} body_class={getattr(self, '_last_body_class', None)}")
                 strict_logged_in = all([
@@ -517,10 +512,12 @@ class MoodleSession:
                 ]) and (signals['user_avatar'] or True)
                 if strict_logged_in:
                     self._relaxed_success_count = 0
+                    self._after_login_success_once()
                     return True
                 if relaxed_candidate:
                     self._relaxed_success_count = getattr(self, '_relaxed_success_count', 0) + 1
                     if self._relaxed_success_count >= 3:
+                        self._after_login_success_once(relaxed=True)
                         return True
                 else:
                     self._relaxed_success_count = 0
@@ -530,6 +527,28 @@ class MoodleSession:
             logger.debug(f"Error checking login status: {e}")
             return False
     
+    def _after_login_success_once(self, relaxed: bool = False):
+        """Actions to run exactly once after confirming login (strict or relaxed)."""
+        if getattr(self, '_login_success_handled', False):
+            return
+        self._login_success_handled = True
+        try:
+            logger.info("✅ Login confirmed (relaxed mode)" if relaxed else "✅ Login confirmed")
+            # Save cookies/session
+            try:
+                self._save_session()
+            except Exception as e:
+                logger.debug(f"Session save error: {e}")
+            # Trigger callback (e.g., auto scrape) once
+            if self.on_login_callback and not self._login_announced:
+                self._login_announced = True
+                try:
+                    self.on_login_callback()
+                except Exception as cb_e:
+                    logger.warning(f"Login callback failed: {cb_e}")
+        except Exception as e:
+            logger.debug(f"After-login hook error: {e}")
+
     def _save_session(self):
         try:
             if self.page:
@@ -587,14 +606,31 @@ class MoodleSession:
 class MoodleDirectScraper:
     """Main class for scraping Moodle content directly with human-like behavior"""
     
-    def __init__(self, moodle_url: str = None, headless: bool = False):
+    def __init__(self, moodle_url: str = None, headless: bool = False, auto_scrape_on_login: Optional[bool] = None, auto_scrape_background: bool = True):
+        """Create a scraper.
+        auto_scrape_on_login:
+          True  -> always auto-scrape right after login
+          False -> never auto-scrape (you must call scrape_all_due_items manually)
+          None  -> infer: auto-scrape only when headless (recommended so interactive sessions stay manual)
+        auto_scrape_background: if auto-scrape enabled, run in background thread (non-blocking)
+        """
         load_dotenv()
         self.moodle_url = moodle_url or os.getenv('MOODLE_URL')
         self.session = MoodleSession(self.moodle_url, headless)
         if not self.moodle_url:
             raise ValueError("Moodle URL not provided. Set MOODLE_URL environment variable or pass moodle_url parameter.")
-        # Register login callback so scraping can auto-start once login detected
-        self.session.on_login_callback = self._on_session_logged_in
+        # Decide auto-scrape behavior (default only in headless mode)
+        if auto_scrape_on_login is None:
+            resolved_auto = headless  # auto only in headless by default
+        else:
+            resolved_auto = bool(auto_scrape_on_login)
+        self.auto_scrape_on_login = resolved_auto
+        self.auto_scrape_background = auto_scrape_background and resolved_auto  # only relevant if auto enabled
+        self._scrape_executed = False  # guard to avoid double scraping in a single session
+        self._auto_scrape_thread: Optional[threading.Thread] = None
+        # Register login callback only if auto enabled
+        if self.auto_scrape_on_login:
+            self.session.on_login_callback = self._on_session_logged_in
         # Storage paths
         self.scraped_file = 'data/assignments_scraped.json'
         self.main_file = 'data/assignments.json'
@@ -604,17 +640,39 @@ class MoodleDirectScraper:
         self._fuzzy_threshold_same = 0.85
         self._fuzzy_threshold_update = 0.90
         self.debug_scrape = os.getenv('MOODLE_SCRAPE_DEBUG', '0') in ['1','true','yes','on']
+        if not self.auto_scrape_on_login and headless:
+            logger.info("ℹ️ Headless mode without auto-scrape: remember to call scrape_all_due_items() manually.")
+        if self.auto_scrape_on_login and not headless:
+            logger.info("ℹ️ Auto-scrape enabled in non-headless mode (override default).")
 
     # ---------------- Scraping Orchestration ---------------- #
     def _on_session_logged_in(self):
-        """Triggered automatically once after login is confirmed."""
-        try:
-            logger.info("🚀 Starting automatic scrape of due items...")
-            self.scrape_all_due_items(auto_merge=True)
-        except Exception as e:
-            logger.warning(f"Automatic scrape failed: {e}")
+        """Triggered automatically once after login is confirmed (if auto_scrape_on_login).
+        Runs in background (non-blocking) if auto_scrape_background=True so interactive login message isn't delayed."""
+        if self._scrape_executed:
+            logger.info("⚠️ Auto-scrape skipped (scrape already executed this session)")
+            return
+        def _do_scrape():
+            try:
+                logger.info("🚀 (Background) Starting automatic scrape of due items...")
+                self.scrape_all_due_items(auto_merge=True)
+            except Exception as e:
+                logger.warning(f"Automatic scrape failed: {e}")
+        if self.auto_scrape_background:
+            if self._auto_scrape_thread and self._auto_scrape_thread.is_alive():
+                logger.debug("Auto-scrape thread already running")
+                return
+            self._auto_scrape_thread = threading.Thread(target=_do_scrape, name="AutoScrapeThread", daemon=True)
+            self._auto_scrape_thread.start()
+            logger.info("⏳ Auto-scrape launched in background thread")
+        else:
+            _do_scrape()
 
     def scrape_all_due_items(self, auto_merge: bool = False) -> List[Dict]:
+        # One-time execution guard
+        if self._scrape_executed:
+            logger.info("⏩ Scrape skipped (already executed this session)")
+            return self._scraped_items
         if not self.session._check_login_status(skip_navigation=True):
             raise Exception("Not logged in to Moodle")
         courses = self.fetch_courses()
@@ -665,6 +723,8 @@ class MoodleDirectScraper:
             self._print_scrape_summary(all_items)
         except Exception as e:
             logger.debug(f"Summary generation failed: {e}")
+        # Mark as executed so subsequent triggers (manual or auto) won't duplicate work/summary
+        self._scrape_executed = True
         return all_items
 
     # ---------------- Summary Helper ---------------- #
