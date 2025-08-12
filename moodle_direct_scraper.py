@@ -74,6 +74,8 @@ class MoodleSession:
         self._login_announced = False
         # Flag to remember if we've detected a device confirmation flow
         self._device_confirmation_active = False
+        # Flag to prevent showing UI multiple times
+        self._device_ui_shown = False
 
     
     def _random_delay(self, min_ms: int, max_ms: int):
@@ -615,6 +617,7 @@ class MoodleSession:
         max_cap_without_device = 300  # 5m
         device_cap = 900  # 15m
         self._device_confirmation_active = False  # reset each invocation
+        self._device_ui_shown = False  # reset UI flag for new session
 
         while True:
             # Compute remaining time budget
@@ -712,25 +715,42 @@ class MoodleSession:
         
         logger.info("🔍 2FA patterns detected, analyzing page...")
         
-        # Check for SMS code entry FIRST (after clicking SMS option)
-        if self._is_sms_code_page(page, page_text):
-            logger.info("📱 SMS code entry page detected")
-            return self._handle_sms_code_entry(page)
+        # PRIORITY ORDER: Use URL-based detection for accurate classification
+        current_url = page.url.lower()
+        logger.debug(f"2FA URL analysis: {current_url}")
         
-        # PRIORITY ORDER: Check device confirmation SECOND (most common for Google accounts)
-        device_confirmation_result = self._handle_specific_2fa_scenarios(page, page_text)
-        if device_confirmation_result:
-            logger.info("📱 Device confirmation flow detected and handled")
-            return True
+        # 1. Method selection page - URL contains "challenge/selection" OR has multiple challenge types
+        if ('challenge/selection' in current_url or 
+            self._has_multiple_challenge_types(page)):
+            logger.info("🔐 Method selection page detected via URL/elements")
+            if self._handle_verification_method_selection(page):
+                logger.info("🔐 Verification method selection detected and handled")
+                return True
         
-        # Check for phone number verification setup
+        # 2. SMS/Code entry page - URL contains "challenge/ipp" or "challenge/totp"
+        elif ('challenge/ipp' in current_url or 'challenge/totp' in current_url):
+            logger.info("📲 SMS page detected via URL - checking if phone setup or code entry")
+            
+            # Check if this is phone number setup or code entry
+            if self._is_phone_number_setup_page(page):
+                logger.info("📞 Phone number setup page detected")
+                return self._handle_phone_verification_setup(page)
+            else:
+                logger.info("📲 SMS code entry page detected")
+                return self._handle_sms_code_entry(page)
+        
+        # 3. Device confirmation - URL contains "challenge/az" OR specific device confirmation content
+        elif ('challenge/az' in current_url or 
+              self._is_device_confirmation_page(page, page_text)):
+            logger.info("📱 Device confirmation page detected")
+            device_confirmation_result = self._handle_specific_2fa_scenarios(page, page_text)
+            if device_confirmation_result:
+                logger.info("📱 Device confirmation flow detected and handled")
+                return True
+        
+        # 3. Check for phone number verification setup
         if self._handle_phone_verification_setup(page):
             logger.info("📞 Phone verification setup detected and handled")
-            return True
-            
-        # Check for verification method selection
-        if self._handle_verification_method_selection(page):
-            logger.info("🔐 Verification method selection detected and handled")
             return True
             
         # If none of the above worked, something might be wrong - provide debug info
@@ -791,6 +811,121 @@ class MoodleSession:
         except Exception as e:
             logger.debug(f"Failed to save 2FA debug snapshot: {e}")
     
+    def _has_multiple_challenge_types(self, page) -> bool:
+        """Check if page has multiple challenge type options (method selection indicator)"""
+        try:
+            challenge_elements = page.locator('[data-challengetype]').all()
+            unique_types = set()
+            for elem in challenge_elements:
+                challenge_type = elem.get_attribute('data-challengetype')
+                if challenge_type:
+                    unique_types.add(challenge_type)
+            
+            # If we have 2+ different challenge types, it's likely a method selection page
+            is_method_selection = len(unique_types) >= 2
+            logger.debug(f"Challenge types found: {unique_types}, method selection: {is_method_selection}")
+            return is_method_selection
+        except Exception as e:
+            logger.debug(f"Error checking challenge types: {e}")
+            return False
+    
+    def _is_device_confirmation_page(self, page, page_text: str) -> bool:
+        """Check if this is specifically a device confirmation page (not method selection)"""
+        try:
+            # Device confirmation should have specific content but NOT multiple challenge types
+            has_device_content = any(phrase in page_text for phrase in [
+                'check your device', 'tap yes', 'notification', 'approve this sign-in',
+                'confirm it\'s you', 'google sent a notification'
+            ])
+            
+            # Should NOT have multiple challenge types (that would be method selection)
+            has_multiple_options = self._has_multiple_challenge_types(page)
+            
+            is_device_confirmation = has_device_content and not has_multiple_options
+            logger.debug(f"Device confirmation check: content={has_device_content}, multiple_options={has_multiple_options}, result={is_device_confirmation}")
+            return is_device_confirmation
+        except Exception as e:
+            logger.debug(f"Error checking device confirmation: {e}")
+            return False
+    
+    def _is_phone_number_setup_page(self, page) -> bool:
+        """Check if this is a phone number setup/input page (NOT SMS code entry)"""
+        try:
+            page_text = page.content().lower()
+            
+            # Check for phone input field (tel type or phone-related)
+            phone_input_selectors = [
+                'input[type="tel"]',
+                'input[placeholder*="phone" i]',
+                'input[name*="phone" i]',
+                'input[id*="phone" i]',
+                'input[autocomplete="tel"]'
+            ]
+            
+            has_phone_input = False
+            for selector in phone_input_selectors:
+                try:
+                    element = page.locator(selector).first
+                    if element.is_visible(timeout=1000):
+                        # Additional check - make sure it's not a code input disguised as tel
+                        placeholder = element.get_attribute('placeholder') or ''
+                        if 'code' in placeholder.lower() or 'verification' in placeholder.lower():
+                            logger.debug(f"Skipping {selector} - appears to be code input: {placeholder}")
+                            continue
+                        has_phone_input = True
+                        logger.debug(f"Found phone input: {selector}")
+                        break
+                except:
+                    continue
+            
+            # Check for SMS code input (should NOT be phone setup)
+            code_input_selectors = [
+                'input[placeholder*="code" i]',
+                'input[placeholder*="verification" i]',
+                'input[maxlength="6"]',
+                'input[maxlength="8"]',
+                'input[name*="code" i]'
+            ]
+            
+            has_code_input = False
+            for selector in code_input_selectors:
+                try:
+                    if page.locator(selector).first.is_visible(timeout=1000):
+                        has_code_input = True
+                        logger.debug(f"Found code input: {selector}")
+                        break
+                except:
+                    continue
+            
+            # Check for phone setup text patterns (NOT code entry patterns)
+            phone_setup_patterns = [
+                'enter your phone number', 'add a phone number', 'phone number verification',
+                'add phone', 'verify your phone', 'we need to verify your phone',
+                'provide a phone number', 'phone number for verification'
+            ]
+            
+            # Code entry patterns (should exclude this from being phone setup)
+            code_entry_patterns = [
+                'enter the code', 'verification code sent', 'code sent to',
+                'enter code', 'sms code', '6-digit code'
+            ]
+            
+            has_phone_text = any(pattern in page_text for pattern in phone_setup_patterns)
+            has_code_text = any(pattern in page_text for pattern in code_entry_patterns)
+            
+            # Only consider it phone setup if:
+            # 1. Has phone input OR phone setup text
+            # 2. Does NOT have code input or code text
+            is_phone_setup = (has_phone_input or has_phone_text) and not (has_code_input or has_code_text)
+            
+            logger.debug(f"Phone setup check: phone_input={has_phone_input}, phone_text={has_phone_text}, code_input={has_code_input}, code_text={has_code_text}, result={is_phone_setup}")
+            
+            return is_phone_setup
+            
+        except Exception as e:
+            logger.debug(f"Error checking phone setup: {e}")
+            return False
+    
     def _extract_device_name(self, page_text: str) -> str:
         """Extract device name from page text"""
         try:
@@ -820,6 +955,12 @@ class MoodleSession:
     
     def _show_device_confirmation_ui(self, page, device_name: str):
         """Show the device confirmation UI with options"""
+        # Check if UI already shown to prevent repetition
+        if self._device_ui_shown:
+            return
+            
+        self._device_ui_shown = True
+        
         # Force flush to ensure output is visible
         import sys
         print(f"\n" + "="*60, flush=True)
@@ -832,252 +973,233 @@ class MoodleSession:
         # Check for resend / alternate method options
         resend = False
         try_another = False
+        
+        print("🔍 Checking for interactive options...", flush=True)
+        
+        # Multiple selectors for resend button
+        resend_selectors = [
+            'span[jsname="V67aGc"]:has-text("Resend it")',
+            'span:has-text("Resend it")',
+            'button:has-text("Resend")',
+            'a:has-text("Resend")',
+            '*:has-text("Resend it")',
+            '*:has-text("Resend")'
+        ]
+        
+        # Multiple selectors for try another way
+        try_another_selectors = [
+            'span[jsname="V67aGc"]:has-text("Try another way")',
+            'span:has-text("Try another way")',
+            'button:has-text("Try another way")',
+            'a:has-text("Try another way")',
+            '*:has-text("Try another way")',
+            '*:has-text("Use a different method")',
+            '*:has-text("Other options")'
+        ]
+        
         try:
-            if page.locator('span[jsname="V67aGc"]:has-text("Resend it")').first.is_visible(timeout=2000):
-                resend = True
-                logger.debug("Resend option found")
-            if page.locator('span[jsname="V67aGc"]:has-text("Try another way")').first.is_visible(timeout=2000):
-                try_another = True
-                logger.debug("Try another way option found")
+            # Check for resend options
+            for selector in resend_selectors:
+                try:
+                    if page.locator(selector).first.is_visible(timeout=1000):
+                        resend = True
+                        print(f"✅ Found resend option with: {selector}", flush=True)
+                        logger.debug(f"Resend option found with selector: {selector}")
+                        break
+                except Exception:
+                    continue
+            
+            # Check for try another way options    
+            for selector in try_another_selectors:
+                try:
+                    if page.locator(selector).first.is_visible(timeout=1000):
+                        try_another = True
+                        print(f"✅ Found 'try another way' option with: {selector}", flush=True)
+                        logger.debug(f"Try another way option found with selector: {selector}")
+                        break
+                except Exception:
+                    continue
+                    
+            if not resend and not try_another:
+                print("⚠️ No interactive options found - buttons may not be available yet", flush=True)
+                
         except Exception as e:
+            print(f"❌ Error checking for interactive options: {e}", flush=True)
             logger.debug(f"Error checking for resend/try another options: {e}")
         
-        if resend or try_another:
-            opts = ["Wait for approval"]
-            if resend: 
-                opts.append("Resend notification")
-            if try_another: 
-                opts.append("Try another way")
-            
-            print("\nAvailable options:", flush=True)
-            for i, o in enumerate(opts, 1):
-                print(f"{i}. {o}", flush=True)
-            print(flush=True)  # Extra line break
-            sys.stdout.flush()
-            
-            try:
-                choice = input("Select option (Enter to wait): ").strip()
-                
-                if choice == '2' and resend:
-                    try:
-                        page.locator('span[jsname="V67aGc"]:has-text("Resend it")').first.click()
-                        print("📤 Notification resent.")
-                    except Exception as e:
-                        print(f"⚠️ Failed to resend notification: {e}")
-                        
-                elif ((choice == '2' and not resend) or (choice == '3')) and try_another:
-                    try:
-                        page.locator('span[jsname="V67aGc"]:has-text("Try another way")').first.click()
-                        print("🔄 Loading alternative methods...", flush=True)
-                        time.sleep(3)  # Give more time for page to load
-                        
-                        # Now automatically select SMS verification
-                        print("📱 Auto-selecting SMS verification...", flush=True)
-                        sys.stdout.flush()
-                        
-                        # Wait for the verification method selection page to load
-                        time.sleep(2)
-                        
-                        # Try to find and click SMS option automatically
-                        sms_selected = self._auto_select_sms_verification(page)
-                        if sms_selected:
-                            print("✅ SMS verification selected automatically", flush=True)
-                            # Don't return True here - let the main detection loop continue
-                            # to detect the SMS code entry page
-                        else:
-                            print("❌ Could not auto-select SMS, please select manually", flush=True)
-                            
-                    except Exception as e:
-                        print(f"⚠️ Failed to open alternative methods: {e}", flush=True)
-                else:
-                    print("⏳ Waiting for device approval...", flush=True)
-                    
-            except KeyboardInterrupt:
-                print("\n⏸️ Skipping method selection...", flush=True)
+        # Always show the interactive menu for device confirmation
+        opts = ["Wait for approval"]
+        if resend: 
+            opts.append("Resend notification")
+        if try_another: 
+            opts.append("Try another way")
         else:
-            print("⏳ Waiting for device approval...", flush=True)
-            print("💡 If you don't see the notification, check your device manually", flush=True)
+            # Add generic "Try another way" option even if button not detected
+            opts.append("Try another verification method")
+        
+        print("\nAvailable options:", flush=True)
+        for i, o in enumerate(opts, 1):
+            print(f"{i}. {o}", flush=True)
+        print(flush=True)  # Extra line break
+        sys.stdout.flush()
+        
+        try:
+            choice = input("Select option (1-{}, Enter for option 1): ".format(len(opts))).strip()
+            
+            # Default to option 1 if no input
+            if not choice:
+                choice = '1'
+                
+            if choice == '2' and resend:
+                try:
+                    page.locator('span[jsname="V67aGc"]:has-text("Resend it")').first.click()
+                    print("📤 Notification resent.", flush=True)
+                except Exception as e:
+                    print(f"⚠️ Failed to resend notification: {e}", flush=True)
+                    
+            elif choice == '2' and not resend:
+                # Generic "Try another verification method" was selected
+                print("🔄 Looking for alternative verification methods...", flush=True)
+                # Try to find and click "Try another way" or similar
+                alt_selectors = [
+                    'span[jsname="V67aGc"]:has-text("Try another way")',
+                    'span:has-text("Try another way")',
+                    'button:has-text("Try another way")',
+                    'a:has-text("Try another way")',
+                    '*:has-text("Use a different method")',
+                    '*:has-text("Other options")'
+                ]
+                clicked = False
+                for selector in alt_selectors:
+                    try:
+                        if page.locator(selector).first.is_visible(timeout=1000):
+                            page.locator(selector).first.click()
+                            print("🔄 Loading alternative methods...", flush=True)
+                            time.sleep(2)
+                            clicked = True
+                            break
+                    except Exception:
+                        continue
+                if not clicked:
+                    print("⚠️ Could not find 'Try another way' button. You may need to manually click it in the browser.", flush=True)
+                    
+            elif choice == '3' and try_another:
+                try:
+                    page.locator('span[jsname="V67aGc"]:has-text("Try another way")').first.click()
+                    print("🔄 Loading alternative methods...", flush=True)
+                    time.sleep(2)
+                except Exception as e:
+                    print(f"⚠️ Failed to open alternative methods: {e}", flush=True)
+            else:
+                print("⏳ Waiting for device approval...", flush=True)
+                    
+        except KeyboardInterrupt:
+            print("\n⏸️ Skipping method selection...", flush=True)
+            
+        print("💡 If you don't see the notification, check your device manually", flush=True)
         
         sys.stdout.flush()  # Final flush to ensure everything is visible
     
-    def _is_sms_code_page(self, page, page_text: str) -> bool:
-        """Detect if we're on the SMS code entry page (not device confirmation)"""
+    def _handle_phone_verification_setup(self, page):
+        """Handle phone number setup for 2FA"""
+        print(f"\n📱 PHONE NUMBER SETUP REQUIRED", flush=True)
+        print("Google needs to verify your phone number for 2FA", flush=True)
+        
         try:
-            # SMS code page specific indicators
-            sms_page_indicators = [
-                # Text patterns specific to SMS code entry
-                'enter the code', 'verification code sent', 'enter verification code',
-                'enter the 6-digit code', 'we sent a code', 'text message with',
-                'enter code', 'verification code', 'check your phone',
-                'code sent to', 'sent to your phone', 'text message code',
-                'sms code', 'phone number ending in', 'get a verification code at',
-                'enter the g-', 'phone'  # Common patterns on SMS pages
-            ]
-            
-            # Element selectors specific to SMS code entry
-            sms_input_selectors = [
+            # Look for phone input field with multiple selectors
+            phone_input_selectors = [
                 'input[type="tel"]',
-                'input[placeholder*="code"]',
-                'input[aria-label*="code"]',
-                'input[name*="code"]',
-                'input[autocomplete="one-time-code"]',
-                'input[inputmode="numeric"]'
+                'input[placeholder*="phone" i]',
+                'input[name*="phone" i]',
+                'input[id*="phone" i]',
+                'input[autocomplete="tel"]'
             ]
             
-            # Device confirmation exclusion patterns (if these are present, it's NOT SMS page)
-            device_patterns = [
-                'tap yes', 'approve', 'check your device', 'notification to verify',
-                'google sent a notification', 'galaxy tab', 'ipad', 'honor x9c'
-            ]
-            
-            # Check for SMS-specific text patterns
-            has_sms_text = any(pattern in page_text for pattern in sms_page_indicators)
-            
-            # Check for SMS input fields
-            has_sms_input = False
-            for selector in sms_input_selectors:
+            phone_input = None
+            for selector in phone_input_selectors:
                 try:
-                    if page.locator(selector).first.is_visible(timeout=1000):
-                        has_sms_input = True
+                    element = page.locator(selector).first
+                    if element.is_visible(timeout=2000):
+                        phone_input = element
+                        logger.debug(f"Found phone input with selector: {selector}")
                         break
                 except:
                     continue
             
-            # Check for device confirmation patterns (exclusion)
-            has_device_patterns = any(pattern in page_text for pattern in device_patterns)
+            if not phone_input:
+                print("❌ Could not find phone input field")
+                return self._handle_generic_verification(page)
             
-            # SMS page if: has SMS indicators AND NOT device confirmation patterns
-            is_sms_page = (has_sms_text or has_sms_input) and not has_device_patterns
+            # Get phone number from user
+            print("\n📞 Please enter your phone number:")
+            print("   - Include country code (e.g., +1 for US, +63 for Philippines)")
+            print("   - Example: +639123456789")
             
-            logger.debug(f"SMS page detection: sms_text={has_sms_text}, sms_input={has_sms_input}, device_patterns={has_device_patterns}, result={is_sms_page}")
-            print(f"🔍 SMS page check: SMS text={has_sms_text}, SMS input={has_sms_input}, Device patterns={has_device_patterns} → Result: {is_sms_page}", flush=True)
+            phone_number = input("Phone number: ").strip()
             
-            return is_sms_page
+            if not phone_number:
+                print("❌ No phone number entered")
+                return False
             
-        except Exception as e:
-            logger.debug(f"Error in SMS page detection: {e}")
-            return False
-    
-    def _auto_select_sms_verification(self, page) -> bool:
-        """Automatically find and select SMS verification option"""
-        try:
-            import sys
+            print(f"📱 Entering phone number: {phone_number}")
+            phone_input.fill(phone_number)
+            time.sleep(1)
             
-            # Wait for the verification method selection page to fully load
-            time.sleep(2)
-            
-            # Try to find SMS option using multiple selectors
-            sms_selectors = [
-                'div[data-challengetype="9"]',  # SMS challenge type
-                'div[role="link"][data-challengetype="9"]',
-                'div[jsname="EBHGs"][data-challengetype="9"]',
-                'span:has-text("text message")',
-                'span:has-text("Text message")',
-                'div:has-text("Get a verification code at")',
-                'div:has-text("Get a verification code")',
-                'div:has-text("We\'ll send a verification code")'
+            # Look for submit button
+            submit_selectors = [
+                'button:has-text("Next")',
+                'button:has-text("Continue")', 
+                'button:has-text("Send")',
+                'button:has-text("Verify")',
+                'button[type="submit"]',
+                'input[type="submit"]'
             ]
             
-            print("🔍 Looking for SMS verification option...", flush=True)
-            sys.stdout.flush()
-            
-            for i, selector in enumerate(sms_selectors, 1):
+            submit_button = None
+            for selector in submit_selectors:
                 try:
-                    print(f"  Trying selector {i}/{len(sms_selectors)}: {selector[:50]}...", flush=True)
                     element = page.locator(selector).first
-                    if element.is_visible(timeout=3000):
-                        print(f"✅ Found SMS option with selector: {selector}", flush=True)
-                        
-                        # Extract phone number hint if available
-                        try:
-                            phone_hint = "your phone"
-                            if 'data-challengetype="9"' in selector:
-                                phone_span = page.query_selector('div[data-challengetype="9"] span[jsname="wKtwcc"]')
-                                if phone_span:
-                                    phone_text = phone_span.inner_text().strip()
-                                    if phone_text:
-                                        import re
-                                        match = re.search(r'(\d{2,4})$', phone_text)
-                                        if match:
-                                            phone_hint = f"***-***-{match.group(1)}"
-                                        else:
-                                            phone_hint = phone_text
-                            print(f"📱 SMS will be sent to: {phone_hint}", flush=True)
-                        except Exception as e:
-                            print(f"Could not extract phone hint: {e}", flush=True)
-                        
-                        # Click the SMS option
-                        element.click()
-                        print("📤 SMS option clicked successfully", flush=True)
-                        time.sleep(3)  # Wait for SMS page to load
-                        return True
-                        
-                except Exception as e:
-                    print(f"  Selector failed: {e}", flush=True)
-                    continue
-            
-            # Fallback: try text-based clicking
-            print("🔄 Trying text-based SMS selection...", flush=True)
-            text_patterns = [
-                'text="Get a verification code"',
-                'text="Text message"', 
-                'text="text message"',
-                'text*="verification code at"'
-            ]
-            
-            for pattern in text_patterns:
-                try:
-                    element = page.locator(pattern).first
                     if element.is_visible(timeout=2000):
-                        print(f"✅ Found SMS option with text pattern: {pattern}", flush=True)
-                        element.click()
-                        time.sleep(3)
-                        return True
-                except Exception as e:
-                    print(f"  Text pattern failed: {e}", flush=True)
+                        submit_button = element
+                        logger.debug(f"Found submit button with selector: {selector}")
+                        break
+                except:
                     continue
             
-            print("❌ Could not find SMS verification option", flush=True)
-            return False
-            
-        except Exception as e:
-            print(f"❌ Error in auto SMS selection: {e}", flush=True)
-            return False
-    
-    def _handle_phone_verification_setup(self, page):
-        """Handle phone number setup for 2FA"""
-        phone_setup_patterns = [
-            'text=Add a phone number',
-            'text=Enter your phone number',
-            'text=Phone number verification',
-            'input[type="tel"]',
-            'input[placeholder*="phone"]',
-            'text=We need to verify your phone number'
-        ]
-        
-        for pattern in phone_setup_patterns:
-            try:
-                if page.locator(pattern).is_visible(timeout=1000):
-                    print("\n📱 Phone Number Verification Required")
-                    
-                    # Check if phone input field exists
-                    phone_input = page.locator('input[type="tel"], input[placeholder*="phone"], input[name*="phone"]').first
-                    if phone_input.is_visible():
-                        phone_number = input("Please enter your phone number (with country code, e.g., +1234567890): ")
-                        phone_input.fill(phone_number)
-                        
-                        # Click next/continue button
-                        next_btn = page.locator('button:has-text("Next"), button:has-text("Continue"), button:has-text("Send"), button[type="submit"]').first
-                        if next_btn.is_visible():
-                            next_btn.click()
-                            time.sleep(3)
-                            
-                            # Now handle the SMS code
-                            return self._handle_sms_code_entry(page)
+            if submit_button:
+                print("📤 Submitting phone number...")
+                submit_button.click()
+                print("⏳ Waiting for page transition...")
+                time.sleep(5)  # Give more time for page to change
+                
+                # Check if we successfully moved to SMS code entry
+                new_url = page.url.lower()
+                print(f"🔍 New URL after submission: {new_url}")
+                
+                if self._is_phone_number_setup_page(page):
+                    print("⚠️ Still on phone setup page - submission may have failed")
+                    # Don't return True - let it try again or handle error
+                    return False
+                else:
+                    print("✅ Phone number submitted - moved to next step")
                     return True
-            except Exception:
-                continue
-        return False
+            else:
+                print("⚠️ Could not find submit button - trying Enter key")
+                phone_input.press("Enter")
+                time.sleep(5)
+                
+                # Check transition after Enter key
+                if self._is_phone_number_setup_page(page):
+                    print("❌ Enter key submission failed")
+                    return False
+                else:
+                    print("✅ Phone number submitted via Enter")
+                    return True
+                
+        except Exception as e:
+            print(f"❌ Error during phone setup: {e}")
+            logger.error(f"Phone verification setup error: {e}")
+            return self._handle_generic_verification(page)
     
     def _handle_verification_method_selection(self, page):
         """Handle when user needs to choose verification method"""
@@ -1094,7 +1216,8 @@ class MoodleSession:
         for pattern in selection_patterns:
             try:
                 if page.locator(pattern).is_visible(timeout=1000):
-                    print("\n🔐 Verification Method Selection")
+                    print(f"\n🔐 Verification Method Selection (detected with: {pattern})", flush=True)
+                    logger.info(f"Method selection page detected with pattern: {pattern}")
                     
                     # Look for available options using the actual HTML structure
                     available_options = []
@@ -1127,6 +1250,8 @@ class MoodleSession:
                     
                     # AUTO-SELECT SMS IMMEDIATELY if found
                     if sms_found:
+                        logger.info("🎯 SMS option detected - attempting auto-selection")
+                        
                         # Extract phone number hint from SMS option
                         phone_hint = "your phone"
                         try:
@@ -1145,37 +1270,41 @@ class MoodleSession:
                         except Exception as e:
                             logger.debug(f"Phone hint extraction failed: {e}")
                         
-                        print(f"📱 Auto-selecting SMS verification...")
-                        print(f"💬 SMS will be sent to {phone_hint}")
+                        print(f"\n🚀 AUTO-SELECTING SMS VERIFICATION", flush=True)
+                        print(f"📱 Automatically choosing SMS verification...", flush=True)
+                        print(f"💬 SMS will be sent to {phone_hint}", flush=True)
                         
-                        # Try multiple ways to click the SMS option
+                        # Enhanced SMS click attempts with more selectors
+                        sms_selectors = [
+                            'div[data-challengetype="9"]',
+                            'div[role="link"][data-challengetype="9"]',
+                            'div[jsname="EBHGs"][data-challengetype="9"]',
+                            'div[data-challengetype="9"] div[role="link"]',
+                            'div[data-challengetype="9"][role="link"]'
+                        ]
+                        
                         click_success = False
-                        try:
-                            # Method 1: Direct click on the SMS div
-                            sms_element = page.locator('div[data-challengetype="9"]').first
-                            sms_element.click()
-                            click_success = True
-                        except Exception as e1:
+                        for i, selector in enumerate(sms_selectors, 1):
                             try:
-                                # Method 2: Click using role=link attribute
-                                sms_element = page.locator('div[role="link"][data-challengetype="9"]').first
-                                sms_element.click()
-                                click_success = True
-                            except Exception as e2:
-                                try:
-                                    # Method 3: Click using jsname
-                                    sms_element = page.locator('div[jsname="EBHGs"][data-challengetype="9"]').first
+                                logger.debug(f"Trying SMS click method {i}: {selector}")
+                                sms_element = page.locator(selector).first
+                                if sms_element.is_visible(timeout=2000):
                                     sms_element.click()
                                     click_success = True
-                                except Exception as e3:
-                                    logger.debug(f"All SMS click methods failed: {e1}, {e2}, {e3}")
+                                    logger.info(f"✅ SMS clicked successfully with method {i}: {selector}")
+                                    break
+                            except Exception as e:
+                                logger.debug(f"SMS click method {i} failed: {e}")
+                                continue
                         
                         if click_success:
+                            print("✅ SMS verification selected successfully!", flush=True)
+                            print("⏳ Waiting for SMS code input page...", flush=True)
                             time.sleep(3)  # Give more time for page transition
-                            print("✅ SMS verification selected successfully")
                             return True  # This will trigger SMS code detection
                         else:
-                            print("❌ SMS auto-selection failed - falling back to manual selection")
+                            print("❌ SMS auto-selection failed - showing manual options", flush=True)
+                            logger.warning("All SMS click methods failed")
                     
                     # Check for backup codes (challengetype="8")
                     try:
@@ -1264,11 +1393,7 @@ class MoodleSession:
     
     def _handle_sms_code_entry(self, page):
         """Handle SMS code entry"""
-        import sys
-        print("\n" + "="*50, flush=True)
-        print("📱 SMS VERIFICATION REQUIRED", flush=True) 
-        print("="*50, flush=True)
-        sys.stdout.flush()
+        print("\n📱 SMS Verification")
         code = input("Please enter the verification code sent to your phone: ")
         
         # Find SMS code input field
@@ -1445,8 +1570,8 @@ class MoodleSession:
         
         # Enhanced element-based detection FIRST (more reliable than text)
         device_confirmation_elements = [
-            # Google's standard device confirmation elements
-            'h1:has-text("2-Step Verification")',
+            # SPECIFIC device confirmation elements (NOT generic 2FA)
+            'h1:has-text("Check your device")',
             'h2:has-text("Check your")',
             'span:has-text("Check your")',
             'div:has-text("Google sent a notification")',
@@ -1456,20 +1581,20 @@ class MoodleSession:
             'div:has-text("approve this sign-in")',
             'div:has-text("confirm it\'s you")',
             
-            # Specific to your screenshot
-            'h1:has-text("Check your device")',
+            # Specific device confirmation content
             'div:has-text("Check your device")',
             'text=Check your device',
             'div:has-text("Google sent a notification to your Honor X9c")',
             'div:has-text("Tap Yes on the notification")',
             'div:has-text("or open the Gmail app")',
-            
-            # Generic device confirmation indicators
-            'div[data-challenge-ui="CONFIRM_DEVICE"]',
-            '[data-action="confirm_device"]',
             'div:has-text("notification to verify")',
             'div:has-text("check for a notification")',
-            'div:has-text("tap yes on the notification")'
+            'div:has-text("tap yes on the notification")',
+            
+            # Technical indicators for device confirmation
+            'div[data-challenge-ui="CONFIRM_DEVICE"]',
+            '[data-action="confirm_device"]',
+            'div[data-challengetype="39"]'  # Device confirmation challenge type
         ]
         
         # Try element-based detection first with retry logic
@@ -1517,7 +1642,7 @@ class MoodleSession:
                         # SHOW UI IMMEDIATELY when detected via elements (retry)
                         self._show_device_confirmation_ui(page, device_name)
                         return True
-                        
+        
                 except Exception as e:
                     logger.debug(f"Retry element check failed for {sel}: {e}")
                     continue
@@ -1573,9 +1698,7 @@ class MoodleSession:
         sms_specific_phrases = [
             'enter the code', 'verification code sent', 'code sent to',
             'enter code', 'text message code', '6-digit code',
-            'sms code', 'phone number ending in', 'get a verification code',
-            'we\'ll send a verification code', 'verification code at',
-            'text message will be sent', 'send verification code'
+            'sms code', 'phone number ending in'
         ]
         
         if any(phrase in page_text for phrase in sms_specific_phrases):
