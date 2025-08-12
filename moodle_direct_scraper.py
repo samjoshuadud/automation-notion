@@ -681,11 +681,11 @@ class MoodleSession:
         """
         import time
         
+        # Wait a bit longer for any 2FA prompts to appear and stabilize
+        time.sleep(3)
+        
         # Get page text for pattern detection
         page_text = page.content().lower()
-        
-        # Wait a bit for any 2FA prompts to appear
-        time.sleep(2)
         
         # Debug: Print page URL and key text snippets
         current_url = page.url if page else "unknown"
@@ -693,27 +693,356 @@ class MoodleSession:
         logger.debug(f"2FA Detection - Page contains '2-step': {'2-step' in page_text}")
         logger.debug(f"2FA Detection - Page contains 'verification': {'verification' in page_text}")
         logger.debug(f"2FA Detection - Page contains 'check your': {'check your' in page_text}")
+        logger.debug(f"2FA Detection - Page contains 'notification': {'notification' in page_text}")
+        logger.debug(f"2FA Detection - Page contains 'approve': {'approve' in page_text}")
+        
+        # Enhanced 2FA pattern detection - more comprehensive
+        tfa_patterns = [
+            '2-step', 'two-step', '2fa', 'two-factor', 'verification', 
+            'verify', 'code', 'authenticator', 'device', 'confirm',
+            # Device confirmation specific
+            'notification', 'approve', 'tap yes', 'check your',
+            'google sent', 'sent a notification', 'confirm it\'s you'
+        ]
         
         # First check if we're even on a 2FA page anymore (user might have already completed it)
-        if not any(phrase in page_text for phrase in [
-            '2-step', 'two-step', '2fa', 'two-factor', 'verification', 
-            'verify', 'code', 'authenticator', 'device', 'confirm'
-        ]):
+        if not any(phrase in page_text for phrase in tfa_patterns):
             logger.debug("2FA Detection - No 2FA patterns found in page")
             return False
         
         logger.info("🔍 2FA patterns detected, analyzing page...")
         
+        # Check for SMS code entry FIRST (after clicking SMS option)
+        if self._is_sms_code_page(page, page_text):
+            logger.info("📱 SMS code entry page detected")
+            return self._handle_sms_code_entry(page)
+        
+        # PRIORITY ORDER: Check device confirmation SECOND (most common for Google accounts)
+        device_confirmation_result = self._handle_specific_2fa_scenarios(page, page_text)
+        if device_confirmation_result:
+            logger.info("📱 Device confirmation flow detected and handled")
+            return True
+        
         # Check for phone number verification setup
         if self._handle_phone_verification_setup(page):
+            logger.info("📞 Phone verification setup detected and handled")
             return True
             
         # Check for verification method selection
         if self._handle_verification_method_selection(page):
+            logger.info("🔐 Verification method selection detected and handled")
             return True
             
-        # Handle specific 2FA scenarios
-        return self._handle_specific_2fa_scenarios(page, page_text)
+        # If none of the above worked, something might be wrong - provide debug info
+        logger.warning("⚠️ 2FA patterns detected but no specific handler succeeded")
+        logger.debug(f"Page title: {page.title()}")
+        logger.debug(f"Page content preview: {page_text[:200]}...")
+        
+        # Save debug snapshot for troubleshooting
+        try:
+            import os
+            if os.getenv('MOODLE_SCRAPE_DEBUG', '0') in ['1', 'true', 'yes', 'on']:
+                self._save_2fa_debug_snapshot(page, "unhandled_2fa")
+        except Exception as e:
+            logger.debug(f"Debug snapshot failed: {e}")
+        
+        return False
+    
+    def _save_2fa_debug_snapshot(self, page, tag: str):
+        """Save HTML and screenshot for 2FA debugging"""
+        try:
+            import time
+            from pathlib import Path
+            
+            timestamp = int(time.time())
+            debug_dir = Path('data/moodle_session/2fa_debug')
+            debug_dir.mkdir(exist_ok=True, parents=True)
+            
+            # Save HTML content
+            html_file = debug_dir / f"{tag}_{timestamp}.html"
+            with open(html_file, 'w', encoding='utf-8') as f:
+                f.write(page.content())
+            
+            # Save screenshot if possible
+            try:
+                screenshot_file = debug_dir / f"{tag}_{timestamp}.png"
+                page.screenshot(path=str(screenshot_file))
+                logger.info(f"🔍 2FA Debug saved: {html_file.name} and {screenshot_file.name}")
+            except Exception:
+                logger.info(f"🔍 2FA Debug HTML saved: {html_file.name}")
+                
+            # Save page info
+            info_file = debug_dir / f"{tag}_{timestamp}_info.txt"
+            with open(info_file, 'w') as f:
+                f.write(f"URL: {page.url}\n")
+                f.write(f"Title: {page.title()}\n")
+                f.write(f"Timestamp: {timestamp}\n")
+                
+                # Extract some key text snippets
+                page_text = page.content().lower()
+                key_phrases = ['check your', 'notification', 'approve', 'verify', '2-step', 'device']
+                f.write("\nKey phrases found:\n")
+                for phrase in key_phrases:
+                    if phrase in page_text:
+                        f.write(f"  ✓ {phrase}\n")
+                    else:
+                        f.write(f"  ✗ {phrase}\n")
+                        
+        except Exception as e:
+            logger.debug(f"Failed to save 2FA debug snapshot: {e}")
+    
+    def _extract_device_name(self, page_text: str) -> str:
+        """Extract device name from page text"""
+        try:
+            import re
+            # Try to extract specific device names
+            if 'honor x9c' in page_text.lower():
+                return 'Honor X9c'
+            elif 'galaxy tab s9' in page_text.lower():
+                return 'Galaxy Tab S9'
+            elif 'galaxy tab' in page_text.lower():
+                match = re.search(r'galaxy tab[^.<\n]*', page_text, re.IGNORECASE)
+                if match:
+                    return match.group(0).title()
+                return 'Galaxy Tab'
+            elif 'ipad' in page_text.lower():
+                return 'your iPad'
+            elif 'iphone' in page_text.lower():
+                return 'your iPhone'
+            elif 'android' in page_text.lower():
+                return 'your Android device'
+            elif 'tablet' in page_text.lower():
+                return 'your tablet'
+            else:
+                return 'your device'
+        except Exception:
+            return 'your device'
+    
+    def _show_device_confirmation_ui(self, page, device_name: str):
+        """Show the device confirmation UI with options"""
+        # Force flush to ensure output is visible
+        import sys
+        print(f"\n" + "="*60, flush=True)
+        print(f"📱 DEVICE CONFIRMATION REQUIRED", flush=True)
+        print(f"🔔 Approve the sign-in on {device_name}.", flush=True)
+        print("💡 You can also choose to resend or pick another method below.", flush=True)
+        print("="*60, flush=True)
+        sys.stdout.flush()
+        
+        # Check for resend / alternate method options
+        resend = False
+        try_another = False
+        try:
+            if page.locator('span[jsname="V67aGc"]:has-text("Resend it")').first.is_visible(timeout=2000):
+                resend = True
+                logger.debug("Resend option found")
+            if page.locator('span[jsname="V67aGc"]:has-text("Try another way")').first.is_visible(timeout=2000):
+                try_another = True
+                logger.debug("Try another way option found")
+        except Exception as e:
+            logger.debug(f"Error checking for resend/try another options: {e}")
+        
+        if resend or try_another:
+            opts = ["Wait for approval"]
+            if resend: 
+                opts.append("Resend notification")
+            if try_another: 
+                opts.append("Try another way")
+            
+            print("\nAvailable options:", flush=True)
+            for i, o in enumerate(opts, 1):
+                print(f"{i}. {o}", flush=True)
+            print(flush=True)  # Extra line break
+            sys.stdout.flush()
+            
+            try:
+                choice = input("Select option (Enter to wait): ").strip()
+                
+                if choice == '2' and resend:
+                    try:
+                        page.locator('span[jsname="V67aGc"]:has-text("Resend it")').first.click()
+                        print("📤 Notification resent.")
+                    except Exception as e:
+                        print(f"⚠️ Failed to resend notification: {e}")
+                        
+                elif ((choice == '2' and not resend) or (choice == '3')) and try_another:
+                    try:
+                        page.locator('span[jsname="V67aGc"]:has-text("Try another way")').first.click()
+                        print("🔄 Loading alternative methods...", flush=True)
+                        time.sleep(3)  # Give more time for page to load
+                        
+                        # Now automatically select SMS verification
+                        print("📱 Auto-selecting SMS verification...", flush=True)
+                        sys.stdout.flush()
+                        
+                        # Wait for the verification method selection page to load
+                        time.sleep(2)
+                        
+                        # Try to find and click SMS option automatically
+                        sms_selected = self._auto_select_sms_verification(page)
+                        if sms_selected:
+                            print("✅ SMS verification selected automatically", flush=True)
+                            # Don't return True here - let the main detection loop continue
+                            # to detect the SMS code entry page
+                        else:
+                            print("❌ Could not auto-select SMS, please select manually", flush=True)
+                            
+                    except Exception as e:
+                        print(f"⚠️ Failed to open alternative methods: {e}", flush=True)
+                else:
+                    print("⏳ Waiting for device approval...", flush=True)
+                    
+            except KeyboardInterrupt:
+                print("\n⏸️ Skipping method selection...", flush=True)
+        else:
+            print("⏳ Waiting for device approval...", flush=True)
+            print("💡 If you don't see the notification, check your device manually", flush=True)
+        
+        sys.stdout.flush()  # Final flush to ensure everything is visible
+    
+    def _is_sms_code_page(self, page, page_text: str) -> bool:
+        """Detect if we're on the SMS code entry page (not device confirmation)"""
+        try:
+            # SMS code page specific indicators
+            sms_page_indicators = [
+                # Text patterns specific to SMS code entry
+                'enter the code', 'verification code sent', 'enter verification code',
+                'enter the 6-digit code', 'we sent a code', 'text message with',
+                'enter code', 'verification code', 'check your phone',
+                'code sent to', 'sent to your phone', 'text message code',
+                'sms code', 'phone number ending in', 'get a verification code at',
+                'enter the g-', 'phone'  # Common patterns on SMS pages
+            ]
+            
+            # Element selectors specific to SMS code entry
+            sms_input_selectors = [
+                'input[type="tel"]',
+                'input[placeholder*="code"]',
+                'input[aria-label*="code"]',
+                'input[name*="code"]',
+                'input[autocomplete="one-time-code"]',
+                'input[inputmode="numeric"]'
+            ]
+            
+            # Device confirmation exclusion patterns (if these are present, it's NOT SMS page)
+            device_patterns = [
+                'tap yes', 'approve', 'check your device', 'notification to verify',
+                'google sent a notification', 'galaxy tab', 'ipad', 'honor x9c'
+            ]
+            
+            # Check for SMS-specific text patterns
+            has_sms_text = any(pattern in page_text for pattern in sms_page_indicators)
+            
+            # Check for SMS input fields
+            has_sms_input = False
+            for selector in sms_input_selectors:
+                try:
+                    if page.locator(selector).first.is_visible(timeout=1000):
+                        has_sms_input = True
+                        break
+                except:
+                    continue
+            
+            # Check for device confirmation patterns (exclusion)
+            has_device_patterns = any(pattern in page_text for pattern in device_patterns)
+            
+            # SMS page if: has SMS indicators AND NOT device confirmation patterns
+            is_sms_page = (has_sms_text or has_sms_input) and not has_device_patterns
+            
+            logger.debug(f"SMS page detection: sms_text={has_sms_text}, sms_input={has_sms_input}, device_patterns={has_device_patterns}, result={is_sms_page}")
+            print(f"🔍 SMS page check: SMS text={has_sms_text}, SMS input={has_sms_input}, Device patterns={has_device_patterns} → Result: {is_sms_page}", flush=True)
+            
+            return is_sms_page
+            
+        except Exception as e:
+            logger.debug(f"Error in SMS page detection: {e}")
+            return False
+    
+    def _auto_select_sms_verification(self, page) -> bool:
+        """Automatically find and select SMS verification option"""
+        try:
+            import sys
+            
+            # Wait for the verification method selection page to fully load
+            time.sleep(2)
+            
+            # Try to find SMS option using multiple selectors
+            sms_selectors = [
+                'div[data-challengetype="9"]',  # SMS challenge type
+                'div[role="link"][data-challengetype="9"]',
+                'div[jsname="EBHGs"][data-challengetype="9"]',
+                'span:has-text("text message")',
+                'span:has-text("Text message")',
+                'div:has-text("Get a verification code at")',
+                'div:has-text("Get a verification code")',
+                'div:has-text("We\'ll send a verification code")'
+            ]
+            
+            print("🔍 Looking for SMS verification option...", flush=True)
+            sys.stdout.flush()
+            
+            for i, selector in enumerate(sms_selectors, 1):
+                try:
+                    print(f"  Trying selector {i}/{len(sms_selectors)}: {selector[:50]}...", flush=True)
+                    element = page.locator(selector).first
+                    if element.is_visible(timeout=3000):
+                        print(f"✅ Found SMS option with selector: {selector}", flush=True)
+                        
+                        # Extract phone number hint if available
+                        try:
+                            phone_hint = "your phone"
+                            if 'data-challengetype="9"' in selector:
+                                phone_span = page.query_selector('div[data-challengetype="9"] span[jsname="wKtwcc"]')
+                                if phone_span:
+                                    phone_text = phone_span.inner_text().strip()
+                                    if phone_text:
+                                        import re
+                                        match = re.search(r'(\d{2,4})$', phone_text)
+                                        if match:
+                                            phone_hint = f"***-***-{match.group(1)}"
+                                        else:
+                                            phone_hint = phone_text
+                            print(f"📱 SMS will be sent to: {phone_hint}", flush=True)
+                        except Exception as e:
+                            print(f"Could not extract phone hint: {e}", flush=True)
+                        
+                        # Click the SMS option
+                        element.click()
+                        print("📤 SMS option clicked successfully", flush=True)
+                        time.sleep(3)  # Wait for SMS page to load
+                        return True
+                        
+                except Exception as e:
+                    print(f"  Selector failed: {e}", flush=True)
+                    continue
+            
+            # Fallback: try text-based clicking
+            print("🔄 Trying text-based SMS selection...", flush=True)
+            text_patterns = [
+                'text="Get a verification code"',
+                'text="Text message"', 
+                'text="text message"',
+                'text*="verification code at"'
+            ]
+            
+            for pattern in text_patterns:
+                try:
+                    element = page.locator(pattern).first
+                    if element.is_visible(timeout=2000):
+                        print(f"✅ Found SMS option with text pattern: {pattern}", flush=True)
+                        element.click()
+                        time.sleep(3)
+                        return True
+                except Exception as e:
+                    print(f"  Text pattern failed: {e}", flush=True)
+                    continue
+            
+            print("❌ Could not find SMS verification option", flush=True)
+            return False
+            
+        except Exception as e:
+            print(f"❌ Error in auto SMS selection: {e}", flush=True)
+            return False
     
     def _handle_phone_verification_setup(self, page):
         """Handle phone number setup for 2FA"""
@@ -935,7 +1264,11 @@ class MoodleSession:
     
     def _handle_sms_code_entry(self, page):
         """Handle SMS code entry"""
-        print("\n📱 SMS Verification")
+        import sys
+        print("\n" + "="*50, flush=True)
+        print("📱 SMS VERIFICATION REQUIRED", flush=True) 
+        print("="*50, flush=True)
+        sys.stdout.flush()
         code = input("Please enter the verification code sent to your phone: ")
         
         # Find SMS code input field
@@ -1038,32 +1371,69 @@ class MoodleSession:
         
         # CRITICAL: Check if we're already logged in successfully to avoid false positives
         current_url = page.url.lower()
+        
+        # Only check for actual Moodle dashboard indicators, not login URLs
         login_success_indicators = [
-            'umak.edu.ph',
             'dashboard',
             'my courses',
             'site home',
             'university of makati',
             'course overview'
         ]
-        if any(indicator in current_url for indicator in login_success_indicators) or any(indicator in page_text for indicator in login_success_indicators):
+        
+        # URL-based success indicators (must be on actual Moodle site, not accounts.google.com)
+        moodle_success_urls = [
+            'tbl.umak.edu.ph/my/',
+            'tbl.umak.edu.ph/course/',
+            'tbl.umak.edu.ph/?redirect=0'
+        ]
+        
+        # Only skip device confirmation if we're actually ON the Moodle site (not Google accounts)
+        is_on_google_accounts = 'accounts.google.com' in current_url
+        is_on_moodle_success = any(url in current_url for url in moodle_success_urls)
+        has_moodle_content = any(indicator in page_text for indicator in login_success_indicators)
+        
+        if not is_on_google_accounts and (is_on_moodle_success or has_moodle_content):
             logger.debug("Already logged in successfully - skipping device confirmation detection")
             return False
         
-        # DEVICE CONFIRMATION DETECTION - HIGHEST PRIORITY
+        logger.debug(f"Not yet logged in - on_google: {is_on_google_accounts}, moodle_success: {is_on_moodle_success}, moodle_content: {has_moodle_content}")
+        
+        # ENHANCED DEVICE CONFIRMATION DETECTION - HIGHEST PRIORITY
         device_confirmation_phrases = [
-            'check your', 'tap yes', 'confirm', 'approve', 'device notification', 'push notification', 'phone notification',
-            'galaxy tab', 'ipad', 'tablet', 'android device', 'iphone', 'your phone', 'your device', 'notification to verify',
-            'gmail app', 'tap yes on your', 'google sent a notification'
+            # Core confirmation phrases
+            'check your', 'tap yes', 'confirm', 'approve', 
+            'device notification', 'push notification', 'phone notification',
+            'notification to verify', 'gmail app', 'tap yes on your', 
+            'google sent a notification', 'sent a notification to',
+            
+            # Device types (from your screenshot)
+            'honor x9c', 'galaxy tab s9', 'galaxy tab', 'ipad', 'tablet', 
+            'android device', 'iphone', 'your phone', 'your device', 'another device',
+            
+            # Action phrases
+            'approve this sign-in', 'confirm it\'s you', 'verify it\'s you',
+            'sign in request', 'approve sign-in', 'confirm your identity',
+            'check for a notification', 'look for a notification',
+            
+            # Google-specific patterns (from your screenshot)
+            'we sent a notification', 'notification sent to', 'check the notification',
+            'tap the notification', 'open the notification',
+            'google sent a notification to your', 'tap yes on the notification',
+            'or open the gmail app on your iphone to verify',
+            
+            # Exact patterns from screenshot
+            'check your device', 'google sent a notification to your honor x9c and galaxy tab s9',
+            'tap yes on the notification to verify it\'s you',
+            'or open the gmail app on your iphone to verify it\'s you from there'
         ]
         
-        # CRITICAL: Must NOT be a method selection page
+        # RELAXED method selection detection - only block if very explicit
         method_selection_indicators = [
             'choose how you want to sign in',
             'choose a verification method', 
-            'how would you like to verify',
             'select how to get your code',
-            'more ways to verify'
+            'more ways to verify it\'s you'
         ]
         
         # Debug all pattern matches
@@ -1073,168 +1443,127 @@ class MoodleSession:
         logger.debug(f"Device confirmation phrases found: {matched_device_phrases}")
         logger.debug(f"Method selection phrases found: {matched_selection_phrases}")
         
-        # If this is a method selection page, don't treat as device confirmation
-        is_method_selection = any(phrase in page_text for phrase in method_selection_indicators)
-        if is_method_selection:
-            logger.debug("❌ This is a method selection page, not device confirmation")
-            # Don't return False yet - continue to other detection methods
-        else:
-            text_detected = any(p in page_text for p in device_confirmation_phrases)
-            logger.debug(f"✅ Device confirmation text patterns detected: {text_detected}")
+        # Enhanced element-based detection FIRST (more reliable than text)
+        device_confirmation_elements = [
+            # Google's standard device confirmation elements
+            'h1:has-text("2-Step Verification")',
+            'h2:has-text("Check your")',
+            'span:has-text("Check your")',
+            'div:has-text("Google sent a notification")',
+            'div:has-text("We sent a notification")',
+            'span:has-text("Tap Yes")',
+            'span:has-text("tap Yes")',
+            'div:has-text("approve this sign-in")',
+            'div:has-text("confirm it\'s you")',
             
-            # FAST TRACK: If text patterns match AND it's not method selection, show immediately
-            if text_detected:
-                device_confirmation_detected = True
-                logger.info("🎯 DEVICE CONFIRMATION DETECTED via text patterns!")
-                print(f"✅ DEBUG: Device confirmation detected! Phrases: {matched_device_phrases}")
-                
-                # Mark session state so continuation logic knows
-                self._device_confirmation_active = True
-                
-                # Extract device name if possible
-                if device_name == 'your device':
-                    try:
-                        import re
-                        match = re.search(r'galaxy tab[^.<\n]*', page_text, re.IGNORECASE)
-                        if match:
-                            device_name = match.group(0)
-                        elif 'ipad' in page_text:
-                            device_name = 'your iPad'
-                        elif 'iphone' in page_text:
-                            device_name = 'your iPhone'
-                        elif 'android' in page_text:
-                            device_name = 'your Android device'
-                        elif 'tablet' in page_text:
-                            device_name = 'your tablet'
-                    except Exception:
-                        pass
-                
-                print(f"\n📱 Device Confirmation Detected")
-                print(f"🔔 Approve the sign-in on {device_name}.")
-                print("💡 You can also choose to resend or pick another method below.")
-                
-                # Offer resend / alternate method
-                resend = False
-                try_another = False
-                try:
-                    if page.locator('span[jsname="V67aGc"]:has-text("Resend it")').first.is_visible():
-                        resend = True
-                    if page.locator('span[jsname="V67aGc"]:has-text("Try another way")').first.is_visible():
-                        try_another = True
-                except Exception:
-                    pass
-                
-                if resend or try_another:
-                    opts = ["Wait for approval"]
-                    if resend: opts.append("Resend notification")
-                    if try_another: opts.append("Try another way")
-                    for i, o in enumerate(opts, 1):
-                        print(f"{i}. {o}")
-                    choice = input("Select option (Enter to wait): ").strip()
-                    if choice == '2' and resend:
-                        try:
-                            page.locator('span[jsname="V67aGc"]:has-text("Resend it")').first.click()
-                            print("📤 Notification resent.")
-                        except Exception:
-                            print("⚠️ Failed to resend notification.")
-                    elif ((choice == '2' and not resend) or (choice == '3')) and try_another:
-                        try:
-                            page.locator('span[jsname="V67aGc"]:has-text("Try another way")').first.click()
-                            print("🔄 Loading alternative methods...")
-                            time.sleep(2)
-                            return True  # Re-run detection on new UI
-                        except Exception:
-                            print("⚠️ Failed to open alternative methods.")
-                
-                print("⏳ Waiting for device approval...")
-                return True
+            # Specific to your screenshot
+            'h1:has-text("Check your device")',
+            'div:has-text("Check your device")',
+            'text=Check your device',
+            'div:has-text("Google sent a notification to your Honor X9c")',
+            'div:has-text("Tap Yes on the notification")',
+            'div:has-text("or open the Gmail app")',
+            
+            # Generic device confirmation indicators
+            'div[data-challenge-ui="CONFIRM_DEVICE"]',
+            '[data-action="confirm_device"]',
+            'div:has-text("notification to verify")',
+            'div:has-text("check for a notification")',
+            'div:has-text("tap yes on the notification")'
+        ]
         
-        # Element-based detection (only if text wasn't detected - avoid duplicate delays)
-        if not device_confirmation_detected:
-            logger.debug("🔍 Trying element-based device confirmation detection...")
-            device_elements = [
-                'h1:has-text("2-Step Verification")',
-                'h2[jsname="Ud7fr"]',
-                'span[jsname="Ud7fr"]:has-text("Check your")',
-                'div[jsname="NhJ5Dd"]:has-text("Google sent a notification")',
-                'text=Google sent a notification',
-                'text=Tap Yes on the notification',
-                'div:has-text("notification to verify")'
-            ]
-            for sel in device_elements:
-                try:
-                    loc = page.locator(sel).first
-                    loc.wait_for(state='visible', timeout=300)
+        # Try element-based detection first with retry logic
+        for sel in device_confirmation_elements:
+            try:
+                element = page.locator(sel).first
+                # Use longer timeout for device confirmation elements (they may load slowly)
+                if element.is_visible(timeout=3000):
                     device_confirmation_detected = True
-                    logger.info(f"✅ Device confirmation detected via element: {sel}")
-                    # Extract device heading if present
-                    try:
-                        heading = page.locator('h2[jsname="Ud7fr"]').first.text_content()
-                        if heading and 'check your' in heading.lower():
-                            device_name = heading.strip()
-                    except Exception:
-                        pass
-                    break
-                except Exception:
+                    logger.info(f"🎯 DEVICE CONFIRMATION DETECTED via element: {sel}")
+                    print(f"🎯 DEVICE CONFIRMATION DETECTED via element: {sel}")
+                    print(f"📱 2-Step Verification page detected!")
+                    self._device_confirmation_active = True
+                    
+                    # Extract device name if possible
+                    if device_name == 'your device':
+                        device_name = self._extract_device_name(page_text)
+                    
+                    # SHOW UI IMMEDIATELY when detected via elements
+                    self._show_device_confirmation_ui(page, device_name)
+                    # Don't return True immediately - let the caller handle the wait loop
+                    return True
+                    
+            except Exception as e:
+                logger.debug(f"Element check failed for {sel}: {e}")
+                continue
+        
+        # If element detection failed, wait a bit more and try again (Google UI can be slow)
+        if not device_confirmation_detected:
+            logger.debug("First element detection pass failed, waiting and retrying...")
+            time.sleep(2)
+            for sel in device_confirmation_elements[:5]:  # Try top 5 most reliable selectors again
+                try:
+                    element = page.locator(sel).first
+                    if element.is_visible(timeout=2000):
+                        device_confirmation_detected = True
+                        logger.info(f"🎯 DEVICE CONFIRMATION DETECTED via element (retry): {sel}")
+                        print(f"✅ DEBUG: Device confirmation detected via element (retry): {sel}")
+                        self._device_confirmation_active = True
+                        
+                        # Extract device name if possible
+                        if device_name == 'your device':
+                            device_name = self._extract_device_name(page_text)
+                        
+                        # SHOW UI IMMEDIATELY when detected via elements (retry)
+                        self._show_device_confirmation_ui(page, device_name)
+                        return True
+                        
+                except Exception as e:
+                    logger.debug(f"Retry element check failed for {sel}: {e}")
                     continue
         
-        # If device confirmation was detected by elements, show UI
-        if device_confirmation_detected and not self._device_confirmation_active:
-            # Mark session state so continuation logic knows
-            self._device_confirmation_active = True
-            print(f"✅ DEBUG: Device confirmation detected via elements!")
-            if device_name == 'your device':
-                try:
-                    import re
-                    match = re.search(r'galaxy tab[^.<\n]*', page_text, re.IGNORECASE)
-                    if match:
-                        device_name = match.group(0)
-                    elif 'ipad' in page_text:
-                        device_name = 'your iPad'
-                    elif 'iphone' in page_text:
-                        device_name = 'your iPhone'
-                    elif 'android' in page_text:
-                        device_name = 'your Android device'
-                    elif 'tablet' in page_text:
-                        device_name = 'your tablet'
-                except Exception:
-                    pass
-            print(f"\n📱 Device Confirmation Detected")
-            print(f"🔔 Approve the sign-in on {device_name}.")
-            print("💡 You can also choose to resend or pick another method below.")
-            # Offer resend / alternate method
-            resend = False
-            try_another = False
-            try:
-                if page.locator('span[jsname="V67aGc"]:has-text("Resend it")').first.is_visible():
-                    resend = True
-                if page.locator('span[jsname="V67aGc"]:has-text("Try another way")').first.is_visible():
-                    try_another = True
-            except Exception:
-                pass
-            if resend or try_another:
-                opts = ["Wait for approval"]
-                if resend: opts.append("Resend notification")
-                if try_another: opts.append("Try another way")
-                for i, o in enumerate(opts, 1):
-                    print(f"{i}. {o}")
-                choice = input("Select option (Enter to wait): ").strip()
-                if choice == '2' and resend:
-                    try:
-                        page.locator('span[jsname="V67aGc"]:has-text("Resend it")').first.click()
-                        print("📤 Notification resent.")
-                    except Exception:
-                        print("⚠️ Failed to resend notification.")
-                elif ((choice == '2' and not resend) or (choice == '3')) and try_another:
-                    try:
-                        page.locator('span[jsname="V67aGc"]:has-text("Try another way")').first.click()
-                        print("🔄 Loading alternative methods...")
-                        time.sleep(2)
-                        return True  # Re-run detection on new UI
-                    except Exception:
-                        print("⚠️ Failed to open alternative methods.")
-            print("⏳ Waiting for device approval...")
-            return True
+        # If not found via elements, try text-based detection with improved logic
+        if not device_confirmation_detected:
+            # Check if this is clearly a method selection page
+            is_method_selection = any(phrase in page_text for phrase in method_selection_indicators)
+            
+            if is_method_selection:
+                logger.debug("❌ This is a method selection page, not device confirmation")
+                # Continue to other detection methods but don't trigger device confirmation
+            else:
+                # Enhanced text pattern matching
+                text_detected = any(p in page_text for p in device_confirmation_phrases)
+                
+                # Additional context checks for device confirmation
+                device_context_phrases = [
+                    'we sent a notification to verify it\'s you',
+                    'check your device for a notification',
+                    'approve this sign-in on your',
+                    'confirm this sign-in'
+                ]
+                context_detected = any(p in page_text for p in device_context_phrases)
+                
+                logger.debug(f"✅ Device confirmation text patterns detected: {text_detected}")
+                logger.debug(f"✅ Device context patterns detected: {context_detected}")
+                
+                # Trigger if either main patterns OR context patterns match
+                if text_detected or context_detected:
+                    device_confirmation_detected = True
+                    logger.info("🎯 DEVICE CONFIRMATION DETECTED via text patterns!")
+                    print(f"✅ DEBUG: Device confirmation detected! Phrases: {matched_device_phrases}")
+                    
+                    # Mark session state so continuation logic knows
+                    self._device_confirmation_active = True
+                    
+                    # Extract device name if possible
+                    if device_name == 'your device':
+                        device_name = self._extract_device_name(page_text)
+                    
+                    # SHOW UI using the centralized function
+                    self._show_device_confirmation_ui(page, device_name)
+                    return True
+        
+        # This section is now handled by the element-based detection above
         
         # If device confirmation already detected, just return True
         if device_confirmation_detected:
@@ -1244,7 +1573,9 @@ class MoodleSession:
         sms_specific_phrases = [
             'enter the code', 'verification code sent', 'code sent to',
             'enter code', 'text message code', '6-digit code',
-            'sms code', 'phone number ending in'
+            'sms code', 'phone number ending in', 'get a verification code',
+            'we\'ll send a verification code', 'verification code at',
+            'text message will be sent', 'send verification code'
         ]
         
         if any(phrase in page_text for phrase in sms_specific_phrases):
