@@ -681,18 +681,58 @@ class MoodleSession:
                         logger.error(f"Failed to submit password form: {e}")
                         return self._handle_login_continuation(timeout_minutes)
 
-                # After clicking Next/Sign in, check if we're still on the password entry page
-                still_on_password = False
-                for selector in password_selectors:
-                    try:
-                        test_input = page.query_selector(selector)
-                        if test_input and test_input.is_visible():
-                            still_on_password = True
-                            break
-                    except Exception:
-                        continue
+                # After clicking Next/Sign in, wait for up to 8 seconds for page to load/2FA to appear
+                max_wait = 4  # seconds
+                poll_interval = 0.5
+                waited = 0
+                password_still_present = False
+                tfa_detected = False
+                while waited < max_wait:
+                    time.sleep(poll_interval)
+                    waited += poll_interval
+                    # Check for password field
+                    password_still_present = False
+                    for selector in password_selectors:
+                        try:
+                            test_input = page.query_selector(selector)
+                            if test_input and test_input.is_visible():
+                                password_still_present = True
+                                break
+                        except Exception:
+                            continue
+                    # Check for 2FA indicators
+                    page_url = page.url.lower()
+                    page_text = page.content().lower()
+                    # Only treat as 2FA if URL contains clear 2FA indicators or code input field is present
+                    if any(p in page_url for p in ['challenge/ipp', 'challenge/totp', 'challenge/az']):
+                        tfa_detected = True
+                        break
+                    # Check for code input field (OTP/2FA)
+                    code_input_selectors = [
+                        'input[placeholder*="code" i]',
+                        'input[placeholder*="verification" i]',
+                        'input[maxlength="6"]',
+                        'input[maxlength="8"]',
+                        'input[name*="code" i]'
+                    ]
+                    for selector in code_input_selectors:
+                        try:
+                            el = page.query_selector(selector)
+                            if el and el.is_visible():
+                                tfa_detected = True
+                                break
+                        except Exception:
+                            continue
+                    if tfa_detected:
+                        break
+                    # If password field is gone, break
+                    if not password_still_present:
+                        break
 
-                if still_on_password:
+                if tfa_detected or not password_still_present:
+                    logger.info("✅ Password accepted, proceeding to 2FA or next step.")
+                    break  # Exit retry loop
+                else:
                     print("❌ Password not accepted or still on password entry page.")
                     if password_attempt < max_password_attempts - 1:
                         print("Please try again with a valid password.")
@@ -700,9 +740,6 @@ class MoodleSession:
                     else:
                         print("⚠️ Maximum password attempts reached.")
                         return False
-                else:
-                    # Password accepted, break out of retry loop
-                    break
 
             # Check for 2FA or successful login
             return self._handle_login_continuation(timeout_minutes)
@@ -1584,7 +1621,7 @@ class MoodleSession:
                     # Phone number appears valid, break out of retry loop
                     break
 
-            # Look for submit button
+
             submit_selectors = [
                 'button:has-text("Next")',
                 'button:has-text("Continue")',
@@ -1600,8 +1637,7 @@ class MoodleSession:
                     element = page.locator(selector).first
                     if element.is_visible(timeout=2000):
                         submit_button = element
-                        logger.debug(
-    f"Found submit button with selector: {selector}")
+                        logger.debug(f"Found submit button with selector: {selector}")
                         break
                 except BaseException:
                     continue
@@ -1610,31 +1646,81 @@ class MoodleSession:
                 print("📤 Submitting phone number...")
                 submit_button.click()
                 print("⏳ Waiting for page transition...")
-                time.sleep(5)  # Give more time for page to change
-
-                # Check if we successfully moved to SMS code entry
-                new_url = page.url.lower()
-                print(f"🔍 New URL after submission: {new_url}")
-
-                if self._is_phone_number_setup_page(page):
-                    print("⚠️ Still on phone setup page - submission may have failed")
-                    # Don't return True - let it try again or handle error
-                    return False
-                else:
-                    print("✅ Phone number submitted - moved to next step")
-                    return True
+                time.sleep(5)
             else:
                 print("⚠️ Could not find submit button - trying Enter key")
                 phone_input.press("Enter")
                 time.sleep(5)
 
-                # Check transition after Enter key
-                if self._is_phone_number_setup_page(page):
-                    print("❌ Enter key submission failed")
-                    return False
-                else:
-                    print("✅ Phone number submitted via Enter")
-                    return True
+            # After submitting phone, check if we are on OTP/code entry page
+            # If so, prompt for OTP with retry logic
+            def is_code_entry_page():
+                # Heuristic: look for code input field
+                code_selectors = [
+                    'input[placeholder*="code" i]',
+                    'input[placeholder*="verification" i]',
+                    'input[maxlength="6"]',
+                    'input[maxlength="8"]',
+                    'input[name*="code" i]'
+                ]
+                for selector in code_selectors:
+                    try:
+                        el = page.locator(selector).first
+                        if el.is_visible(timeout=1500):
+                            return el
+                    except Exception:
+                        continue
+                return None
+
+            code_input = is_code_entry_page()
+            if code_input:
+                print("\n📲 Please enter the verification code sent to your phone:")
+                max_otp_attempts = 3
+                for otp_attempt in range(max_otp_attempts):
+                    if otp_attempt > 0:
+                        print(f"\n🔄 OTP attempt {otp_attempt + 1} of {max_otp_attempts}")
+                    otp_code = input("Verification code: ").strip()
+                    if not otp_code:
+                        print("❌ No code entered")
+                        if otp_attempt < max_otp_attempts - 1:
+                            continue
+                        return False
+                    print(f"🔢 Entering code: {otp_code}")
+                    code_input.fill(otp_code)
+                    time.sleep(1)
+                    # Try to submit code
+                    code_input.press("Enter")
+                    time.sleep(3)
+                    # Check for OTP validation errors
+                    error_info = self._detect_login_errors(page)
+                    if error_info['has_error'] and error_info['error_type'] == 'otp':
+                        print(f"❌ {error_info['error_message']}")
+                        if otp_attempt < max_otp_attempts - 1:
+                            print("Please try again with the correct code.")
+                            continue
+                        else:
+                            print("⚠️ Maximum OTP attempts reached.")
+                            return False
+                    # After submit, check if code input is still present (still on code entry page)
+                    code_input_check = is_code_entry_page()
+                    if code_input_check:
+                        print("❌ Still on code entry page. Code may be invalid.")
+                        if otp_attempt < max_otp_attempts - 1:
+                            continue
+                        else:
+                            print("⚠️ Maximum OTP attempts reached.")
+                            return False
+                    else:
+                        print("✅ Code accepted. Proceeding to next step.")
+                        break
+                return True
+            # If not on code entry page, check if still on phone setup page
+            if self._is_phone_number_setup_page(page):
+                print("⚠️ Still on phone setup page - submission may have failed")
+                return False
+            else:
+                print("✅ Phone number submitted - moved to next step")
+                return True
 
         except Exception as e:
             print(f"❌ Error during phone setup: {e}")
