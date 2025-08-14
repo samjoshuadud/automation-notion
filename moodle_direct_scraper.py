@@ -1038,146 +1038,156 @@ class MoodleSession:
             logger.debug(f"Error checking device confirmation: {e}")
             return False
 
+    # Uncomment this method if you want to use it for detecting login errors
+    # Supper BUGGY
     def _detect_login_errors(self, page) -> dict:
-        """Detect various types of login errors and return error info"""
-        try:
-            page_text = page.content().lower()
-            url = page.url.lower()
+    #     """Detect various types of login errors and return error info"""
 
-            error_info = {
-                'has_error': False,
-                'error_type': None,
-                'error_message': '',
-                'retry_allowed': False
-            }
+    #     try:
+    #         page_text = page.content().lower()
+    #         url = page.url.lower()
 
-            # Email errors
-            email_error_patterns = [
-                "couldn't find your google account",
-                "couldn't find an account",
-                "email doesn't exist",
-                "no account found",
-                "enter a valid email",
-                "wrong email",
-                "invalid email address",
-                "couldn't find your account"
-            ]
+    #         error_info = {
+    #             'has_error': False,
+    #             'error_type': None,
+    #             'error_message': '',
+    #             'retry_allowed': False
+    #         }
 
-            for pattern in email_error_patterns:
-                if pattern in page_text:
-                    error_info.update({
-                        'has_error': True,
-                        'error_type': 'email',
-                        'error_message': f"Email error detected: {pattern}",
-                        'retry_allowed': True
-                    })
-                    logger.debug(f"Detected email error: {pattern}")
-                    return error_info
+    #         # Email errors
+    #         email_error_patterns = [
+    #             "couldn't find your google account",
+    #             "couldn't find an account",
+    #             "email doesn't exist",
+    #             "no account found",
+    #             "enter a valid email",
+    #             "wrong email",
+    #             "invalid email address",
+    #             "couldn't find your account"
+    #         ]
 
-            # Password errors
-            password_error_patterns = [
-                "wrong password",
-                "incorrect password",
-                "invalid password",
-                "password is incorrect",
-                "try again",
-                "sign-in error"
-            ]
+    #         for pattern in email_error_patterns:
+    #             if pattern in page_text:
+    #                 error_info.update({
+    #                     'has_error': True,
+    #                     'error_type': 'email',
+    #                     'error_message': f"Email error detected: {pattern}",
+    #                     'retry_allowed': True
+    #                 })
+    #                 logger.debug(f"Detected email error: {pattern}")
+    #                 return error_info
 
-            for pattern in password_error_patterns:
-                if pattern in page_text:
-                    error_info.update({
-                        'has_error': True,
-                        'error_type': 'password',
-                        'error_message': f"Password error detected: {pattern}",
-                        'retry_allowed': True
-                    })
-                    logger.debug(f"Detected password error: {pattern}")
-                    return error_info
+    #         # Password errors
+    #         password_error_patterns = [
+    #             "wrong password",
+    #             "incorrect password",
+    #             "invalid password",
+    #             "password is incorrect",
+    #             "try again",
+    #             "sign-in error"
+    #         ]
 
-            # Phone number errors
-            phone_error_patterns = [
-                "invalid phone number",
-                "phone number is not valid",
-                "enter a valid phone number",
-                "invalid number",
-                "phone number not recognized",
-                "please try again"
-            ]
+    #         for pattern in password_error_patterns:
+    #             if pattern in page_text:
+    #                 error_info.update({
+    #                     'has_error': True,
+    #                     'error_type': 'password',
+    #                     'error_message': f"Password error detected: {pattern}",
+    #                     'retry_allowed': True
+    #                 })
+    #                 logger.debug(f"Detected password error: {pattern}")
+    #                 return error_info
 
-            # Only check phone errors if we're on a phone setup page
-            if 'challenge/ipp' in url or self._is_phone_number_setup_page(
-                page):
-                for pattern in phone_error_patterns:
-                    if pattern in page_text:
-                        error_info.update({
-                            'has_error': True,
-                            'error_type': 'phone',
-                            'error_message': f"Phone error detected: {pattern}",
-                            'retry_allowed': True
-                        })
-                        logger.debug(f"Detected phone error: {pattern}")
-                        return error_info
+    #         # Phone number errors
+    #         phone_error_patterns = [
+    #             "invalid phone number",
+    #             "phone number is not valid",
+    #             "enter a valid phone number",
+    #             "invalid number",
+    #             "phone number not recognized",
+    #             "please try again"
+    #         ]
 
-            # OTP/SMS code errors
-            otp_error_patterns = [
-                "wrong code",
-                "incorrect code",
-                "invalid code",
-                "verification code is incorrect",
-                "code is wrong",
-                "try again",
-                "expired code",
-                "code has expired"
-            ]
+    #         # Only check phone errors if we're on a phone setup page
+    #         if 'challenge/ipp' in url or self._is_phone_number_setup_page(
+    #             page):
+    #             for pattern in phone_error_patterns:
+    #                 if pattern in page_text:
+    #                     error_info.update({
+    #                         'has_error': True,
+    #                         'error_type': 'phone',
+    #                         'error_message': f"Phone error detected: {pattern}",
+    #                         'retry_allowed': True
+    #                     })
+    #                     logger.debug(f"Detected phone error: {pattern}")
+    #                     return error_info
 
-            # Only check OTP errors if we're on a code entry page
-            if any(
-    path in url for path in [
-        'challenge/ipp',
-         'challenge/totp']):
-                for pattern in otp_error_patterns:
-                    if pattern in page_text:
-                        error_info.update({
-                            'has_error': True,
-                            'error_type': 'otp',
-                            'error_message': f"OTP error detected: {pattern}",
-                            'retry_allowed': True
-                        })
-                        logger.debug(f"Detected OTP error: {pattern}")
-                        return error_info
+    #         # OTP/SMS code errors
+    #         otp_error_patterns = [
+    #             "wrong code",
+    #             "incorrect code",
+    #             "invalid code",
+    #             "verification code is incorrect",
+    #             "code is wrong",
+    #             "try again",
+    #             "expired code",
+    #             "code has expired"
+    #         ]
 
-            # Account locked/security errors (not retryable)
-            security_error_patterns = [
-                "account has been disabled",
-                "account is locked",
-                "too many attempts",
-                "suspicious activity",
-                "security check",
-                "verify it's you"
-            ]
+    #         # Only check OTP errors if we're on a code entry page
+    #         if any(
+    # path in url for path in [
+    #     'challenge/ipp',
+    #      'challenge/totp']):
+    #             for pattern in otp_error_patterns:
+    #                 if pattern in page_text:
+    #                     error_info.update({
+    #                         'has_error': True,
+    #                         'error_type': 'otp',
+    #                         'error_message': f"OTP error detected: {pattern}",
+    #                         'retry_allowed': True
+    #                     })
+    #                     logger.debug(f"Detected OTP error: {pattern}")
+    #                     return error_info
 
-            for pattern in security_error_patterns:
-                if pattern in page_text:
-                    error_info.update({
-                        'has_error': True,
-                        'error_type': 'security',
-                        'error_message': f"Security error detected: {pattern}",
-                        'retry_allowed': False
-                    })
-                    logger.warning(f"Detected security error: {pattern}")
-                    return error_info
+    #         # Account locked/security errors (not retryable)
+    #         security_error_patterns = [
+    #             "account has been disabled",
+    #             "account is locked",
+    #             "too many attempts",
+    #             "suspicious activity",
+    #             "security check",
+    #             "verify it's you"
+    #         ]
 
-            return error_info
+    #         for pattern in security_error_patterns:
+    #             if pattern in page_text:
+    #                 error_info.update({
+    #                     'has_error': True,
+    #                     'error_type': 'security',
+    #                     'error_message': f"Security error detected: {pattern}",
+    #                     'retry_allowed': False
+    #                 })
+    #                 logger.warning(f"Detected security error: {pattern}")
+    #                 return error_info
 
-        except Exception as e:
-            logger.debug(f"Error during login error detection: {e}")
-            return {
-    'has_error': False,
-    'error_type': None,
-    'error_message': '',
-     'retry_allowed': False}
+    #         return error_info
 
+    #     except Exception as e:
+    #         logger.debug(f"Error during login error detection: {e}")
+    #         return {
+    #                 'has_error': False,
+    #                 'error_type': None,
+    #                 'error_message': '',
+    #                 'retry_allowed': False
+    #                 }
+        return {
+        'has_error': False,
+        'error_type': None,
+        'error_message': '',
+        'retry_allowed': False
+    }
+    
     def _prompt_for_credential_retry(self, error_type: str) -> bool:
         """Prompt user to re-enter credentials after error"""
         try:
