@@ -349,9 +349,8 @@ class MoodleSession:
             logger.info("✅ Already logged in, skipping automated Google login")
             return True
 
-        logger.info(
-    f"🤖 Starting automated Google login for {
-        self.google_email}")
+
+        logger.info(f"🤖 Starting automated Google login for {self.google_email}")
 
         try:
             page = self.page
@@ -359,48 +358,38 @@ class MoodleSession:
                 logger.error("Browser page not available")
                 return False
 
-            # First, check if we're on Moodle login page and need to click
-            # Google SSO button
+            # First, check if we're on Moodle login page and need to click Google SSO button
             current_url = page.url.lower()
-            logger.debug(
-    f"Current URL at start of automated login: {current_url}")
+            logger.debug(f"Current URL at start of automated login: {current_url}")
 
-            # Only try to click SSO if we're on Moodle, not if we're already on
-            # Google
+            # Only try to click SSO if we're on Moodle, not if we're already on Google
             if ('accounts.google.com' not in current_url and
                 (('login' in current_url and ('moodle' in current_url or 'tbl.umak.edu.ph' in current_url)) or
                  'tbl.umak.edu.ph' in current_url)):
 
-                logger.info(
-                    "🔍 Detected Moodle login page, looking for Google SSO button...")
+                logger.info("🔍 Detected Moodle login page, looking for Google SSO button...")
 
                 # Try to click Google SSO button first
                 if self._attempt_auto_sso_login():
-                    logger.info(
-                        "✅ Clicked Google SSO button, waiting for redirect...")
+                    logger.info("✅ Clicked Google SSO button, waiting for redirect...")
                     # Wait for redirect to Google
                     time.sleep(3)
 
                     # Wait for Google login page to load
                     try:
-                        page.wait_for_url(
-    "**/accounts.google.com/**", timeout=10000)
-                        logger.info(
-                            "🔗 Successfully redirected to Google login")
+                        page.wait_for_url("**/accounts.google.com/**", timeout=10000)
+                        logger.info("🔗 Successfully redirected to Google login")
                     except BaseException:
                         logger.info("⏳ Waiting for Google login page...")
                         time.sleep(2)
                 else:
-                    logger.warning(
-                        "❌ Could not find or click Google SSO button on Moodle page")
+                    logger.warning("❌ Could not find or click Google SSO button on Moodle page")
                     logger.info("🔄 Falling back to manual login...")
                     return self.wait_for_user_login(timeout_minutes)
             elif 'accounts.google.com' in current_url:
-                logger.info(
-                    "✅ Already on Google accounts page, skipping SSO button click")
+                logger.info("✅ Already on Google accounts page, skipping SSO button click")
             else:
-                logger.info(
-                    "🔍 Not on expected Moodle login page, proceeding with Google login flow")
+                logger.info("🔍 Not on expected Moodle login page, proceeding with Google login flow")
 
             # Now wait for Google login form to appear
             logger.info("🔍 Looking for Google email input field...")
@@ -411,297 +400,309 @@ class MoodleSession:
             logger.debug(f"Current URL after SSO redirect: {current_url}")
 
             if 'accounts.google.com' not in current_url:
-                logger.warning(
-                    "⚠️ Not on Google accounts page, waiting for redirect...")
+                logger.warning("⚠️ Not on Google accounts page, waiting for redirect...")
                 try:
-                    page.wait_for_url(
-    "**/accounts.google.com/**", timeout=15000)
+                    page.wait_for_url("**/accounts.google.com/**", timeout=15000)
                     logger.info("✅ Successfully reached Google accounts page")
                 except Exception as e:
-                    logger.warning(
-    f"Failed to reach Google accounts page: {e}")
+                    logger.warning(f"Failed to reach Google accounts page: {e}")
                     return self.wait_for_user_login(timeout_minutes)
 
-            # Try to find email input field with enhanced detection
-            email_selectors = [
-                'input[type="email"]',
-                'input[name="identifier"]',
-                'input[id="identifierId"]',
-                '#Email', '#email',
-                'input[placeholder*="email" i]',
-                'input[autocomplete="username"]',
-                'input[aria-label*="email" i]'
-            ]
+            # --- EMAIL ENTRY WITH RETRY LOGIC ---
+            max_email_attempts = 3
+            for email_attempt in range(max_email_attempts):
+                if email_attempt > 0:
+                    print(f"\n🔄 Email attempt {email_attempt + 1} of {max_email_attempts}")
+                # Try to find email input field with enhanced detection
+                email_selectors = [
+                    'input[type="email"]',
+                    'input[name="identifier"]',
+                    'input[id="identifierId"]',
+                    '#Email', '#email',
+                    'input[placeholder*="email" i]',
+                    'input[autocomplete="username"]',
+                    'input[aria-label*="email" i]'
+                ]
 
-            email_input = None
-            logger.info("🔍 Searching for email input field...")
+                email_input = None
+                logger.info("🔍 Searching for email input field...")
 
-            # Try each selector with detailed logging
-            for i, selector in enumerate(email_selectors, 1):
-                try:
-                    logger.debug(
-                        f"Trying email selector {i}/{len(email_selectors)}: {selector}")
-                    email_input = page.wait_for_selector(
-                        selector, timeout=3000)
-                    if email_input and email_input.is_visible():
-                        logger.info(
-    f"✅ Found visible email input field: {selector}")
-                        break
-                    elif email_input:
-                        logger.debug(
-    f"Found email input but not visible: {selector}")
-                        email_input = None
-                except Exception as e:
-                    logger.debug(f"Email selector {selector} failed: {e}")
-                    continue
-
-            # If still no input found, try waiting longer and check page
-            # content
-            if not email_input:
-                logger.warning(
-                    "❌ Initial email input search failed, trying extended search...")
-                page_content = page.content()
-
-                # Check if we're on the right page
-                if 'sign in' not in page_content.lower() and 'email' not in page_content.lower():
-                    logger.error(
-                        "❌ Page doesn't appear to be Google login page")
-                    logger.debug(f"Page URL: {page.url}")
-                    logger.debug(f"Page title: {page.title()}")
-                    return self.wait_for_user_login(timeout_minutes)
-
-                # Try waiting longer
-                # Try top 3 selectors with longer wait
-                for selector in email_selectors[:3]:
+                # Try each selector with detailed logging
+                for i, selector in enumerate(email_selectors, 1):
                     try:
-                        logger.debug(
-    f"Extended wait for email selector: {selector}")
-                        email_input = page.wait_for_selector(
-                            selector, timeout=10000)
+                        logger.debug(f"Trying email selector {i}/{len(email_selectors)}: {selector}")
+                        email_input = page.wait_for_selector(selector, timeout=3000)
                         if email_input and email_input.is_visible():
-                            logger.info(
-    f"✅ Found email input with extended wait: {selector}")
+                            logger.info(f"✅ Found visible email input field: {selector}")
                             break
-                    except BaseException:
+                        elif email_input:
+                            logger.debug(f"Found email input but not visible: {selector}")
+                            email_input = None
+                    except Exception as e:
+                        logger.debug(f"Email selector {selector} failed: {e}")
                         continue
 
-            if not email_input:
-                logger.error(
-                    "❌ Could not find Google email input field after extended search")
-                logger.info("🔄 Falling back to manual login...")
-                return self.wait_for_user_login(timeout_minutes)
+                # If still no input found, try waiting longer and check page content
+                if not email_input:
+                    logger.warning("❌ Initial email input search failed, trying extended search...")
+                    page_content = page.content()
 
-            # Clear any existing text and enter email
-            logger.info("📧 Entering email address")
-            try:
-                # Clear field first
-                email_input.fill("")
-                time.sleep(0.5)
-                # Type email character by character for better reliability
-                email_input.type(self.google_email)
-                logger.info(
-    f"✅ Successfully entered email: {
-        self.google_email}")
+                    # Check if we're on the right page
+                    if 'sign in' not in page_content.lower() and 'email' not in page_content.lower():
+                        logger.error("❌ Page doesn't appear to be Google login page")
+                        logger.debug(f"Page URL: {page.url}")
+                        logger.debug(f"Page title: {page.title()}")
+                        return self.wait_for_user_login(timeout_minutes)
 
-                # Check for immediate email validation errors after typing
-                time.sleep(1.5)
-                error_info = self._detect_login_errors(page)
-                if error_info['has_error'] and error_info['error_type'] == 'email':
-                    logger.warning(
-    f"Email validation error detected: {
-        error_info['error_message']}")
-                    # The error will be handled by the retry logic in the main
-                    # flow
+                    # Try waiting longer
+                    for selector in email_selectors[:3]:
+                        try:
+                            logger.debug(f"Extended wait for email selector: {selector}")
+                            email_input = page.wait_for_selector(selector, timeout=10000)
+                            if email_input and email_input.is_visible():
+                                logger.info(f"✅ Found email input with extended wait: {selector}")
+                                break
+                        except BaseException:
+                            continue
 
-            except Exception as e:
-                logger.error(f"Failed to enter email: {e}")
-                return self.wait_for_user_login(timeout_minutes)
-
-            min_delay, max_delay = self.typing_delay
-            time.sleep(random.uniform(min_delay / 1000, max_delay / 1000))
-
-            # Click Next/Continue button
-            next_selectors = [
-                '#identifierNext',
-                'button[type="submit"]',
-                'input[type="submit"]',
-                'button:has-text("Next")',
-                'button:has-text("Continue")',
-                '[data-test-id="next-button"]',
-                'button[id*="next"]',
-                'input[value*="Next"]'
-            ]
-
-            next_button = None
-            logger.info("🔍 Looking for Next button...")
-            for i, selector in enumerate(next_selectors, 1):
-                try:
-                    logger.debug(
-                        f"Trying Next button selector {i}/{len(next_selectors)}: {selector}")
-                    next_button = page.wait_for_selector(
-                        selector, timeout=2000)
-                    if next_button and next_button.is_visible():
-                        logger.info(f"✅ Found Next button: {selector}")
-                        break
-                except BaseException:
-                    continue
-
-            if next_button:
-                logger.info("👆 Clicking Next button")
-                try:
-                    next_button.click()
-                    logger.info("✅ Successfully clicked Next button")
-                    time.sleep(3)
-                except Exception as e:
-                    logger.error(f"Failed to click Next button: {e}")
-                    return self.wait_for_user_login(timeout_minutes)
-            else:
-                logger.warning(
-                    "⚠️ Could not find Next button, trying to submit form with Enter key")
-                try:
-                    email_input.press("Enter")
-                    time.sleep(3)
-                except Exception as e:
-                    logger.error(f"Failed to submit email form: {e}")
+                if not email_input:
+                    logger.error("❌ Could not find Google email input field after extended search")
+                    logger.info("🔄 Falling back to manual login...")
                     return self.wait_for_user_login(timeout_minutes)
 
-            # Wait for password field
-            logger.info("🔍 Looking for password input field...")
-            password_selectors = [
-                'input[type="password"]',
-                'input[name="password"]',
-                '#password', '#Password',
-                'input[placeholder*="password" i]',
-                'input[aria-label*="password" i]',
-                'input[autocomplete="current-password"]'
-            ]
+                # Prompt for email if not first attempt
+                if email_attempt > 0:
+                    new_email = input("Enter correct email address (or press Enter to abort): ").strip()
+                    if not new_email:
+                        print("❌ No email entered. Aborting login.")
+                        return False
+                    self.google_email = new_email
 
-            password_input = None
-            # Try each password selector with detailed logging
-            for i, selector in enumerate(password_selectors, 1):
+                # Clear any existing text and enter email
+                logger.info("📧 Entering email address")
                 try:
-                    logger.debug(
-                        f"Trying password selector {i}/{len(password_selectors)}: {selector}")
-                    password_input = page.wait_for_selector(
-                        selector, timeout=3000)
-                    if password_input and password_input.is_visible():
-                        logger.info(
-    f"✅ Found visible password input field: {selector}")
-                        break
-                    elif password_input:
-                        logger.debug(
-    f"Found password input but not visible: {selector}")
-                        password_input = None
+                    email_input.fill("")
+                    time.sleep(0.5)
+                    email_input.type(self.google_email)
+                    logger.info(f"✅ Successfully entered email: {self.google_email}")
+                    time.sleep(1.5)
                 except Exception as e:
-                    logger.debug(f"Password selector {selector} failed: {e}")
-                    continue
+                    logger.error(f"Failed to enter email: {e}")
+                    return self.wait_for_user_login(timeout_minutes)
 
-            # Extended search if no password field found
-            if not password_input:
-                logger.warning(
-                    "❌ Initial password search failed, trying extended search...")
+                min_delay, max_delay = self.typing_delay
+                time.sleep(random.uniform(min_delay / 1000, max_delay / 1000))
 
-                # Check if we're on the right page
-                current_url = page.url.lower()
-                page_content = page.content()
+                # Click Next/Continue button
+                next_selectors = [
+                    '#identifierNext',
+                    'button[type="submit"]',
+                    'input[type="submit"]',
+                    'button:has-text("Next")',
+                    'button:has-text("Continue")',
+                    '[data-test-id="next-button"]',
+                    'button[id*="next"]',
+                    'input[value*="Next"]'
+                ]
 
-                if 'password' not in page_content.lower():
-                    logger.warning(
-                        "Page doesn't contain password field yet, may need to wait...")
-                    # Sometimes there's a delay before password field appears
-                    time.sleep(2)
-
-                # Try with longer timeout
-                for selector in password_selectors[:3]:
+                next_button = None
+                logger.info("🔍 Looking for Next button...")
+                for i, selector in enumerate(next_selectors, 1):
                     try:
-                        logger.debug(
-    f"Extended wait for password selector: {selector}")
-                        password_input = page.wait_for_selector(
-                            selector, timeout=10000)
-                        if password_input and password_input.is_visible():
-                            logger.info(
-    f"✅ Found password input with extended wait: {selector}")
+                        logger.debug(f"Trying Next button selector {i}/{len(next_selectors)}: {selector}")
+                        next_button = page.wait_for_selector(selector, timeout=2000)
+                        if next_button and next_button.is_visible():
+                            logger.info(f"✅ Found Next button: {selector}")
                             break
                     except BaseException:
                         continue
 
-            if not password_input:
-                logger.error(
-                    "❌ Could not find password input field after extended search")
-                logger.warning(
-                    "⚠️ Password field not found, may need manual intervention")
-                return self._handle_login_continuation(timeout_minutes)
+                if next_button:
+                    logger.info("👆 Clicking Next button")
+                    try:
+                        next_button.click()
+                        logger.info("✅ Successfully clicked Next button")
+                        time.sleep(3)
+                    except Exception as e:
+                        logger.error(f"Failed to click Next button: {e}")
+                        return self.wait_for_user_login(timeout_minutes)
+                else:
+                    logger.warning("⚠️ Could not find Next button, trying to submit form with Enter key")
+                    try:
+                        email_input.press("Enter")
+                        time.sleep(3)
+                    except Exception as e:
+                        logger.error(f"Failed to submit email form: {e}")
+                        return self.wait_for_user_login(timeout_minutes)
 
-            # Clear any existing text and enter password
-            logger.info("🔐 Entering password")
-            try:
-                # Clear field first
-                password_input.fill("")
-                time.sleep(0.5)
-                # Type password character by character for better reliability
-                password_input.type(self.google_password)
-                logger.info("✅ Successfully entered password")
+                # After clicking Next, check if we're still on the email entry page
+                still_on_email = False
+                for selector in email_selectors:
+                    try:
+                        test_input = page.query_selector(selector)
+                        if test_input and test_input.is_visible():
+                            still_on_email = True
+                            break
+                    except Exception:
+                        continue
 
-                # Check for immediate password validation errors after typing
-                time.sleep(1.5)
-                error_info = self._detect_login_errors(page)
-                if error_info['has_error'] and error_info['error_type'] == 'password':
-                    logger.warning(
-    f"Password validation error detected: {
-        error_info['error_message']}")
-                    # The error will be handled by the retry logic in the main
-                    # flow
+                if still_on_email:
+                    print("❌ Email not accepted or still on email entry page.")
+                    if email_attempt < max_email_attempts - 1:
+                        print("Please try again with a valid email address.")
+                        continue
+                    else:
+                        print("⚠️ Maximum email attempts reached.")
+                        return False
+                else:
+                    # Email accepted, break out of retry loop
+                    break
 
-            except Exception as e:
-                logger.error(f"Failed to enter password: {e}")
-                return self._handle_login_continuation(timeout_minutes)
+            # ...existing code for password entry and rest of login flow...
 
-            time.sleep(random.uniform(min_delay / 1000, max_delay / 1000))
 
-            # Click Next/Sign in button
-            signin_selectors = [
-                '#passwordNext',
-                'button[type="submit"]',
-                'input[type="submit"]',
-                'button:has-text("Next")',
-                'button:has-text("Sign in")',
-                'button:has-text("Continue")',
-                'button[id*="next"]',
-                'input[value*="Sign in"]'
-            ]
+            # --- PASSWORD ENTRY WITH RETRY LOGIC ---
+            max_password_attempts = 3
+            for password_attempt in range(max_password_attempts):
+                if password_attempt > 0:
+                    print(f"\n🔄 Password attempt {password_attempt + 1} of {max_password_attempts}")
+                password_selectors = [
+                    'input[type="password"]',
+                    'input[name="password"]',
+                    '#password', '#Password',
+                    'input[placeholder*="password" i]',
+                    'input[aria-label*="password" i]',
+                    'input[autocomplete="current-password"]'
+                ]
 
-            signin_button = None
-            logger.info("🔍 Looking for Sign in button...")
-            for i, selector in enumerate(signin_selectors, 1):
-                try:
-                    logger.debug(
-                        f"Trying Sign in button selector {i}/{len(signin_selectors)}: {selector}")
-                    signin_button = page.wait_for_selector(
-                        selector, timeout=2000)
-                    if signin_button and signin_button.is_visible():
-                        logger.info(f"✅ Found Sign in button: {selector}")
-                        break
-                except BaseException:
-                    continue
+                password_input = None
+                logger.info("🔍 Looking for password input field...")
+                for i, selector in enumerate(password_selectors, 1):
+                    try:
+                        logger.debug(f"Trying password selector {i}/{len(password_selectors)}: {selector}")
+                        password_input = page.wait_for_selector(selector, timeout=3000)
+                        if password_input and password_input.is_visible():
+                            logger.info(f"✅ Found visible password input field: {selector}")
+                            break
+                        elif password_input:
+                            logger.debug(f"Found password input but not visible: {selector}")
+                            password_input = None
+                    except Exception as e:
+                        logger.debug(f"Password selector {selector} failed: {e}")
+                        continue
 
-            if signin_button:
-                logger.info("👆 Clicking Sign in button")
-                try:
-                    signin_button.click()
-                    logger.info("✅ Successfully clicked Sign in button")
-                    time.sleep(3)
-                except Exception as e:
-                    logger.error(f"Failed to click Sign in button: {e}")
+                # Extended search if no password field found
+                if not password_input:
+                    logger.warning("❌ Initial password search failed, trying extended search...")
+                    current_url = page.url.lower()
+                    page_content = page.content()
+
+                    if 'password' not in page_content.lower():
+                        logger.warning("Page doesn't contain password field yet, may need to wait...")
+                        time.sleep(2)
+
+                    for selector in password_selectors[:3]:
+                        try:
+                            logger.debug(f"Extended wait for password selector: {selector}")
+                            password_input = page.wait_for_selector(selector, timeout=10000)
+                            if password_input and password_input.is_visible():
+                                logger.info(f"✅ Found password input with extended wait: {selector}")
+                                break
+                        except BaseException:
+                            continue
+
+                if not password_input:
+                    logger.error("❌ Could not find password input field after extended search")
+                    logger.warning("⚠️ Password field not found, may need manual intervention")
                     return self._handle_login_continuation(timeout_minutes)
-            else:
-                logger.warning(
-                    "⚠️ Could not find Sign in button, trying to submit form with Enter key")
+
+                # Prompt for password if not first attempt
+                if password_attempt > 0:
+                    import getpass
+                    new_password = getpass.getpass("Enter correct password (or press Enter to abort): ").strip()
+                    if not new_password:
+                        print("❌ No password entered. Aborting login.")
+                        return False
+                    self.google_password = new_password
+
+                # Clear any existing text and enter password
+                logger.info("🔐 Entering password")
                 try:
-                    password_input.press("Enter")
-                    time.sleep(3)
+                    password_input.fill("")
+                    time.sleep(0.5)
+                    password_input.type(self.google_password)
+                    logger.info("✅ Successfully entered password")
+                    time.sleep(1.5)
                 except Exception as e:
-                    logger.error(f"Failed to submit password form: {e}")
+                    logger.error(f"Failed to enter password: {e}")
                     return self._handle_login_continuation(timeout_minutes)
+
+                time.sleep(random.uniform(min_delay / 1000, max_delay / 1000))
+
+                # Click Next/Sign in button
+                signin_selectors = [
+                    '#passwordNext',
+                    'button[type="submit"]',
+                    'input[type="submit"]',
+                    'button:has-text("Next")',
+                    'button:has-text("Sign in")',
+                    'button:has-text("Continue")',
+                    'button[id*="next"]',
+                    'input[value*="Sign in"]'
+                ]
+
+                signin_button = None
+                logger.info("🔍 Looking for Sign in button...")
+                for i, selector in enumerate(signin_selectors, 1):
+                    try:
+                        logger.debug(f"Trying Sign in button selector {i}/{len(signin_selectors)}: {selector}")
+                        signin_button = page.wait_for_selector(selector, timeout=2000)
+                        if signin_button and signin_button.is_visible():
+                            logger.info(f"✅ Found Sign in button: {selector}")
+                            break
+                    except BaseException:
+                        continue
+
+                if signin_button:
+                    logger.info("👆 Clicking Sign in button")
+                    try:
+                        signin_button.click()
+                        logger.info("✅ Successfully clicked Sign in button")
+                        time.sleep(3)
+                    except Exception as e:
+                        logger.error(f"Failed to click Sign in button: {e}")
+                        return self._handle_login_continuation(timeout_minutes)
+                else:
+                    logger.warning("⚠️ Could not find Sign in button, trying to submit form with Enter key")
+                    try:
+                        password_input.press("Enter")
+                        time.sleep(3)
+                    except Exception as e:
+                        logger.error(f"Failed to submit password form: {e}")
+                        return self._handle_login_continuation(timeout_minutes)
+
+                # After clicking Next/Sign in, check if we're still on the password entry page
+                still_on_password = False
+                for selector in password_selectors:
+                    try:
+                        test_input = page.query_selector(selector)
+                        if test_input and test_input.is_visible():
+                            still_on_password = True
+                            break
+                    except Exception:
+                        continue
+
+                if still_on_password:
+                    print("❌ Password not accepted or still on password entry page.")
+                    if password_attempt < max_password_attempts - 1:
+                        print("Please try again with a valid password.")
+                        continue
+                    else:
+                        print("⚠️ Maximum password attempts reached.")
+                        return False
+                else:
+                    # Password accepted, break out of retry loop
+                    break
 
             # Check for 2FA or successful login
             return self._handle_login_continuation(timeout_minutes)
