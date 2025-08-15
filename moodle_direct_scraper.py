@@ -3034,6 +3034,10 @@ class MoodleDirectScraper:
         self._fuzzy_threshold_same = 0.85
         self._fuzzy_threshold_update = 0.90
         self.debug_scrape = os.getenv('MOODLE_SCRAPE_DEBUG', '0') in ['1', 'true','yes','on']
+        
+        # Configuration for URL module handling
+        self.include_lesson_links = os.getenv('MOODLE_INCLUDE_LESSON_LINKS', 'false').lower() in ['true', '1', 'yes', 'on']
+        
         if not self.auto_scrape_on_login and headless:
             logger.info(
                 "ℹ️ Headless mode without auto-scrape: remember to call scrape_all_due_items() manually.")
@@ -3207,61 +3211,180 @@ class MoodleDirectScraper:
             logger.info("📊 Scrape summary: No items found.")
             print("📊 Scrape summary: No items found.")
             return
+        
         from collections import Counter, defaultdict
         type_counter = Counter()
         course_titles = defaultdict(list)
         course_name_map = {}
+        status_counter = Counter()
+        
+        # Group items by course and status
         for it in items:
             atype = (it.get('activity_type') or 'unknown').lower()
+            status = it.get('status', 'Unknown')
             type_counter[atype] += 1
+            status_counter[status] += 1
+            
             code = it.get('course_code') or it.get('course') or 'UNKNOWN'
             course_name_map[code] = it.get('course') or code
-            course_titles[code].append(
-    it.get('title') or it.get('raw_title') or 'Untitled')
+            course_titles[code].append(it)
+        
         total_items = len(items)
         distinct_courses = len(course_titles)
+        
+        # Calculate completion stats
+        completed_count = status_counter.get('Completed', 0)
+        pending_count = status_counter.get('Pending', 0)
+        completion_rate = (completed_count / total_items * 100) if total_items > 0 else 0
+        
         type_parts = [f"{t}:{c}" for t, c in sorted(
             type_counter.items(), key=lambda x: (-x[1], x[0]))]
+        
         logger.info(
     f"📊 Scrape summary: {total_items} items across {distinct_courses} courses | Activity types -> " +
      ", ".join(type_parts))
-        # Build stdout summary (always)
-        print("\n📊 SCRAPE SUMMARY")
-        print(f"Total: {total_items} items | Courses: {distinct_courses}")
-        print("Activity types:")
+        
+        # Build enhanced stdout summary
+        print("\n" + "="*60)
+        print("🎯 MOODLE SCRAPE SUMMARY")
+        print("="*60)
+        
+        # Overall stats with emojis
+        print(f"📚 Total Courses: {distinct_courses}")
+        print(f"📝 Total Tasks: {total_items}")
+        print(f"✅ Completed: {completed_count}")
+        print(f"⏳ Pending: {pending_count}")
+        print(f"📊 Completion Rate: {completion_rate:.1f}%")
+        
+        # Activity types breakdown
+        print(f"\n🔧 Activity Types:")
         for t, c in sorted(type_counter.items(), key=lambda x: (-x[1], x[0])):
-            print(f"  - {t}: {c}")
-        print("Courses & Items:")
-        for code, titles in sorted(
+            emoji = self._get_activity_emoji(t)
+            print(f"  {emoji} {t.title()}: {c}")
+        
+        # Courses breakdown with status
+        print(f"\n📖 Courses & Tasks:")
+        for code, course_items in sorted(
             course_titles.items(), key=lambda x: (-len(x[1]), x[0])):
+            
             cname = course_name_map.get(code, code)
-            # Truncate course name if too long for better readability
-            display_cname = cname[:40] + "..." if len(cname) > 40 else cname
-            print(f"  - {code} ({display_cname}): {len(titles)} items")
-
-            # Show items in a more readable format (max 3 per line, truncate
-            # long titles)
-            max_show = 8 if not self.debug_scrape else 15
-            shown = titles[:max_show]
-            more = len(titles) - len(shown)
-
-            for i, title in enumerate(shown):
-                # Truncate very long titles for readability
-                display_title = title[:60] + \
-                    "..." if len(title) > 60 else title
-                prefix = "    " if i == 0 else "      "
-                print(f"{prefix}• {display_title}")
-
-            if more > 0:
-                print(f"      ... and {more} more items")
-
-            # Log the full version for debugging/logs
-            title_list = '; '.join(titles[:15])
-            if len(titles) > 15:
-                title_list += f" ... (+{len(titles) - 15} more)"
+            display_cname = cname[:50] + "..." if len(cname) > 50 else cname
+            
+            # Count statuses for this course
+            course_completed = sum(1 for item in course_items if item.get('status') == 'Completed')
+            course_pending = len(course_items) - course_completed
+            
+            print(f"\n  🎓 {code} ({display_cname})")
+            print(f"     📊 {len(course_items)} total tasks")
+            print(f"     ✅ {course_completed} completed | ⏳ {course_pending} pending")
+            
+            # Show items grouped by status
+            completed_items = [item for item in course_items if item.get('status') == 'Completed']
+            pending_items = [item for item in course_items if item.get('status') == 'Pending']
+            
+            # Show completed tasks first (if any)
+            if completed_items:
+                print(f"     ✅ Completed Tasks:")
+                for item in completed_items[:3]:  # Show max 3 completed
+                    title = item.get('title') or item.get('raw_title') or 'Untitled'
+                    display_title = title[:55] + "..." if len(title) > 55 else title
+                    print(f"        • {display_title}")
+                if len(completed_items) > 3:
+                    print(f"        ... and {len(completed_items) - 3} more completed")
+            
+            # Show pending tasks
+            if pending_items:
+                print(f"     ⏳ Pending Tasks:")
+                for item in pending_items[:4]:  # Show max 4 pending
+                    title = item.get('title') or item.get('raw_title') or 'Untitled'
+                    display_title = title[:55] + "..." if len(title) > 55 else title
+                    print(f"        • {display_title}")
+                if len(pending_items) > 4:
+                    print(f"        ... and {len(pending_items) - 4} more pending")
+            
+            # Log the full version for debugging
+            title_list = '; '.join([item.get('title') or item.get('raw_title') or 'Untitled' for item in course_items[:15]])
+            if len(course_items) > 15:
+                title_list += f" ... (+{len(course_items) - 15} more)"
             logger.info(
-    f"  • {code}: {
-        len(titles)} items ({cname}) -> {title_list}")
+    f"  • {code}: {len(course_items)} items ({cname}) -> {title_list}")
+        
+        print("\n" + "="*60)
+        print("🎉 Scraping completed successfully!")
+        print("="*60)
+        
+        # Show filtered items if any (for user awareness)
+        if hasattr(self, 'filtered_items_summary') and self.filtered_items_summary:
+            print(f"\n📚 Items Filtered Out (Reading Materials):")
+            print(f"   These items were detected but not saved as they appear to be:")
+            print(f"   • Learning resources without deadlines")
+            print(f"   • Reading materials without quiz/activity keywords")
+            print(f"   • Pure educational content")
+            print(f"\n   To include these items, set: export MOODLE_INCLUDE_LESSON_LINKS=true")
+            print(f"\n   Filtered items:")
+            for item in self.filtered_items_summary[:5]:  # Show first 5
+                print(f"     • {item.get('title', 'Unknown')} ({item.get('course_code', 'Unknown')})")
+            if len(self.filtered_items_summary) > 5:
+                print(f"     ... and {len(self.filtered_items_summary) - 5} more")
+            print()
+
+    def _detect_url_module_type(self, title: str, course_code: str) -> str:
+        """Smart detection to differentiate between quiz URLs and lesson URLs"""
+        title_lower = title.lower()
+        
+        # Strong indicators of quiz/assessment - must be standalone words
+        quiz_indicators = [
+            r'\bquiz\b', r'\bexam\b', r'\btest\b', r'\bassessment\b',
+            r'\bmidterm\b', r'\bfinal\b', r'\bpre-test\b', r'\bpost-test\b'
+        ]
+        
+        # Check for quiz indicators in title (exact word matches)
+        for pattern in quiz_indicators:
+            if re.search(pattern, title_lower):
+                return 'quiz_link'
+        
+        # Check for course-specific patterns (e.g., "Activity X" + quiz-related content)
+        activity_pattern = r'activity\s+\d+'
+        if re.search(activity_pattern, title_lower):
+            # If it's an activity and contains quiz-like content, treat as quiz
+            if any(word in title_lower for word in ['quiz', 'test', 'exam', 'assessment']):
+                return 'quiz_link'
+        
+        # Check for due dates or deadlines (quizzes usually have these)
+        if any(word in title_lower for word in ['due', 'deadline', 'closes', 'until']):
+            # This might be a quiz, but let's be conservative
+            pass
+        
+        # Default: treat as regular lesson/resource
+        return 'lesson_link'
+    
+    def _get_activity_emoji(self, activity_type: str) -> str:
+        """Get appropriate emoji for activity type"""
+        emoji_map = {
+            'assign': '📝',
+            'assignment': '📝',
+            'quiz': '🧠',
+            'quiz_link': '🧠',  # Changed from 🔗 to 🧠 for consistency
+            'lesson_link': '📚',  # New type for regular lessons
+            'forum': '💬',
+            'url': '🔗',
+            'resource': '📚',
+            'file': '📁',
+            'folder': '📁',
+            'page': '📄',
+            'book': '📖',
+            'glossary': '📚',
+            'wiki': '📝',
+            'workshop': '🔧',
+            'choice': '✅',
+            'feedback': '📊',
+            'survey': '📋',
+            'chat': '💭',
+            'external': '🌐',
+            'lti': '🔌',
+            'unknown': '❓'
+        }
+        return emoji_map.get(activity_type.lower(), '📋')
 
     # ---------------- Course & Activity Scraping ---------------- #
     # override placeholder with basic implementation
@@ -3540,12 +3663,13 @@ class MoodleDirectScraper:
                 course_code = course.get('code')
                 formatted = self._format_assignment_title(
                     raw_title, course_code)
-                if modtype == 'url' and re.search(
-    r'\b(quiz|exam|test)\b', raw_title, re.IGNORECASE):
-                    modtype = 'quiz_link'
+                # Smart detection for URL modules - differentiate between quizzes and lessons
+                if modtype == 'url':
+                    modtype = self._detect_url_module_type(raw_title, course.get('code', ''))
                 
-                # Extract completion status
+                # Extract completion status and task ID
                 completion_status = self._extract_completion_status(cont)
+                task_id = self._extract_task_id(link)
                 
                 assignment = {
     'title': formatted.get('display') or raw_title,
@@ -3556,6 +3680,7 @@ class MoodleDirectScraper:
     'course': course.get('name'),
     'course_code': course_code,
     'status': completion_status,
+    'task_id': task_id,
     'source': 'scrape',
     'added_date': datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
     'activity_type': (
@@ -3565,6 +3690,35 @@ class MoodleDirectScraper:
             except Exception as e:
                 logger.debug(f"Activity parse error: {e}")
                 continue
+        # Filter out lesson links if configured to exclude them
+        if not self.include_lesson_links:
+            filtered_results = []
+            filtered_items = []
+            for item in results:
+                if item.get('activity_type') != 'lesson_link':
+                    filtered_results.append(item)
+                else:
+                    filtered_items.append(item)
+                    if self.debug_scrape:
+                        logger.debug(f"Filtered out lesson link: {item.get('title', 'Unknown')}")
+            
+            # Store filtered items for summary display
+            self.filtered_items_summary = filtered_items
+            
+            # Log summary of filtered items
+            if filtered_items:
+                logger.info(f"📚 Filtered out {len(filtered_items)} lesson/resource items:")
+                for item in filtered_items:
+                    logger.info(f"   • {item.get('title', 'Unknown')} ({item.get('course_code', 'Unknown')})")
+                logger.info(f"📝 Kept {len(filtered_results)} actionable items")
+            
+            results = filtered_results
+            if self.debug_scrape:
+                logger.info(f"After filtering lesson links: {len(results)} items remaining")
+        else:
+            # No filtering, clear any previous filtered items
+            self.filtered_items_summary = []
+        
         if self.debug_scrape:
             logger.info(
     f"Debug: Extracted {
@@ -3655,6 +3809,31 @@ class MoodleDirectScraper:
         except Exception as e:
             logger.debug(f"Error extracting completion status with regex: {e}")
             return 'Pending'
+
+    def _extract_task_id(self, url: str) -> str:
+        """Extract task ID from Moodle URL"""
+        try:
+            if not url:
+                return ''
+            
+            # Extract ID from various Moodle URL patterns
+            # Pattern: .../mod/assign/view.php?id=1234
+            # Pattern: .../mod/forum/view.php?id=5678
+            # Pattern: .../mod/url/view.php?id=9012
+            id_match = re.search(r'[?&]id=(\d+)', url)
+            if id_match:
+                return id_match.group(1)
+            
+            # Fallback: try to extract any numeric ID from URL
+            fallback_match = re.search(r'/(\d+)(?:[/?]|$)', url)
+            if fallback_match:
+                return fallback_match.group(1)
+            
+            return ''
+            
+        except Exception as e:
+            logger.debug(f"Error extracting task ID from URL {url}: {e}")
+            return ''
 
     def _extract_dates_from_region(
         self, dates_region, grid) -> Tuple[Optional[str], Optional[str]]:
@@ -3812,8 +3991,9 @@ class MoodleDirectScraper:
                 course_code = course.get('code')
                 formatted = self._format_assignment_title(
                     raw_title, course_code)
-                # Extract completion status from li block
+                # Extract completion status and task ID from li block
                 completion_status = self._extract_completion_status_regex(li_block)
+                task_id = self._extract_task_id(link)
                 
                 assignment = {
     'title': formatted.get('display') or raw_title,
@@ -3825,6 +4005,7 @@ class MoodleDirectScraper:
         'course': course.get('name'),
         'course_code': course_code,
         'status': completion_status,
+        'task_id': task_id,
         'source': 'scrape',
         'added_date': datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
         'origin_url': link,
@@ -3883,11 +4064,12 @@ class MoodleDirectScraper:
                     course_code = course.get('code')
                     formatted = self._format_assignment_title(
                         raw_title, course_code)
-                    if modtype == 'url' and re.search(
-    r'\b(quiz|exam|test)\b', raw_title, re.IGNORECASE):
-                        modtype = 'quiz_link'
-                    # Extract completion status from div block
+                    # Smart detection for URL modules - differentiate between quizzes and lessons
+                    if modtype == 'url':
+                        modtype = self._detect_url_module_type(raw_title, course.get('code', ''))
+                    # Extract completion status and task ID from div block
                     completion_status = self._extract_completion_status_regex(block)
+                    task_id = self._extract_task_id(link)
                     
                     assignment = {
     'title': formatted.get('display') or raw_title,
@@ -3898,6 +4080,7 @@ class MoodleDirectScraper:
     'course': course.get('name'),
     'course_code': course_code,
     'status': completion_status,
+    'task_id': task_id,
     'source': 'scrape',
     'added_date': datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
     'origin_url': link,
@@ -3915,35 +4098,25 @@ class MoodleDirectScraper:
         try:
             t = title.strip()
             t = re.sub(r'\s+', ' ', t)
+            
+            # ONLY format if we see explicit "ACTIVITY X" in the title
             activity_match = re.search(r'(ACTIVITY\s+\d+)', t, re.IGNORECASE)
-            display = t.title()
-            normalized = t.lower()
+            
             if activity_match and course_code:
+                # This is a real activity with explicit numbering
                 act = activity_match.group(1).title()
                 remainder = t[activity_match.end():].strip(' -:')
                 if remainder:
-                    formatted_main = f"{
-    course_code.upper()} - {
-        act.title()} ({
-            remainder.title()})"
+                    formatted_main = f"{course_code.upper()} - {act.title()} ({remainder.title()})"
                 else:
                     formatted_main = f"{course_code.upper()} - {act.title()}"
                 display = formatted_main
                 normalized = formatted_main.lower()
             else:
-                number_match = re.search(r'(\d+)', t)
-                if number_match and course_code:
-                    num = number_match.group(1)
-                    name_part = re.sub(
-    r'(?i)activity\s+\d+', '', t).strip(' -:')
-                    if name_part:
-                        display = f"{
-    course_code.upper()} - Activity {num} ({
-        name_part.title()})"
-                        normalized = display.lower()
-                    else:
-                        display = f"{course_code.upper()} - Activity {num}"
-                        normalized = display.lower()
+                # Don't assume numbers mean "Activity X" - preserve original title
+                display = t.title()
+                normalized = t.lower()
+            
             return {"display": display, "normalized": normalized}
         except Exception:
             return {"display": title, "normalized": title.lower()}
@@ -4121,3 +4294,36 @@ class MoodleDirectScraper:
             self.session.close()
         except Exception:
             pass
+
+    def _should_fetch_url_item(self, title: str, due_date: str, opening_date: str) -> bool:
+        """Determine if a URL item should be fetched based on content and timing"""
+        
+        title_lower = title.lower()
+        
+        # 1. Check for quiz/activity keywords (highest priority)
+        quiz_keywords = ['quiz', 'test', 'exam', 'assessment', 'activity', 'assignment']
+        has_quiz_keywords = any(keyword in title_lower for keyword in quiz_keywords)
+        
+        # 2. Check for due dates
+        has_due_date = due_date and due_date != 'No due date'
+        
+        # 3. Check for time windows (opening/closing times)
+        has_time_window = opening_date and opening_date != 'No opening date'
+        
+        # 4. Check for specific time patterns
+        time_patterns = [
+            r'from \d{1,2}:\d{2} [AP]M to \d{1,2}:\d{2} [AP]M',  # "from 9:30 AM to 11:59 PM"
+            r'the due date is \w+ \w+ \d{1,2}, \d{4}, \d{1,2} [AP]M',  # "Thursday, August 14, 2025, 7 PM"
+            r'available on \w+ \d{1,2}, \d{4}',  # "Available on October 30, 2024"
+        ]
+        
+        has_time_patterns = any(re.search(pattern, opening_date or '', re.IGNORECASE) for pattern in time_patterns)
+        
+        # Fetch if ANY condition is met
+        should_fetch = has_quiz_keywords or has_due_date or has_time_window or has_time_patterns
+        
+        # Log the decision for debugging
+        if self.debug_scrape:
+            logger.debug(f"URL item '{title}': quiz_keywords={has_quiz_keywords}, due_date={has_due_date}, time_window={has_time_window}, time_patterns={has_time_patterns} -> fetch={should_fetch}")
+        
+        return should_fetch
