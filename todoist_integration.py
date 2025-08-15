@@ -564,44 +564,43 @@ class TodoistIntegration:
             return {'updated': 0, 'completed_in_todoist': []}
     
     def prevent_duplicate_sync(self, assignments_to_sync: List[Dict]) -> List[Dict]:
-        """Filter out assignments that are already completed in Todoist"""
+        """Filter out assignments that already exist in Todoist (both active and completed)"""
         if not self.enabled:
             return assignments_to_sync
             
         try:
-            # Get completed tasks from Todoist
+            # Get ALL existing tasks from Todoist (both active and completed)
             todoist_assignments = self.get_all_assignments_from_todoist()
-            completed_todoist = [task for task in todoist_assignments if task['completed']]
             
-            if not completed_todoist:
+            if not todoist_assignments:
                 return assignments_to_sync
             
-            # Create lookup for completed tasks using task_id
-            completed_lookup = set()
-            for task in completed_todoist:
+            # Create lookup for existing tasks using task_id
+            existing_lookup = set()
+            for task in todoist_assignments:
                 # Extract task_id from description
                 task_desc = task.get('description', '').lower()
                 task_id_match = re.search(r'task id: (\w+)', task_desc)
                 if task_id_match:
                     task_id = task_id_match.group(1)
-                    completed_lookup.add(task_id)
-                    logger.debug(f"Added completed task_id to lookup: {task_id}")
+                    existing_lookup.add(task_id)
+                    logger.debug(f"Added existing task_id to lookup: {task_id}")
             
-            # Filter out assignments that are completed in Todoist
+            # Filter out assignments that already exist in Todoist
             filtered_assignments = []
             for assignment in assignments_to_sync:
                 task_id = assignment.get('task_id', '')
                 
-                # Skip if already completed in Todoist
-                if task_id and task_id in completed_lookup:
-                    logger.info(f"Skipping already completed task: {assignment.get('title')} (task_id: {task_id})")
+                # Skip if already exists in Todoist (regardless of completion status)
+                if task_id and task_id in existing_lookup:
+                    logger.info(f"Skipping already existing task: {assignment.get('title')} (task_id: {task_id})")
                     continue
                     
                 filtered_assignments.append(assignment)
             
             skipped_count = len(assignments_to_sync) - len(filtered_assignments)
             if skipped_count > 0:
-                logger.info(f"Filtered out {skipped_count} already completed assignments")
+                logger.info(f"Filtered out {skipped_count} already existing assignments")
             
             return filtered_assignments
             

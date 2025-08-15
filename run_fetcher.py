@@ -359,8 +359,8 @@ def main():
                        help='Show detailed status report of all assignments')
     parser.add_argument('--delete-all-assignments', action='store_true',
                        help='DELETE ALL assignments from database, Todoist, and Notion (DEBUG ONLY - emails are NOT touched)')
-    parser.add_argument('--delete-from', type=str, choices=['notion', 'todoist', 'both'], default='both',
-                       help='Choose where to delete assignments from: notion, todoist, or both (default: both)')
+    parser.add_argument('--delete-from', type=str, choices=['notion', 'todoist', 'both'], default=None,
+                       help='Choose where to delete assignments from: notion, todoist, or both')
     parser.add_argument('--include-local', action='store_true',
                        help='Also delete assignments from local database when using selective deletion')
     parser.add_argument('--fresh-start', action='store_true',
@@ -943,245 +943,7 @@ def main():
         
         return 0
     
-    if args.delete_all_assignments:
-        print("\n🗑️ DELETING ALL ASSIGNMENTS")
-        print("=" * 40)
-        
-        # Show what will be deleted based on --delete-from option
-        delete_from = args.delete_from
-        include_local = args.include_local
-        print("⚠️ WARNING: This will delete assignments from:")
-        if include_local or delete_from == 'both':
-            print("  📄 Local database (assignments.json)")
-            print("  🌐 Moodle scraping data (assignments_scraped.json)")
-        if delete_from in ['todoist', 'both']:
-            print("  ✅ Todoist (if configured)")
-        if delete_from in ['notion', 'both']:
-            print("  📝 Notion (if configured)")
-        print("  ✅ Your Gmail emails will NOT be touched!")
-        print("  ✅ Your .env configuration will NOT be touched!")
-        print()
-        
-        if delete_from != 'both':
-            mode_text = f"{delete_from.upper()}"
-            if include_local:
-                mode_text += " + LOCAL DATABASE"
-            print(f"🎯 SELECTIVE MODE: Only deleting from {mode_text}")
-            print()
-        elif include_local:
-            print("🎯 FULL MODE: Deleting from both platforms + local database")
-            print()
-        
-        # Double confirmation
-        try:
-            response = input("Type 'DELETE' to confirm: ")
-            if response != 'DELETE':
-                print("❌ Deletion cancelled.")
-                return 0
-        except KeyboardInterrupt:
-            print("\n❌ Deletion cancelled.")
-            return 0
-        
-        deleted_counts = {"local": 0, "todoist": 0, "notion": 0}
-        
-        try:
-            # Get assignments from both possible sources (Gmail and Moodle scraping)
-            assignments = []
-            source_files = []
-            
-            # Try to load from assignments.json (Gmail source)
-            try:
-                fetcher = MoodleEmailFetcher()
-                gmail_assignments = fetcher.load_existing_assignments()
-                if gmail_assignments:
-                    assignments.extend(gmail_assignments)
-                    source_files.append("assignments.json")
-                    print(f"📧 Loaded {len(gmail_assignments)} assignments from Gmail source")
-            except Exception as e:
-                logger.debug(f"Could not load from assignments.json: {e}")
-            
-            # Try to load from assignments_scraped.json (Moodle scraping source)
-            try:
-                import json
-                import os
-                scraped_file = "data/assignments_scraped.json"
-                if os.path.exists(scraped_file):
-                    with open(scraped_file, 'r') as f:
-                        scraped_assignments = json.load(f)
-                    if scraped_assignments:
-                        assignments.extend(scraped_assignments)
-                        source_files.append("assignments_scraped.json")
-                        print(f"🌐 Loaded {len(scraped_assignments)} assignments from Moodle scraping source")
-            except Exception as e:
-                logger.debug(f"Could not load from assignments_scraped.json: {e}")
-            
-            if not assignments:
-                print("❌ No assignments found in any data source")
-                print("💡 Run './deployment/run.sh check' or '--scrape-assignments' first to populate the database")
-                return 0
-            
-            print(f"\n� Found {len(assignments)} total assignments to delete from: {', '.join(source_files)}")
-            
-            if args.verbose:
-                print("\n📋 Assignments to be deleted:")
-                for i, assignment in enumerate(assignments, 1):
-                    print(f"   {i}. {assignment.get('title', 'Unknown')}")
-                    print(f"      Course: {assignment.get('course_code', 'Unknown')}")
-                    print(f"      Due: {assignment.get('due_date', 'Unknown')}")
-                print()
-            
-            # Delete from Todoist first (if configured and requested)
-            if not args.skip_todoist and delete_from in ['todoist', 'both']:
-                try:
-                    print("✅ Deleting from Todoist...")
-                    todoist = TodoistIntegration()
-                    if todoist.enabled:
-                        for assignment in assignments:
-                            try:
-                                # Try to find and delete the task
-                                task_deleted = todoist.delete_assignment_task(assignment)
-                                if task_deleted:
-                                    deleted_counts["todoist"] += 1
-                                    if args.verbose:
-                                        print(f"   ✅ Deleted from Todoist: {assignment.get('title', 'Unknown')[:50]}")
-                            except Exception as e:
-                                if args.verbose:
-                                    print(f"   ⚠️ Could not delete from Todoist: {assignment.get('title', 'Unknown')[:50]} - {e}")
-                        
-                        print(f"✅ Deleted {deleted_counts['todoist']} assignments from Todoist")
-                    else:
-                        print("⚠️ Todoist not configured - skipping")
-                except Exception as e:
-                    print(f"❌ Error deleting from Todoist: {e}")
-            elif delete_from == 'notion':
-                print("⏭️ Skipping Todoist deletion (notion-only mode)")
-            
-            # Delete from Notion (if configured and requested)
-            if not args.skip_notion and delete_from in ['notion', 'both']:
-                try:
-                    print("📝 Deleting from Notion...")
-                    notion = NotionIntegration()
-                    if notion.enabled:
-                        for assignment in assignments:
-                            try:
-                                # Try to find and delete the page
-                                page_deleted = notion.delete_assignment_page(assignment)
-                                if page_deleted:
-                                    deleted_counts["notion"] += 1
-                                    if args.verbose:
-                                        print(f"   📝 Deleted from Notion: {assignment.get('title', 'Unknown')[:50]}")
-                            except Exception as e:
-                                if args.verbose:
-                                    print(f"   ⚠️ Could not delete from Notion: {assignment.get('title', 'Unknown')[:50]} - {e}")
-                        
-                        print(f"📝 Deleted {deleted_counts['notion']} assignments from Notion")
-                    else:
-                        print("⚠️ Notion not configured - skipping")
-                except Exception as e:
-                    print(f"❌ Error deleting from Notion: {e}")
-            elif delete_from == 'todoist':
-                print("⏭️ Skipping Notion deletion (todoist-only mode)")
-            
-            # Delete from local database (only if requested)
-            if include_local or delete_from == 'both':
-                print("📄 Deleting from local database...")
-                try:
-                    import os
-                    import json
-                    
-                    # Get current local assignments for backup
-                    local_assignments = fetcher.load_existing_assignments()
-                    
-                    if local_assignments:
-                        # Backup before deletion
-                        backup_file = f"data/assignments_backup_before_delete_{int(time.time())}.json"
-                        with open(backup_file, 'w') as f:
-                            json.dump(local_assignments, f, indent=2)
-                        print(f"💾 Backup created: {backup_file}")
-                        
-                        # Clear assignments.json
-                        with open('data/assignments.json', 'w') as f:
-                            json.dump([], f, indent=2)
-                        
-                        # Clear assignments_scraped.json if it exists
-                        scraped_file = "data/assignments_scraped.json"
-                        if os.path.exists(scraped_file):
-                            try:
-                                with open(scraped_file, 'r') as f:
-                                    scraped_assignments = json.load(f)
-                                if scraped_assignments:
-                                    # Backup scraped assignments
-                                    scraped_backup = f"data/assignments_scraped_backup_before_delete_{int(time.time())}.json"
-                                    with open(scraped_backup, 'w') as f:
-                                        json.dump(scraped_assignments, f, indent=2)
-                                    print(f"💾 Scraped assignments backup created: {scraped_backup}")
-                                    
-                                    # Clear scraped file
-                                    with open(scraped_file, 'w') as f:
-                                        json.dump([], f, indent=2)
-                                    print(f"🌐 Cleared assignments_scraped.json")
-                            except Exception as e:
-                                print(f"⚠️ Warning: Could not backup/clear scraped assignments: {e}")
-                        
-                        # Clear markdown file
-                        with open('data/assignments.md', 'w') as f:
-                            f.write("# Moodle Assignments\n\n")
-                            f.write("| Assignment | Due Date | Course | Status | Added Date |\n")
-                            f.write("|------------|----------|--------|--------|-----------|\n")
-                        
-                        deleted_counts["local"] = len(local_assignments)
-                        print(f"📄 Deleted {deleted_counts['local']} assignments from local database")
-                    else:
-                        print("📄 Local database was already empty")
-                    
-                except Exception as e:
-                    print(f"❌ Error deleting from local database: {e}")
-                    return 1
-            else:
-                print("⏭️ Skipping local database deletion (not requested)")
-            
-            # Summary
-            print(f"\n🎯 DELETION SUMMARY")
-            print("=" * 30)
-            if include_local or delete_from == 'both':
-                print(f"📄 Local database: {deleted_counts['local']} deleted")
-            else:
-                print(f"📄 Local database: skipped (not requested)")
-            if delete_from in ['todoist', 'both']:
-                print(f"✅ Todoist: {deleted_counts['todoist']} deleted")
-            else:
-                print(f"✅ Todoist: skipped (not requested)")
-            if delete_from in ['notion', 'both']:
-                print(f"📝 Notion: {deleted_counts['notion']} deleted")
-            else:
-                print(f"📝 Notion: skipped (not requested)")
-            print()
-            if delete_from == 'both' and include_local:
-                print("✅ All assignments deleted successfully!")
-            elif delete_from == 'both':
-                print("✅ Assignments deleted from both platforms successfully!")
-            else:
-                mode_text = delete_from.upper()
-                if include_local:
-                    mode_text += " + LOCAL DATABASE"
-                print(f"✅ Assignments deleted from {mode_text} successfully!")
-            print("💡 Your Gmail emails are completely untouched")
-            print("🔄 Run './deployment/run.sh check' to fetch fresh assignments from Gmail")
-            print("🔄 Run '--scrape-assignments' to fetch fresh assignments from Moodle")
-            
-            # Check for remaining assignments and offer interactive deletion
-            remaining_assignments = check_remaining_assignments_after_deletion(delete_from, include_local, args)
-            if remaining_assignments:
-                interactive_deletion_menu(remaining_assignments, args)
-            
-        except Exception as e:
-            print(f"❌ Error during deletion: {e}")
-            if args.debug:
-                import traceback
-                traceback.print_exc()
-            return 1
-        
-        return 0
+    # Delete logic moved to main execution flow above
     
     if args.restore:
         print(f"🔄 Restoring assignment: {args.restore}")
@@ -1303,7 +1065,529 @@ def main():
             print(f"\n🚀 MOODLE SCRAPING MODE")
             print("=" * 40)
             print("⏭️ Skipping Gmail fetching (scraping mode enabled)")
+            
+            # Load scraped assignments first
+            scraped_file = "data/assignments_scraped.json"
+            scraped_assignments = []
+            
+            try:
+                import json
+                with open(scraped_file, 'r') as f:
+                    scraped_assignments = json.load(f)
+                
+                if not scraped_assignments:
+                    print("⚠️ No scraped assignments found")
+                    print("💡 Run with --login-type --scrape-assignments first to scrape data")
+                    return 1
+                    
+                print(f"📊 Found {len(scraped_assignments)} scraped assignments")
+                
+            except FileNotFoundError:
+                print("⚠️ No scraped assignments file found")
+                print("💡 Run with --login-type --scrape-assignments first to scrape data")
+                return 1
+            except Exception as e:
+                print(f"❌ Error loading scraped assignments: {e}")
+                return 1
+            
+            # If Notion sync is requested, sync the scraped data
+            if args.notion and not args.skip_notion:
+                try:
+                    print(f"\n📝 NOTION SYNC (SCRAPED DATA)")
+                    print("=" * 30)
+                    print("🔗 Initializing Notion integration...")
+                    
+                    logger.info("Initializing Notion integration for scraped data...")
+                    notion = NotionIntegration()
+                    if notion.enabled:
+                        print("🔄 Syncing to Notion...")
+                        
+                        notion_count = notion.sync_assignments(scraped_assignments)
+                        total_assignments = len(scraped_assignments)
+                        skipped_count = total_assignments - notion_count
+                        
+                        print(f"📝 Notion Sync Results:")
+                        print(f"   📊 Total assignments found: {total_assignments}")
+                        print(f"   🆕 New assignments synced: {notion_count}")
+                        print(f"   ⏭️ Assignments skipped: {skipped_count} (already exist/duplicates)")
+                        
+                        if args.verbose:
+                            if notion_count == 0:
+                                print("   💡 All assignments already exist in Notion")
+                            elif notion_count < total_assignments:
+                                print("   💡 Some assignments were skipped (already exist)")
+                            else:
+                                print("   ✅ All assignments synced successfully")
+                    else:
+                        print("⚠️ Notion integration not configured")
+                        return 1
+                except Exception as e:
+                    print(f"❌ Notion sync failed: {e}")
+                    return 1
+            
+            # If Todoist sync is requested, sync the scraped data
+            if args.todoist and not args.skip_todoist:
+                try:
+                    print(f"\n✅ TODOIST SYNC (SCRAPED DATA)")
+                    print("=" * 30)
+                    print("🔗 Initializing Todoist integration...")
+                    
+                    logger.info("Initializing Todoist integration for scraped data...")
+                    todoist = TodoistIntegration()
+                    if todoist.enabled:
+                        print("🔄 Syncing to Todoist...")
+                        
+                        todoist_count = todoist.sync_assignments(scraped_assignments)
+                        total_assignments = len(scraped_assignments)
+                        skipped_count = total_assignments - todoist_count
+                        
+                        print(f"✅ Todoist Sync Results:")
+                        print(f"   📊 Total assignments found: {total_assignments}")
+                        print(f"   🆕 New assignments synced: {todoist_count}")
+                        print(f"   ⏭️ Assignments skipped: {skipped_count} (already exist/duplicates)")
+                        
+                        if args.verbose:
+                            if todoist_count == 0:
+                                print("   💡 All assignments already exist in Todoist")
+                            elif todoist_count < total_assignments:
+                                print("   💡 Some assignments were skipped (already exist)")
+                            else:
+                                print("   ✅ All assignments synced successfully")
+                    else:
+                        print("⚠️ Todoist integration not configured")
+                        return 1
+                except Exception as e:
+                    print(f"❌ Todoist sync failed: {e}")
+                    return 1
+            
             print("💡 Use --login-type to check Moodle login status and scrape")
+            return 0
+        
+        # Handle delete operations (after scraping checks)
+        if args.delete_all_assignments:
+            # Delete ALL assignments from everywhere
+            print("\n🗑️ DELETING ALL ASSIGNMENTS")
+            print("=" * 40)
+            
+            # Show what will be deleted
+            print("⚠️ WARNING: This will delete assignments from:")
+            print("  📄 Local database (assignments.json)")
+            print("  🌐 Moodle scraping data (assignments_scraped.json)")
+            print("  ✅ Todoist (if configured)")
+            print("  📝 Notion (if configured)")
+            print("  ✅ Your Gmail emails will NOT be touched!")
+            print("  ✅ Your .env configuration will NOT be touched!")
+            print()
+            print("🎯 FULL MODE: Deleting from both platforms + local database")
+            print()
+            
+            # Double confirmation
+            try:
+                response = input("Type 'DELETE' to confirm: ")
+                if response != 'DELETE':
+                    print("❌ Deletion cancelled.")
+                    return 0
+            except KeyboardInterrupt:
+                print("\n❌ Deletion cancelled.")
+                return 0
+            
+            deleted_counts = {"local": 0, "todoist": 0, "notion": 0}
+            
+            try:
+                # Get assignments from both possible sources (Gmail and Moodle scraping)
+                assignments = []
+                source_files = []
+                
+                # Try to load from assignments.json (Gmail source)
+                try:
+                    fetcher = MoodleEmailFetcher()
+                    gmail_assignments = fetcher.load_existing_assignments()
+                    if gmail_assignments:
+                        assignments.extend(gmail_assignments)
+                        source_files.append("assignments.json")
+                        print(f"📧 Loaded {len(gmail_assignments)} assignments from Gmail source")
+                except Exception as e:
+                    logger.debug(f"Could not load from assignments.json: {e}")
+                
+                # Try to load from assignments_scraped.json (Moodle scraping source)
+                try:
+                    import json
+                    import os
+                    scraped_file = "data/assignments_scraped.json"
+                    if os.path.exists(scraped_file):
+                        with open(scraped_file, 'r') as f:
+                            scraped_assignments = json.load(f)
+                        if scraped_assignments:
+                            assignments.extend(scraped_assignments)
+                            source_files.append("assignments_scraped.json")
+                            print(f"🌐 Loaded {len(scraped_assignments)} assignments from Moodle scraping source")
+                except Exception as e:
+                    logger.debug(f"Could not load from assignments_scraped.json: {e}")
+                
+                if not assignments:
+                    print("❌ No assignments found in any data source")
+                    print("💡 Run './deployment/run.sh check' or '--scrape-assignments' first to populate the database")
+                    return 0
+                
+                print(f"\n📋 Found {len(assignments)} total assignments to delete from: {', '.join(source_files)}")
+                
+                if args.verbose:
+                    print("\n📋 Assignments to be deleted:")
+                    for i, assignment in enumerate(assignments, 1):
+                        print(f"   {i}. {assignment.get('title', 'Unknown')}")
+                        print(f"      Course: {assignment.get('course_code', 'Unknown')}")
+                        print(f"      Due: {assignment.get('due_date', 'Unknown')}")
+                    print()
+                
+                # Delete from Todoist first (if configured)
+                if not args.skip_todoist:
+                    try:
+                        print("✅ Deleting from Todoist...")
+                        todoist = TodoistIntegration()
+                        if todoist.enabled:
+                            for assignment in assignments:
+                                if todoist.delete_assignment_task(assignment):
+                                    deleted_counts["todoist"] += 1
+                                    if args.verbose:
+                                        print(f"   ✅ Deleted from Todoist: {assignment.get('title', 'Unknown')[:50]}")
+                                else:
+                                    if args.verbose:
+                                        print(f"   ⚠️ Not found in Todoist: {assignment.get('title', 'Unknown')[:50]}")
+                        else:
+                            print("⚠️ Todoist integration not configured")
+                    except Exception as e:
+                        print(f"❌ Error deleting from Todoist: {e}")
+                        if args.debug:
+                            import traceback
+                            traceback.print_exc()
+                
+                # Delete from Notion (if configured)
+                if not args.skip_notion:
+                    try:
+                        print("📝 Deleting from Notion...")
+                        notion = NotionIntegration()
+                        if notion.enabled:
+                            for assignment in assignments:
+                                if notion.delete_assignment_page(assignment):
+                                    deleted_counts["notion"] += 1
+                                    if args.verbose:
+                                        print(f"   📝 Deleted from Notion: {assignment.get('title', 'Unknown')[:50]}")
+                                else:
+                                    if args.verbose:
+                                        print(f"   ⚠️ Not found in Notion: {assignment.get('title', 'Unknown')[:50]}")
+                        else:
+                            print("⚠️ Notion integration not configured")
+                    except Exception as e:
+                        print(f"❌ Error deleting from Notion: {e}")
+                        if args.debug:
+                            import traceback
+                            traceback.print_exc()
+                
+                # Delete from local database
+                try:
+                    print("📄 Deleting from local database...")
+                    
+                    # Backup current files before deletion
+                    timestamp = int(time.time())
+                    backup_file = f"data/assignments_backup_before_delete_{timestamp}.json"
+                    
+                    try:
+                        with open('data/assignments.json', 'r') as f:
+                            current_assignments = json.load(f)
+                        if current_assignments:
+                            with open(backup_file, 'w') as f:
+                                json.dump(current_assignments, f, indent=2)
+                            print(f"💾 Backup created: {backup_file}")
+                    except Exception as e:
+                        print(f"⚠️ Warning: Could not create backup: {e}")
+                    
+                    # Clear assignments.json
+                    with open('data/assignments.json', 'w') as f:
+                        json.dump([], f, indent=2)
+                    
+                    # Clear assignments_scraped.json if it exists
+                    scraped_file = "data/assignments_scraped.json"
+                    if os.path.exists(scraped_file):
+                        try:
+                            with open(scraped_file, 'r') as f:
+                                scraped_assignments = json.load(f)
+                            if scraped_assignments:
+                                # Backup scraped assignments
+                                scraped_backup = f"data/assignments_scraped_backup_before_delete_{timestamp}.json"
+                                with open(scraped_backup, 'w') as f:
+                                    json.dump(scraped_assignments, f, indent=2)
+                                print(f"💾 Scraped assignments backup created: {scraped_backup}")
+                                
+                                # Clear scraped file
+                                with open(scraped_file, 'w') as f:
+                                    json.dump([], f, indent=2)
+                                print(f"🌐 Cleared assignments_scraped.json")
+                        except Exception as e:
+                            print(f"⚠️ Warning: Could not backup/clear scraped assignments: {e}")
+                    
+                    # Clear markdown file
+                    with open('data/assignments.md', 'w') as f:
+                        f.write("# Moodle Assignments\n\n")
+                        f.write("| Assignment | Due Date | Course | Status | Added Date |\n")
+                        f.write("|------------|----------|--------|--------|-----------|\n")
+                    
+                    deleted_counts["local"] = len(assignments)
+                    print(f"📄 Deleted {deleted_counts['local']} assignments from local database")
+                except Exception as e:
+                    print(f"❌ Error deleting from local database: {e}")
+                    return 1
+                
+                # Summary
+                print(f"\n🎯 DELETION SUMMARY")
+                print("=" * 30)
+                print(f"📄 Local database: {deleted_counts['local']} deleted")
+                print(f"✅ Todoist: {deleted_counts['todoist']} deleted")
+                print(f"📝 Notion: {deleted_counts['notion']} deleted")
+                print()
+                print("✅ All assignments deleted successfully!")
+                print("💡 Your Gmail emails are completely untouched")
+                print("🔄 Run './deployment/run.sh check' to fetch fresh assignments from Gmail")
+                print("🔄 Run '--scrape-assignments' to fetch fresh assignments from Moodle")
+                
+            except Exception as e:
+                print(f"❌ Error during deletion: {e}")
+                if args.debug:
+                    import traceback
+                    traceback.print_exc()
+                return 1
+            
+            return 0
+            
+        elif args.delete_from:
+            # Selective deletion from specific platform(s)
+            print("\n🗑️ SELECTIVE DELETION")
+            print("=" * 40)
+            
+            # Show what will be deleted based on --delete-from option
+            delete_from = args.delete_from
+            include_local = args.include_local
+            print("⚠️ WARNING: This will delete assignments from:")
+            if include_local:
+                print("  📄 Local database (assignments.json)")
+                print("  🌐 Moodle scraping data (assignments_scraped.json)")
+            if delete_from in ['todoist', 'both']:
+                print("  ✅ Todoist (if configured)")
+            if delete_from in ['notion', 'both']:
+                print("  📝 Notion (if configured)")
+            print("  ✅ Your Gmail emails will NOT be touched!")
+            print("  ✅ Your .env configuration will NOT be touched!")
+            print()
+            
+            if delete_from != 'both':
+                mode_text = f"{delete_from.upper()}"
+                if include_local:
+                    mode_text += " + LOCAL DATABASE"
+                print(f"🎯 SELECTIVE MODE: Only deleting from {mode_text}")
+                print()
+            elif include_local:
+                print("🎯 FULL MODE: Deleting from both platforms + local database")
+                print()
+            
+            # Double confirmation
+            try:
+                response = input("Type 'DELETE' to confirm: ")
+                if response != 'DELETE':
+                    print("❌ Deletion cancelled.")
+                    return 0
+            except KeyboardInterrupt:
+                print("\n❌ Deletion cancelled.")
+                return 0
+            
+            deleted_counts = {"local": 0, "todoist": 0, "notion": 0}
+            
+            try:
+                # Get assignments from both possible sources (Gmail and Moodle scraping)
+                assignments = []
+                source_files = []
+                
+                # Try to load from assignments.json (Gmail source)
+                try:
+                    fetcher = MoodleEmailFetcher()
+                    gmail_assignments = fetcher.load_existing_assignments()
+                    if gmail_assignments:
+                        assignments.extend(gmail_assignments)
+                        source_files.append("assignments.json")
+                        print(f"📧 Loaded {len(gmail_assignments)} assignments from Gmail source")
+                except Exception as e:
+                    logger.debug(f"Could not load from assignments.json: {e}")
+                
+                # Try to load from assignments_scraped.json (Moodle scraping source)
+                try:
+                    import json
+                    import os
+                    scraped_file = "data/assignments_scraped.json"
+                    if os.path.exists(scraped_file):
+                        with open(scraped_file, 'r') as f:
+                            scraped_assignments = json.load(f)
+                        if scraped_assignments:
+                            assignments.extend(scraped_assignments)
+                            source_files.append("assignments_scraped.json")
+                            print(f"🌐 Loaded {len(scraped_assignments)} assignments from Moodle scraping source")
+                except Exception as e:
+                    logger.debug(f"Could not load from assignments_scraped.json: {e}")
+                
+                if not assignments:
+                    print("❌ No assignments found in any data source")
+                    print("💡 Run './deployment/run.sh check' or '--scrape-assignments' first to populate the database")
+                    return 0
+                
+                print(f"\n📋 Found {len(assignments)} total assignments to delete from: {', '.join(source_files)}")
+                
+                if args.verbose:
+                    print("\n📋 Assignments to be deleted:")
+                    for i, assignment in enumerate(assignments, 1):
+                        print(f"   {i}. {assignment.get('title', 'Unknown')}")
+                        print(f"      Course: {assignment.get('course_code', 'Unknown')}")
+                        print(f"      Due: {assignment.get('due_date', 'Unknown')}")
+                    print()
+                
+                # Delete from Todoist first (if configured and requested)
+                if not args.skip_todoist and delete_from in ['todoist', 'both']:
+                    try:
+                        print("✅ Deleting from Todoist...")
+                        todoist = TodoistIntegration()
+                        if todoist.enabled:
+                            for assignment in assignments:
+                                if todoist.delete_assignment_task(assignment):
+                                    deleted_counts["todoist"] += 1
+                                    if args.verbose:
+                                        print(f"   ✅ Deleted from Todoist: {assignment.get('title', 'Unknown')[:50]}")
+                                else:
+                                    if args.verbose:
+                                        print(f"   ⚠️ Not found in Todoist: {assignment.get('title', 'Unknown')[:50]}")
+                        else:
+                            print("⚠️ Todoist integration not configured")
+                    except Exception as e:
+                        print(f"❌ Error deleting from Todoist: {e}")
+                        if args.debug:
+                            import traceback
+                            traceback.print_exc()
+                
+                # Delete from Notion (if configured and requested)
+                if not args.skip_notion and delete_from in ['notion', 'both']:
+                    try:
+                        print("📝 Deleting from Notion...")
+                        notion = NotionIntegration()
+                        if notion.enabled:
+                            for assignment in assignments:
+                                if notion.delete_assignment_page(assignment):
+                                    deleted_counts["notion"] += 1
+                                    if args.verbose:
+                                        print(f"   📝 Deleted from Notion: {assignment.get('title', 'Unknown')[:50]}")
+                                else:
+                                    if args.verbose:
+                                        print(f"   ⚠️ Not found in Notion: {assignment.get('title', 'Unknown')[:50]}")
+                        else:
+                            print("⚠️ Notion integration not configured")
+                    except Exception as e:
+                        print(f"❌ Error deleting from Notion: {e}")
+                        if args.debug:
+                            import traceback
+                            traceback.print_exc()
+                
+                # Delete from local database (if requested)
+                if include_local:
+                    try:
+                        print("📄 Deleting from local database...")
+                        
+                        # Backup current files before deletion
+                        timestamp = int(time.time())
+                        backup_file = f"data/assignments_backup_before_delete_{timestamp}.json"
+                        
+                        try:
+                            with open('data/assignments.json', 'r') as f:
+                                current_assignments = json.load(f)
+                            if current_assignments:
+                                with open(backup_file, 'w') as f:
+                                    json.dump(current_assignments, f, indent=2)
+                                print(f"💾 Backup created: {backup_file}")
+                        except Exception as e:
+                            print(f"⚠️ Warning: Could not create backup: {e}")
+                        
+                        # Clear assignments.json
+                        with open('data/assignments.json', 'w') as f:
+                            json.dump([], f, indent=2)
+                        
+                        # Clear assignments_scraped.json if it exists
+                        scraped_file = "data/assignments_scraped.json"
+                        if os.path.exists(scraped_file):
+                            try:
+                                with open(scraped_file, 'r') as f:
+                                    scraped_assignments = json.load(f)
+                                if scraped_assignments:
+                                    # Backup scraped assignments
+                                    scraped_backup = f"data/assignments_scraped_backup_before_delete_{timestamp}.json"
+                                    with open(scraped_backup, 'w') as f:
+                                        json.dump(scraped_assignments, f, indent=2)
+                                    print(f"💾 Scraped assignments backup created: {scraped_backup}")
+                                    
+                                    # Clear scraped file
+                                    with open(scraped_file, 'w') as f:
+                                        json.dump([], f, indent=2)
+                                    print(f"🌐 Cleared assignments_scraped.json")
+                            except Exception as e:
+                                print(f"⚠️ Warning: Could not backup/clear scraped assignments: {e}")
+                        
+                        # Clear markdown file
+                        with open('data/assignments.md', 'w') as f:
+                            f.write("# Moodle Assignments\n\n")
+                            f.write("| Assignment | Due Date | Course | Status | Added Date |\n")
+                            f.write("|------------|----------|--------|--------|-----------|\n")
+                        
+                        deleted_counts["local"] = len(assignments)
+                        print(f"📄 Deleted {deleted_counts['local']} assignments from local database")
+                    except Exception as e:
+                        print(f"❌ Error deleting from local database: {e}")
+                        return 1
+                else:
+                    print("📄 Local database was already empty")
+                
+                # Summary
+                print(f"\n🎯 DELETION SUMMARY")
+                print("=" * 30)
+                if include_local:
+                    print(f"📄 Local database: {deleted_counts['local']} deleted")
+                else:
+                    print(f"📄 Local database: skipped (not requested)")
+                if delete_from in ['todoist', 'both']:
+                    print(f"✅ Todoist: {deleted_counts['todoist']} deleted")
+                else:
+                    print(f"✅ Todoist: skipped (not requested)")
+                if delete_from in ['notion', 'both']:
+                    print(f"📝 Notion: {deleted_counts['notion']} deleted")
+                else:
+                    print(f"📝 Notion: skipped (not requested)")
+                print()
+                if delete_from == 'both' and include_local:
+                    print("✅ All assignments deleted successfully!")
+                elif delete_from == 'both':
+                    print("✅ Assignments deleted from both platforms successfully!")
+                else:
+                    mode_text = delete_from.upper()
+                    if include_local:
+                        mode_text += " + LOCAL DATABASE"
+                    print(f"✅ Assignments deleted from {mode_text} successfully!")
+                print("💡 Your Gmail emails are completely untouched")
+                print("🔄 Run './deployment/run.sh check' to fetch fresh assignments from Gmail")
+                print("🔄 Run '--scrape-assignments' to fetch fresh assignments from Moodle")
+                
+                # Check for remaining assignments and offer interactive deletion
+                remaining_assignments = check_remaining_assignments_after_deletion(delete_from, include_local, args)
+                if remaining_assignments:
+                    interactive_deletion_menu(remaining_assignments, args)
+                
+            except Exception as e:
+                print(f"❌ Error during deletion: {e}")
+                if args.debug:
+                    import traceback
+                    traceback.print_exc()
+                return 1
+            
             return 0
         
         # Run the main check with enhanced verbose logging

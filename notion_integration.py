@@ -301,13 +301,66 @@ class NotionIntegration:
                     ]
                 }
             
+            # Add course name if available
+            if cleaned_assignment.get('course'):
+                page_data["properties"]["Course Name"] = {
+                    "rich_text": [
+                        {
+                            "text": {
+                                "content": cleaned_assignment.get('course')
+                            }
+                        }
+                    ]
+                }
+            
+            # Add activity type if available (default to Assignment for Gmail data)
+            activity_type = cleaned_assignment.get('activity_type', 'Assignment')
+            if activity_type:
+                page_data["properties"]["Activity Type"] = {
+                    "select": {
+                        "name": activity_type.title()
+                    }
+                }
+            
+            # Add priority (default to Medium for Gmail data)
+            page_data["properties"]["Priority"] = {
+                "select": {
+                    "name": "Medium"  # Default priority
+                }
+            }
+            
             # Add description with task_id for reliable duplicate detection
             description_parts = []
             
-            # Add task_id
+            # Add task_id prominently for duplicate detection
             task_id = cleaned_assignment.get('task_id')
             if task_id:
                 description_parts.append(f"Task ID: {task_id}")
+                # Also add as a separate property for easy filtering
+                page_data["properties"]["Task ID"] = {
+                    "rich_text": [
+                        {
+                            "text": {
+                                "content": task_id
+                            }
+                        }
+                    ]
+                }
+            else:
+                # For Gmail data without task_id, use email_id as fallback
+                email_id = cleaned_assignment.get('email_id')
+                if email_id:
+                    description_parts.append(f"Email ID: {email_id}")
+                    # Add as Task ID property for consistency
+                    page_data["properties"]["Task ID"] = {
+                        "rich_text": [
+                            {
+                                "text": {
+                                    "content": f"email_{email_id}"
+                                }
+                            }
+                        ]
+                    }
             
             # Add source information
             source = cleaned_assignment.get('source', '')
@@ -325,16 +378,14 @@ class NotionIntegration:
                 description_parts.append(f"Email Date: {email_date}")
             
             # Add the description if we have any content
+            # Note: Only add if Description property exists in database
             if description_parts:
-                page_data["properties"]["Description"] = {
-                    "rich_text": [
-                        {
-                            "text": {
-                                "content": " | ".join(description_parts)
-                            }
-                        }
-                    ]
-                }
+                # Store description parts in the Task ID property for now
+                # This ensures we have the metadata for duplicate detection
+                if 'Task ID' in page_data["properties"]:
+                    # Append description to existing Task ID content
+                    existing_content = page_data["properties"]["Task ID"]["rich_text"][0]["text"]["content"]
+                    page_data["properties"]["Task ID"]["rich_text"][0]["text"]["content"] = f"{existing_content} | {' | '.join(description_parts)}"
             
             # Make the API request with timeout and retries
             max_retries = 3
@@ -407,16 +458,27 @@ class NotionIntegration:
             logger.info("No assignments to sync")
             return 0
         
+        # Filter out completed assignments
+        pending_assignments = [a for a in assignments if a.get('status') != 'Completed']
+        completed_count = len(assignments) - len(pending_assignments)
+        
+        if completed_count > 0:
+            logger.info(f"Filtered out {completed_count} completed assignments (will not sync to Notion)")
+        
+        if not pending_assignments:
+            logger.info("No pending assignments to sync")
+            return 0
+        
         success_count = 0
         duplicate_count = 0
         error_count = 0
         
-        logger.info(f"Starting sync of {len(assignments)} assignments to Notion")
+        logger.info(f"Starting sync of {len(pending_assignments)} pending assignments to Notion")
         
-        for i, assignment in enumerate(assignments, 1):
+        for i, assignment in enumerate(pending_assignments, 1):
             try:
                 formatted_title = self.format_task_content(assignment)
-                logger.info(f"Processing assignment {i}/{len(assignments)}: {formatted_title}")
+                logger.info(f"Processing assignment {i}/{len(pending_assignments)}: {formatted_title}")
                 
                 # Check if assignment already exists
                 if self.check_assignment_exists(assignment):
@@ -504,16 +566,21 @@ class NotionIntegration:
             logger.warning("Invalid assignment data provided")
             return False
         
-        # Get task_id for reliable duplicate detection
+        # Get task_id or email_id for reliable duplicate detection
         task_id = assignment.get('task_id')
-        if not task_id:
-            logger.warning(f"No task_id found for assignment: {assignment.get('title')}")
+        email_id = assignment.get('email_id')
+        
+        if not task_id and not email_id:
+            logger.warning(f"No task_id or email_id found for assignment: {assignment.get('title')}")
             return False
+        
+        # Use task_id if available, otherwise use email_id
+        identifier = task_id if task_id else f"email_{email_id}"
         
         try:
             url = f'https://api.notion.com/v1/databases/{self.database_id}/query'
             
-            logger.debug(f"Checking Notion for assignment with task_id: '{task_id}'")
+            logger.debug(f"Checking Notion for assignment with identifier: '{identifier}'")
             
             # Get all entries to check against
             query_data = {
@@ -526,12 +593,23 @@ class NotionIntegration:
                 results = response.json().get('results', [])
                 logger.debug(f"Found {len(results)} entries in Notion database")
                 
-                # Check each result for a matching assignment by task_id
+                # Check each result for a matching assignment by identifier
                 for result in results:
                     properties = result.get('properties', {})
                     
-                    # Look for task_id in the description or notes field
-                    existing_task_id = None
+                    # Look for identifier in the dedicated Task ID property (new schema)
+                    if 'Task ID' in properties:
+                        task_id_prop = properties['Task ID']
+                        if task_id_prop.get('type') == 'rich_text':
+                            rich_text_array = task_id_prop.get('rich_text', [])
+                            if rich_text_array:
+                                existing_identifier = rich_text_array[0].get('plain_text', '').strip()
+                                if existing_identifier == identifier:
+                                    logger.debug(f"Assignment with identifier '{identifier}' exists in Notion (Task ID property)")
+                                    return True
+                    
+                    # Fallback: Look for identifier in the description field (old schema compatibility)
+                    existing_identifier = None
                     for desc_prop in ['Description', 'Notes', 'Additional Info']:
                         if desc_prop in properties:
                             desc_data = properties[desc_prop]
@@ -539,18 +617,22 @@ class NotionIntegration:
                                 rich_text_array = desc_data.get('rich_text', [])
                                 if rich_text_array:
                                     desc_text = rich_text_array[0].get('plain_text', '').lower()
-                                    # Look for task_id pattern
+                                    # Look for task_id or email_id pattern
                                     task_id_match = re.search(r'task id: (\w+)', desc_text)
+                                    email_id_match = re.search(r'email id: (\w+)', desc_text)
                                     if task_id_match:
-                                        existing_task_id = task_id_match.group(1)
+                                        existing_identifier = task_id_match.group(1)
+                                        break
+                                    elif email_id_match:
+                                        existing_identifier = f"email_{email_id_match.group(1)}"
                                         break
                     
-                    # If we found a matching task_id, it's definitely the same assignment
-                    if existing_task_id and existing_task_id == task_id:
-                        logger.debug(f"Assignment with task_id '{task_id}' exists in Notion")
+                    # If we found a matching identifier, it's definitely the same assignment
+                    if existing_identifier and existing_identifier == identifier:
+                        logger.debug(f"Assignment with identifier '{identifier}' exists in Notion (description fallback)")
                         return True
                 
-                logger.debug(f"Assignment with task_id '{task_id}' not found in Notion")
+                logger.debug(f"Assignment with identifier '{identifier}' not found in Notion")
                 return False
                 
             elif response.status_code == 404:
