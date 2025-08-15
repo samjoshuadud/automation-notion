@@ -3543,6 +3543,10 @@ class MoodleDirectScraper:
                 if modtype == 'url' and re.search(
     r'\b(quiz|exam|test)\b', raw_title, re.IGNORECASE):
                     modtype = 'quiz_link'
+                
+                # Extract completion status
+                completion_status = self._extract_completion_status(cont)
+                
                 assignment = {
     'title': formatted.get('display') or raw_title,
     'title_normalized': formatted.get('normalized') or raw_title.lower(),
@@ -3551,7 +3555,7 @@ class MoodleDirectScraper:
     'opening_date': opening_date or 'No opening date',
     'course': course.get('name'),
     'course_code': course_code,
-    'status': 'Pending',
+    'status': completion_status,
     'source': 'scrape',
     'added_date': datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
     'activity_type': (
@@ -3567,6 +3571,90 @@ class MoodleDirectScraper:
         len(results)} candidate items before merge for course {
             course.get('code')}")
         return results
+
+    def _extract_completion_status(self, cont) -> str:
+        """Extract completion status from activity container"""
+        try:
+            # Look for completion info region
+            completion_info = cont.select_one('[data-region="completion-info"]')
+            if not completion_info:
+                return 'Pending'
+            
+            # Look for the completion button
+            completion_button = completion_info.select_one('button[data-action="toggle-manual-completion"]')
+            if not completion_button:
+                return 'Pending'
+            
+            # Check the button text and attributes to determine status
+            button_text = completion_button.get_text(strip=True).lower()
+            toggle_type = completion_button.get('data-toggletype', '')
+            
+            # Check if it's marked as done - prioritize "mark as done" over "done"
+            if 'mark as done' in button_text or 'manual:mark' in toggle_type:
+                return 'Pending'
+            elif 'done' in button_text or 'undo' in toggle_type:
+                return 'Completed'
+            
+            # Fallback: check button title attribute
+            button_title = completion_button.get('title', '').lower()
+            if 'marked as done' in button_title or 'press to undo' in button_title:
+                return 'Completed'
+            elif 'mark as done' in button_title:
+                return 'Pending'
+            
+            return 'Pending'
+            
+        except Exception as e:
+            logger.debug(f"Error extracting completion status: {e}")
+            return 'Pending'
+
+    def _extract_completion_status_regex(self, html_block: str) -> str:
+        """Extract completion status from HTML block using regex patterns"""
+        try:
+            # Look for completion info region
+            completion_pattern = r'<div[^>]*data-region="completion-info"[^>]*>.*?</div>'
+            completion_match = re.search(completion_pattern, html_block, re.DOTALL | re.IGNORECASE)
+            if not completion_match:
+                return 'Pending'
+            
+            completion_html = completion_match.group(0)
+            
+            # Look for the completion button
+            button_pattern = r'<button[^>]*data-action="toggle-manual-completion"[^>]*>.*?</button>'
+            button_match = re.search(button_pattern, completion_html, re.DOTALL | re.IGNORECASE)
+            if not button_match:
+                return 'Pending'
+            
+            button_html = button_match.group(0)
+            
+            # Check button text
+            button_text = re.sub(r'<[^>]+>', '', button_html).lower().strip()
+            
+            # Check data-toggletype attribute
+            toggle_match = re.search(r'data-toggletype="([^"]*)"', button_html, re.IGNORECASE)
+            toggle_type = toggle_match.group(1) if toggle_match else ''
+            
+            # Check title attribute
+            title_match = re.search(r'title="([^"]*)"', button_html, re.IGNORECASE)
+            button_title = title_match.group(1).lower() if title_match else ''
+            
+            # Determine status based on patterns - prioritize "mark as done" over "done"
+            if 'mark as done' in button_text or 'manual:mark' in toggle_type:
+                return 'Pending'
+            elif 'done' in button_text or 'undo' in toggle_type:
+                return 'Completed'
+            
+            # Fallback: check button title attribute
+            if 'marked as done' in button_title or 'press to undo' in button_title:
+                return 'Completed'
+            elif 'mark as done' in button_title:
+                return 'Pending'
+            
+            return 'Pending'
+            
+        except Exception as e:
+            logger.debug(f"Error extracting completion status with regex: {e}")
+            return 'Pending'
 
     def _extract_dates_from_region(
         self, dates_region, grid) -> Tuple[Optional[str], Optional[str]]:
@@ -3724,6 +3812,9 @@ class MoodleDirectScraper:
                 course_code = course.get('code')
                 formatted = self._format_assignment_title(
                     raw_title, course_code)
+                # Extract completion status from li block
+                completion_status = self._extract_completion_status_regex(li_block)
+                
                 assignment = {
     'title': formatted.get('display') or raw_title,
     'title_normalized': formatted.get('normalized') or raw_title.lower(),
@@ -3733,7 +3824,7 @@ class MoodleDirectScraper:
         'opening_date': opening_date or 'No opening date',
         'course': course.get('name'),
         'course_code': course_code,
-        'status': 'Pending',
+        'status': completion_status,
         'source': 'scrape',
         'added_date': datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
         'origin_url': link,
@@ -3795,6 +3886,9 @@ class MoodleDirectScraper:
                     if modtype == 'url' and re.search(
     r'\b(quiz|exam|test)\b', raw_title, re.IGNORECASE):
                         modtype = 'quiz_link'
+                    # Extract completion status from div block
+                    completion_status = self._extract_completion_status_regex(block)
+                    
                     assignment = {
     'title': formatted.get('display') or raw_title,
     'title_normalized': formatted.get('normalized') or raw_title.lower(),
@@ -3803,7 +3897,7 @@ class MoodleDirectScraper:
     'opening_date': opening_date or 'No opening date',
     'course': course.get('name'),
     'course_code': course_code,
-    'status': 'Pending',
+    'status': completion_status,
     'source': 'scrape',
     'added_date': datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
     'origin_url': link,
