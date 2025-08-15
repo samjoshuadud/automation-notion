@@ -191,7 +191,8 @@ python run_fetcher.py --verbose
 │   └── assignment_archive.py    # Archive management
 │
 ├── 📂 Data & Logs
-│   ├── data/assignments.json    # Your assignments
+│   ├── data/assignments.json    # Your assignments (main database)
+│   ├── data/assignments_scraped.json # Scraped Moodle data
 │   ├── data/assignments.md      # Readable summary
 │   └── logs/moodle_fetcher.log  # System logs
 │
@@ -234,6 +235,20 @@ python run_fetcher.py --days 30 --notion --todoist
 
 # Export assignments for backup
 cp data/assignments.json backups/assignments_$(date +%Y%m%d).json
+```
+
+### Scraped-Only Mode (No Gmail)
+
+If you're only using Moodle scraping and want to disable Gmail fetching:
+
+```bash
+# Switch to scraped-only mode
+python switch_to_scraped_only.py
+
+# This will:
+# - Use assignments_scraped.json as your data source
+# - Stop automatic merging with assignments.json
+# - Keep assignments.json as your main database
 ```
 
 ### Custom Scripts

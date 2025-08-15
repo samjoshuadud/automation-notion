@@ -183,10 +183,15 @@ class TodoistIntegration:
         if source:
             description_parts.append(f"📧 Source: {source}")
         
+        # Add task_id for reliable duplicate detection
+        task_id = assignment.get('task_id', '')
+        if task_id:
+            description_parts.append(f"🔗 Task ID: {task_id}")
+        
         # Add email information for tracking
         email_id = assignment.get('email_id', '')
         if email_id:
-            description_parts.append(f"🔗 Email ID: {email_id}")
+            description_parts.append(f"📧 Email ID: {email_id}")
         
         email_date = assignment.get('email_date', '')
         if email_date:
@@ -236,48 +241,33 @@ class TodoistIntegration:
             return None
     
     def task_exists_in_todoist(self, assignment: Dict) -> Optional[str]:
-        """Check if task already exists in Todoist using the same logic as local storage"""
+        """Check if task already exists in Todoist using task_id for reliable duplicate detection"""
         if not self.enabled:
             return None
             
         try:
-            # Search for tasks with similar content
+            # Get task_id from assignment
+            task_id = assignment.get('task_id')
+            if not task_id:
+                logger.debug(f"No task_id found for assignment: {assignment.get('title', 'Unknown')}")
+                return None
+            
+            # Search for tasks with the same task_id in description
             url = f'{self.base_url}/tasks'
             response = requests.get(url, headers=self.headers, timeout=10)
             
             if response.status_code == 200:
                 tasks = response.json()
                 
-                # Use the same duplicate checking logic as local storage
-                assignment_title_normalized = assignment.get('title_normalized', '').lower()
-                assignment_email_id = assignment.get('email_id', '')
-                
                 for task in tasks:
-                    task_content = task['content'].lower()
                     task_desc = task.get('description', '').lower()
                     
-                    # Check 1: Email ID in description (most reliable)
-                    if assignment_email_id and f"email id: {assignment_email_id}" in task_desc:
-                        logger.debug(f"Found existing task by email ID: {task['content']}")
+                    # Check for task_id in description (most reliable)
+                    if f"task id: {task_id}" in task_desc:
+                        logger.debug(f"Found existing task by task_id: {task['content']} (ID: {task_id})")
                         return task['id']
-                    
-                    # Check 2: Normalized title matching
-                    if assignment_title_normalized and assignment_title_normalized in task_content:
-                        logger.debug(f"Found existing task by title: {task['content']}")
-                        return task['id']
-                    
-                    # Check 3: Fuzzy matching for similar content
-                    if assignment_title_normalized:
-                        # Extract course code and activity info for better matching
-                        assignment_parts = assignment_title_normalized.split(' - ')
-                        if len(assignment_parts) >= 2:
-                            course_code = assignment_parts[0].strip()
-                            activity_info = assignment_parts[1].strip()
-                            
-                            if course_code in task_content and activity_info in task_content:
-                                logger.debug(f"Found existing task by fuzzy match: {task['content']}")
-                                return task['id']
                         
+                logger.debug(f"No existing task found with task_id: {task_id}")
                 return None
             else:
                 logger.error(f"Failed to get tasks: {response.status_code} - {response.text}")
@@ -395,14 +385,27 @@ class TodoistIntegration:
             logger.warning("No valid assignments found to sync")
             return 0
         
-        # Filter out assignments already completed in Todoist
-        filtered_assignments = self.prevent_duplicate_sync(valid_assignments)
+        # Filter out completed assignments and duplicates
+        filtered_assignments = []
+        for assignment in valid_assignments:
+            # Skip completed assignments
+            if assignment.get('status') == 'Completed':
+                logger.info(f"Skipping completed assignment: {assignment.get('title')}")
+                continue
+            filtered_assignments.append(assignment)
         
-        if len(filtered_assignments) < len(assignments):
-            skipped = len(assignments) - len(filtered_assignments)
-            logger.info(f"Skipped {skipped} already completed assignments")
+        if len(filtered_assignments) < len(valid_assignments):
+            skipped = len(valid_assignments) - len(filtered_assignments)
+            logger.info(f"Skipped {skipped} completed assignments")
         
-        if not filtered_assignments:
+        # Further filter out assignments already completed in Todoist
+        final_assignments = self.prevent_duplicate_sync(filtered_assignments)
+        
+        if len(final_assignments) < len(filtered_assignments):
+            skipped = len(filtered_assignments) - len(final_assignments)
+            logger.info(f"Skipped {skipped} already completed assignments in Todoist")
+        
+        if not final_assignments:
             logger.info("No new assignments to sync after filtering")
             return 0
         
@@ -413,7 +416,7 @@ class TodoistIntegration:
             logger.error("Could not get/create Todoist project for assignments")
             return 0
         
-        for assignment in filtered_assignments:
+        for assignment in final_assignments:
             if self.create_assignment_task(assignment, project_id):
                 synced_count += 1
             
@@ -441,10 +444,18 @@ class TodoistIntegration:
                 assignments = []
                 
                 for task in tasks:
-                    # Extract email_id from description for matching
+                    # Extract task_id and email_id from description for matching
+                    task_id = None
                     email_id = None
                     description = task.get('description', '')
-                    email_match = re.search(r'🔗 Email ID: (\w+)', description)
+                    
+                    # Extract task_id (new primary identifier)
+                    task_id_match = re.search(r'🔗 Task ID: (\w+)', description)
+                    if task_id_match:
+                        task_id = task_id_match.group(1)
+                    
+                    # Extract email_id (fallback for legacy tasks)
+                    email_match = re.search(r'📧 Email ID: (\w+)', description)
                     if email_match:
                         email_id = email_match.group(1)
                     
@@ -458,7 +469,8 @@ class TodoistIntegration:
                         'description': description,
                         'created_at': task.get('created_at'),
                         'url': task.get('url'),
-                        'email_id': email_id  # For matching with local assignments
+                        'task_id': task_id,  # Primary identifier for matching
+                        'email_id': email_id  # Fallback for legacy tasks
                     }
                     assignments.append(assignment)
                 
@@ -503,30 +515,35 @@ class TodoistIntegration:
                 logger.info("No assignments found in Todoist for status sync")
                 return {'updated': 0, 'completed_in_todoist': []}
             
-            # Create lookup dictionary for Todoist assignments
+            # Create lookup dictionary for Todoist assignments using task_id
             todoist_lookup = {}
             for task in todoist_assignments:
+                task_id = task.get('task_id')
+                if task_id:
+                    todoist_lookup[task_id] = task
+                    logger.debug(f"Indexed Todoist task by task_id: {task_id}")
+                # Fallback to email_id for legacy tasks
                 email_id = task.get('email_id')
                 if email_id:
-                    todoist_lookup[email_id] = task
-                # Also index by normalized title for fallback
-                title_normalized = task['title'].lower()
-                todoist_lookup[f"title_{title_normalized}"] = task
+                    todoist_lookup[f"email_{email_id}"] = task
+                    logger.debug(f"Indexed Todoist task by email_id: {email_id}")
             
             updated_count = 0
             completed_assignments = []
             
             # Check each local assignment against Todoist
             for assignment in valid_assignments:
+                task_id = assignment.get('task_id', '')
                 email_id = assignment.get('email_id', '')
-                title_normalized = assignment.get('title_normalized', '').lower()
                 
-                # Try to find matching Todoist task
+                # Try to find matching Todoist task by task_id first, then email_id
                 todoist_task = None
-                if email_id and email_id in todoist_lookup:
-                    todoist_task = todoist_lookup[email_id]
-                elif f"title_{title_normalized}" in todoist_lookup:
-                    todoist_task = todoist_lookup[f"title_{title_normalized}"]
+                if task_id and task_id in todoist_lookup:
+                    todoist_task = todoist_lookup[task_id]
+                    logger.debug(f"Found Todoist task by task_id: {task_id}")
+                elif email_id and f"email_{email_id}" in todoist_lookup:
+                    todoist_task = todoist_lookup[f"email_{email_id}"]
+                    logger.debug(f"Found Todoist task by email_id: {email_id}")
                 
                 if todoist_task and todoist_task['completed']:
                     # Task is completed in Todoist, update local status
@@ -535,7 +552,7 @@ class TodoistIntegration:
                         assignment['last_updated'] = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
                         updated_count += 1
                         completed_assignments.append(assignment['title'])
-                        logger.info(f"Updated status to Completed: {assignment['title']}")
+                        logger.info(f"Updated status to Completed: {assignment['title']} (task_id: {task_id})")
             
             return {
                 'updated': updated_count,
@@ -559,25 +576,25 @@ class TodoistIntegration:
             if not completed_todoist:
                 return assignments_to_sync
             
-            # Create lookup for completed tasks
+            # Create lookup for completed tasks using task_id
             completed_lookup = set()
             for task in completed_todoist:
-                email_id = task.get('email_id')
-                if email_id:
-                    completed_lookup.add(email_id)
-                # Also add normalized title
-                title_normalized = task['title'].lower()
-                completed_lookup.add(title_normalized)
+                # Extract task_id from description
+                task_desc = task.get('description', '').lower()
+                task_id_match = re.search(r'task id: (\w+)', task_desc)
+                if task_id_match:
+                    task_id = task_id_match.group(1)
+                    completed_lookup.add(task_id)
+                    logger.debug(f"Added completed task_id to lookup: {task_id}")
             
             # Filter out assignments that are completed in Todoist
             filtered_assignments = []
             for assignment in assignments_to_sync:
-                email_id = assignment.get('email_id', '')
-                title_normalized = assignment.get('title_normalized', '').lower()
+                task_id = assignment.get('task_id', '')
                 
                 # Skip if already completed in Todoist
-                if email_id in completed_lookup or title_normalized in completed_lookup:
-                    logger.info(f"Skipping already completed task: {assignment.get('title')}")
+                if task_id and task_id in completed_lookup:
+                    logger.info(f"Skipping already completed task: {assignment.get('title')} (task_id: {task_id})")
                     continue
                     
                 filtered_assignments.append(assignment)

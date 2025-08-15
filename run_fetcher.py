@@ -483,8 +483,32 @@ def main():
                     if args.scrape_assignments or args.scrape_forums:
                         try:
                             print("\n🚀 Scraping Moodle now (auto-trigger)...")
-                            items = scraper.scrape_all_due_items(auto_merge=True)
-                            print(f"✅ Scrape complete: {len(items)} items processed (merged).")
+                            items = scraper.scrape_all_due_items(auto_merge=False)
+                            print(f"✅ Scrape complete: {len(items)} items processed (saved to scraped file).")
+                            
+                            # Sync to Todoist if requested
+                            if args.todoist and not args.skip_todoist:
+                                try:
+                                    print(f"\n✅ TODOIST SYNC")
+                                    print("=" * 20)
+                                    print("🔗 Initializing Todoist integration...")
+                                    
+                                    todoist = TodoistIntegration()
+                                    if todoist.enabled:
+                                        print(f"📊 Syncing {len(items)} scraped assignments to Todoist...")
+                                        todoist_count = todoist.sync_assignments(items)
+                                        print(f"✅ Synced {todoist_count} assignments to Todoist!")
+                                        
+                                        if args.verbose:
+                                            if todoist_count != len(items):
+                                                print(f"   ⚠️ Note: {len(items) - todoist_count} assignments may have been skipped (already exist)")
+                                            else:
+                                                print("   ✅ All assignments synced successfully")
+                                    else:
+                                        print("⚠️ Todoist integration not configured")
+                                except Exception as e:
+                                    print(f"⚠️ Todoist sync failed: {e}")
+                                    logger.error(f"Todoist sync failed after scraping: {e}")
                         except Exception as e:
                             print(f"❌ Scrape failed: {e}")
                     else:
@@ -492,8 +516,32 @@ def main():
                         if choice in ['y', 'yes']:
                             try:
                                 print("\n🚀 Scraping Moodle now...")
-                                items = scraper.scrape_all_due_items(auto_merge=True)
-                                print(f"✅ Scrape complete: {len(items)} items processed (merged).")
+                                items = scraper.scrape_all_due_items(auto_merge=False)
+                                print(f"✅ Scrape complete: {len(items)} items processed (saved to scraped file).")
+                                
+                                # Sync to Todoist if requested
+                                if args.todoist and not args.skip_todoist:
+                                    try:
+                                        print(f"\n✅ TODOIST SYNC")
+                                        print("=" * 20)
+                                        print("🔗 Initializing Todoist integration...")
+                                        
+                                        todoist = TodoistIntegration()
+                                        if todoist.enabled:
+                                            print(f"📊 Syncing {len(items)} scraped assignments to Todoist...")
+                                            todoist_count = todoist.sync_assignments(items)
+                                            print(f"✅ Synced {todoist_count} assignments to Todoist!")
+                                            
+                                            if args.verbose:
+                                                if todoist_count != len(items):
+                                                    print(f"   ⚠️ Note: {len(items) - todoist_count} assignments may have been skipped (already exist)")
+                                                else:
+                                                    print("   ✅ All assignments synced successfully")
+                                        else:
+                                            print("⚠️ Todoist integration not configured")
+                                    except Exception as e:
+                                        print(f"⚠️ Todoist sync failed: {e}")
+                                        logger.error(f"Todoist sync failed after scraping: {e}")
                             except Exception as e:
                                 print(f"❌ Scrape failed: {e}")
                 else:
@@ -515,8 +563,32 @@ def main():
                             if args.scrape_assignments or args.scrape_forums:
                                 try:
                                     print("\n🚀 Scraping Moodle now (auto-trigger)...")
-                                    items = scraper.scrape_all_due_items(auto_merge=True)
-                                    print(f"✅ Scrape complete: {len(items)} items processed (merged).")
+                                    items = scraper.scrape_all_due_items(auto_merge=False)
+                                    print(f"✅ Scrape complete: {len(items)} items processed (saved to scraped file).")
+                                    
+                                    # Sync to Todoist if requested
+                                    if args.todoist and not args.skip_todoist:
+                                        try:
+                                            print(f"\n✅ TODOIST SYNC")
+                                            print("=" * 20)
+                                            print("🔗 Initializing Todoist integration...")
+                                            
+                                            todoist = TodoistIntegration()
+                                            if todoist.enabled:
+                                                print(f"📊 Syncing {len(items)} scraped assignments to Todoist...")
+                                                todoist_count = todoist.sync_assignments(items)
+                                                print(f"✅ Synced {todoist_count} assignments to Todoist!")
+                                                
+                                                if args.verbose:
+                                                    if todoist_count != len(items):
+                                                        print(f"   ⚠️ Note: {len(items) - todoist_count} assignments may have been skipped (already exist)")
+                                                    else:
+                                                        print("   ✅ All assignments synced successfully")
+                                            else:
+                                                print("⚠️ Todoist integration not configured")
+                                        except Exception as e:
+                                            print(f"⚠️ Todoist sync failed: {e}")
+                                            logger.error(f"Todoist sync failed after scraping: {e}")
                                 except Exception as e:
                                     print(f"❌ Scrape failed: {e}")
                             else:
@@ -524,8 +596,32 @@ def main():
                                 if choice2 in ['y', 'yes']:
                                     try:
                                         print("\n🚀 Scraping Moodle now...")
-                                        items = scraper.scrape_all_due_items(auto_merge=True)
-                                        print(f"✅ Scrape complete: {len(items)} items processed (merged).")
+                                        items = scraper.scrape_all_due_items(auto_merge=False)
+                                        print(f"✅ Scrape complete: {len(items)} items processed (saved to scraped file).")
+                                        
+                                        # Sync to Todoist if requested
+                                        if args.todoist and not args.skip_todoist:
+                                            try:
+                                                print(f"\n✅ TODOIST SYNC")
+                                                print("=" * 20)
+                                                print("🔗 Initializing Todoist integration...")
+                                                
+                                                todoist = TodoistIntegration()
+                                                if todoist.enabled:
+                                                    print(f"📊 Syncing {len(items)} scraped assignments to Todoist...")
+                                                    todoist_count = todoist.sync_assignments(items)
+                                                    print(f"✅ Synced {todoist_count} assignments to Todoist!")
+                                                    
+                                                    if args.verbose:
+                                                        if todoist_count != len(items):
+                                                            print(f"   ⚠️ Note: {len(items) - todoist_count} assignments may have been skipped (already exist)")
+                                                        else:
+                                                            print("   ✅ All assignments synced successfully")
+                                                else:
+                                                    print("⚠️ Todoist integration not configured")
+                                            except Exception as e:
+                                                print(f"⚠️ Todoist sync failed: {e}")
+                                                logger.error(f"Todoist sync failed after scraping: {e}")
                                     except Exception as e:
                                         print(f"❌ Scrape failed: {e}")
                         else:
@@ -745,6 +841,7 @@ def main():
         print("=" * 50)
         print("⚠️ WARNING: This will permanently delete:")
         print("  📄 All assignment data (assignments.json)")
+        print("  🌐 All Moodle scraping data (assignments_scraped.json)")
         print("  📋 Assignment markdown file (assignments.md)")
         print("  📦 Archive files (assignments_archive.json)")
         print("  💾 All backup files")
@@ -831,9 +928,10 @@ def main():
             print("⚙️ Your .env configuration is preserved")
             print()
             print("💡 Next steps:")
-            print("  1. Run './deployment/run.sh check' to fetch assignments")
-            print("  2. Run './deployment/run.sh notion' to sync to Notion")
-            print("  3. Run './deployment/run.sh todoist' to sync to Todoist")
+            print("  1. Run './deployment/run.sh check' to fetch assignments from Gmail")
+            print("  2. Run '--scrape-assignments' to fetch assignments from Moodle")
+            print("  3. Run './deployment/run.sh notion' to sync to Notion")
+            print("  4. Run './deployment/run.sh todoist' to sync to Todoist")
             print()
             
         except Exception as e:
@@ -855,6 +953,7 @@ def main():
         print("⚠️ WARNING: This will delete assignments from:")
         if include_local or delete_from == 'both':
             print("  📄 Local database (assignments.json)")
+            print("  🌐 Moodle scraping data (assignments_scraped.json)")
         if delete_from in ['todoist', 'both']:
             print("  ✅ Todoist (if configured)")
         if delete_from in ['notion', 'both']:
@@ -886,16 +985,42 @@ def main():
         deleted_counts = {"local": 0, "todoist": 0, "notion": 0}
         
         try:
-            # Get assignments from local database as the authoritative source
-            fetcher = MoodleEmailFetcher()
-            assignments = fetcher.load_existing_assignments()
+            # Get assignments from both possible sources (Gmail and Moodle scraping)
+            assignments = []
+            source_files = []
+            
+            # Try to load from assignments.json (Gmail source)
+            try:
+                fetcher = MoodleEmailFetcher()
+                gmail_assignments = fetcher.load_existing_assignments()
+                if gmail_assignments:
+                    assignments.extend(gmail_assignments)
+                    source_files.append("assignments.json")
+                    print(f"📧 Loaded {len(gmail_assignments)} assignments from Gmail source")
+            except Exception as e:
+                logger.debug(f"Could not load from assignments.json: {e}")
+            
+            # Try to load from assignments_scraped.json (Moodle scraping source)
+            try:
+                import json
+                import os
+                scraped_file = "data/assignments_scraped.json"
+                if os.path.exists(scraped_file):
+                    with open(scraped_file, 'r') as f:
+                        scraped_assignments = json.load(f)
+                    if scraped_assignments:
+                        assignments.extend(scraped_assignments)
+                        source_files.append("assignments_scraped.json")
+                        print(f"🌐 Loaded {len(scraped_assignments)} assignments from Moodle scraping source")
+            except Exception as e:
+                logger.debug(f"Could not load from assignments_scraped.json: {e}")
             
             if not assignments:
-                print("❌ No assignments found in local database")
-                print("💡 Run './deployment/run.sh check' first to populate the database")
+                print("❌ No assignments found in any data source")
+                print("💡 Run './deployment/run.sh check' or '--scrape-assignments' first to populate the database")
                 return 0
             
-            print(f"\n� Found {len(assignments)} assignments to delete from local database")
+            print(f"\n� Found {len(assignments)} total assignments to delete from: {', '.join(source_files)}")
             
             if args.verbose:
                 print("\n📋 Assignments to be deleted:")
@@ -974,9 +1099,29 @@ def main():
                             json.dump(local_assignments, f, indent=2)
                         print(f"💾 Backup created: {backup_file}")
                         
-                        # Clear assignments
+                        # Clear assignments.json
                         with open('data/assignments.json', 'w') as f:
                             json.dump([], f, indent=2)
+                        
+                        # Clear assignments_scraped.json if it exists
+                        scraped_file = "data/assignments_scraped.json"
+                        if os.path.exists(scraped_file):
+                            try:
+                                with open(scraped_file, 'r') as f:
+                                    scraped_assignments = json.load(f)
+                                if scraped_assignments:
+                                    # Backup scraped assignments
+                                    scraped_backup = f"data/assignments_scraped_backup_before_delete_{int(time.time())}.json"
+                                    with open(scraped_backup, 'w') as f:
+                                        json.dump(scraped_assignments, f, indent=2)
+                                    print(f"💾 Scraped assignments backup created: {scraped_backup}")
+                                    
+                                    # Clear scraped file
+                                    with open(scraped_file, 'w') as f:
+                                        json.dump([], f, indent=2)
+                                    print(f"🌐 Cleared assignments_scraped.json")
+                            except Exception as e:
+                                print(f"⚠️ Warning: Could not backup/clear scraped assignments: {e}")
                         
                         # Clear markdown file
                         with open('data/assignments.md', 'w') as f:
@@ -1021,7 +1166,8 @@ def main():
                     mode_text += " + LOCAL DATABASE"
                 print(f"✅ Assignments deleted from {mode_text} successfully!")
             print("💡 Your Gmail emails are completely untouched")
-            print("🔄 Run './deployment/run.sh check' to fetch fresh assignments")
+            print("🔄 Run './deployment/run.sh check' to fetch fresh assignments from Gmail")
+            print("🔄 Run '--scrape-assignments' to fetch fresh assignments from Moodle")
             
             # Check for remaining assignments and offer interactive deletion
             remaining_assignments = check_remaining_assignments_after_deletion(delete_from, include_local, args)
@@ -1150,6 +1296,14 @@ def main():
             
             if args.verbose:
                 print("\n🎯 All connection tests completed!")
+            return 0
+        
+        # Check if we should skip Gmail fetching (when scraping is requested)
+        if args.scrape_assignments or args.scrape_forums:
+            print(f"\n🚀 MOODLE SCRAPING MODE")
+            print("=" * 40)
+            print("⏭️ Skipping Gmail fetching (scraping mode enabled)")
+            print("💡 Use --login-type to check Moodle login status and scrape")
             return 0
         
         # Run the main check with enhanced verbose logging

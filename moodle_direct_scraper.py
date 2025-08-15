@@ -3090,7 +3090,7 @@ class MoodleDirectScraper:
                     return
                 logger.info("🚀 Starting automatic scrape of due items...") if not self.auto_scrape_background else logger.info(
                     "🚀 (Background) Starting automatic scrape of due items...")
-                self.scrape_all_due_items(auto_merge=True)
+                self.scrape_all_due_items(auto_merge=False)
             except Exception as e:
                 logger.warning(f"Automatic scrape failed: {e}")
             finally:
@@ -4278,8 +4278,8 @@ class MoodleDirectScraper:
         return existing, new_count, updated
 
     # ---------------- Public Convenience ---------------- #
-    def manual_scrape(self, merge: bool = True):
-        items = self.scrape_all_due_items(auto_merge=merge)
+    def manual_scrape(self, merge: bool = False):
+        items = self.scrape_all_due_items(auto_merge=False)
         return items
 
     def check_login_status(self) -> Dict[str, any]:
