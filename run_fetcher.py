@@ -479,8 +479,8 @@ def main():
                     print("✅ Status: LOGGED IN (existing session active)")
                     print(f"🌐 Moodle URL: {status['moodle_url']}")
                     print("🎉 Ready to scrape Moodle content!")
-                    # If user passed scrape flags, run automatically; otherwise prompt
-                    if args.scrape_assignments or args.scrape_forums:
+                    # If user passed sync flags, run automatically; otherwise prompt
+                    if args.sync_assignments or args.scrape_forums:
                         try:
                             print("\n🚀 Scraping Moodle now (auto-trigger)...")
                             items = scraper.scrape_all_due_items(auto_merge=False)
@@ -559,8 +559,8 @@ def main():
                         
                         if scraper.interactive_login(timeout_minutes=args.login_timeout):
                             print("✅ Login successful (session saved). You can now scrape Moodle content.")
-                            # After successful login, auto-scrape if flags provided else prompt
-                            if args.scrape_assignments or args.scrape_forums:
+                            # After successful login, auto-sync if flags provided else prompt
+                            if args.sync_assignments or args.scrape_forums:
                                 try:
                                     print("\n🚀 Scraping Moodle now (auto-trigger)...")
                                     items = scraper.scrape_all_due_items(auto_merge=False)
