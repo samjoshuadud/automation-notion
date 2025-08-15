@@ -3045,6 +3045,9 @@ class MoodleDirectScraper:
             logger.info(
                 "ℹ️ Auto-scrape enabled in non-headless mode (override default).")
 
+        # Initialize filtered items summary for logging
+        self.filtered_items_summary = []
+
     # ---------------- Internal Helpers ---------------- #
     def _ensure_logged_in(self, retries: int = 5, delay: float = 1.0) -> bool:
         """Retry login detection briefly to avoid race where callback fires before signals stabilize."""
@@ -3703,7 +3706,9 @@ class MoodleDirectScraper:
                         logger.debug(f"Filtered out lesson link: {item.get('title', 'Unknown')}")
             
             # Store filtered items for summary display
-            self.filtered_items_summary = filtered_items
+            if not hasattr(self, 'filtered_items_summary'):
+                self.filtered_items_summary = []
+            self.filtered_items_summary.extend(filtered_items)
             
             # Log summary of filtered items
             if filtered_items:
@@ -4088,6 +4093,37 @@ class MoodleDirectScraper:
                     results.append(assignment)
                 except Exception:
                     continue
+        # Filter out lesson links if configured to exclude them (same logic as BeautifulSoup method)
+        if not self.include_lesson_links:
+            filtered_results = []
+            filtered_items = []
+            for item in results:
+                if item.get('activity_type') != 'lesson_link':
+                    filtered_results.append(item)
+                else:
+                    filtered_items.append(item)
+                    if self.debug_scrape:
+                        logger.debug(f"Filtered out lesson link (regex): {item.get('title', 'Unknown')}")
+            
+            # Store filtered items for summary display
+            if not hasattr(self, 'filtered_items_summary'):
+                self.filtered_items_summary = []
+            self.filtered_items_summary.extend(filtered_items)
+            
+            # Log summary of filtered items
+            if filtered_items:
+                logger.info(f"📚 Filtered out {len(filtered_items)} lesson/resource items (regex):")
+                for item in filtered_items:
+                    logger.info(f"   • {item.get('title', 'Unknown')} ({item.get('course_code', 'Unknown')})")
+                logger.info(f"📝 Kept {len(filtered_results)} actionable items (regex)")
+            
+            results = filtered_results
+            if self.debug_scrape:
+                logger.info(f"After filtering lesson links (regex): {len(results)} items remaining")
+        else:
+            # No filtering, clear any previous filtered items
+            self.filtered_items_summary = []
+        
         return results
 
     # ---------------- Formatting & Duplicate Logic (adapted from email fetcher) ---------------- #
