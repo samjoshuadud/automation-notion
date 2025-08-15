@@ -373,8 +373,8 @@ def main():
                        help='Moodle site URL (can also set MOODLE_URL environment variable)')
     parser.add_argument('--clear-moodle-session', action='store_true',
                        help='Clear stored Moodle session data')
-    parser.add_argument('--scrape-assignments', action='store_true',
-                       help='Scrape assignments directly from Moodle (requires login)')
+    parser.add_argument('--sync-assignments', action='store_true',
+                       help='Sync scraped assignments to configured platforms (requires login)')
     parser.add_argument('--scrape-forums', action='store_true',
                        help='Scrape forum posts directly from Moodle (requires login)')
     parser.add_argument('--headless', action='store_true',
@@ -929,7 +929,7 @@ def main():
             print()
             print("💡 Next steps:")
             print("  1. Run './deployment/run.sh check' to fetch assignments from Gmail")
-            print("  2. Run '--scrape-assignments' to fetch assignments from Moodle")
+            print("  2. Run '--sync-assignments' to fetch assignments from Moodle")
             print("  3. Run './deployment/run.sh notion' to sync to Notion")
             print("  4. Run './deployment/run.sh todoist' to sync to Todoist")
             print()
@@ -1060,11 +1060,11 @@ def main():
                 print("\n🎯 All connection tests completed!")
             return 0
         
-        # Check if we should skip Gmail fetching (when scraping is requested)
-        if args.scrape_assignments or args.scrape_forums:
-            print(f"\n🚀 MOODLE SCRAPING MODE")
+        # Check if we should skip Gmail fetching (when syncing is requested)
+        if args.sync_assignments or args.scrape_forums:
+            print(f"\n🚀 MOODLE SYNC MODE")
             print("=" * 40)
-            print("⏭️ Skipping Gmail fetching (scraping mode enabled)")
+            print("⏭️ Skipping Gmail fetching (sync mode enabled)")
             
             # Load scraped assignments first
             scraped_file = "data/assignments_scraped.json"
@@ -1077,14 +1077,14 @@ def main():
                 
                 if not scraped_assignments:
                     print("⚠️ No scraped assignments found")
-                    print("💡 Run with --login-type --scrape-assignments first to scrape data")
+                    print("💡 Run with --login-type --sync-assignments first to scrape data")
                     return 1
                     
                 print(f"📊 Found {len(scraped_assignments)} scraped assignments")
                 
             except FileNotFoundError:
                 print("⚠️ No scraped assignments file found")
-                print("💡 Run with --login-type --scrape-assignments first to scrape data")
+                print("💡 Run with --login-type --sync-assignments first to scrape data")
                 return 1
             except Exception as e:
                 print(f"❌ Error loading scraped assignments: {e}")
@@ -1160,7 +1160,7 @@ def main():
                     print(f"❌ Todoist sync failed: {e}")
                     return 1
             
-            print("💡 Use --login-type to check Moodle login status and scrape")
+            print("💡 Use --login-type to check Moodle login status and sync")
             return 0
         
         # Handle delete operations (after scraping checks)
@@ -1347,7 +1347,7 @@ def main():
                 print("✅ All assignments deleted successfully!")
                 print("💡 Your Gmail emails are completely untouched")
                 print("🔄 Run './deployment/run.sh check' to fetch fresh assignments from Gmail")
-                print("🔄 Run '--scrape-assignments' to fetch fresh assignments from Moodle")
+                print("🔄 Run '--sync-assignments' to fetch fresh assignments from Moodle")
                 
             except Exception as e:
                 print(f"❌ Error during deletion: {e}")
@@ -1574,7 +1574,7 @@ def main():
                     print(f"✅ Assignments deleted from {mode_text} successfully!")
                 print("💡 Your Gmail emails are completely untouched")
                 print("🔄 Run './deployment/run.sh check' to fetch fresh assignments from Gmail")
-                print("🔄 Run '--scrape-assignments' to fetch fresh assignments from Moodle")
+                print("🔄 Run '--sync-assignments' to fetch fresh assignments from Moodle")
                 
                 # Check for remaining assignments and offer interactive deletion
                 remaining_assignments = check_remaining_assignments_after_deletion(delete_from, include_local, args)
