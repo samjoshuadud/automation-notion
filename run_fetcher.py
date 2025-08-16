@@ -364,14 +364,10 @@ def main():
                        help='DELETE ALL data files and start fresh (clears assignments.json, archive, backups - Moodle data is NOT touched)')
     
     # Moodle Direct Scraping Arguments
-    parser.add_argument('--login-type', action='store_true',
-                       help='Check Moodle login status and prompt for manual login if needed')
     parser.add_argument('--moodle-url', type=str,
                        help='Moodle site URL (can also set MOODLE_URL environment variable)')
     parser.add_argument('--clear-moodle-session', action='store_true',
                        help='Clear stored Moodle session data')
-    parser.add_argument('--scrape-assignments', action='store_true',
-                       help='Scrape assignments from Moodle (requires login)')
 
     parser.add_argument('--headless', action='store_true',
                        help='Run browser in headless mode (no GUI)')
@@ -404,8 +400,8 @@ def main():
     # Initialize archive manager
     archive_manager = AssignmentArchiveManager()
     
-    # Handle Moodle direct scraping login check
-    if args.login_type or args.clear_moodle_session:
+    # Handle Moodle session clearing
+    if args.clear_moodle_session:
         if not MOODLE_SCRAPER_AVAILABLE:
             print("❌ Moodle scraper not available!")
             print("💡 Please install required packages:")
@@ -437,195 +433,149 @@ def main():
             )
             
             # Handle clear session
-            if args.clear_moodle_session:
-                print("\n🗑️ CLEARING MOODLE SESSION")
-                print("=" * 30)
+            print("\n🗑️ CLEARING MOODLE SESSION")
+            print("=" * 30)
+            scraper.session.session_dir.mkdir(exist_ok=True, parents=True)
+            import shutil
+            if scraper.session.session_dir.exists():
+                shutil.rmtree(scraper.session.session_dir)
                 scraper.session.session_dir.mkdir(exist_ok=True, parents=True)
-                import shutil
-                if scraper.session.session_dir.exists():
-                    shutil.rmtree(scraper.session.session_dir)
-                    scraper.session.session_dir.mkdir(exist_ok=True, parents=True)
-                print("✅ Moodle session data cleared")
-                scraper.close()
-                return 0
+            print("✅ Moodle session data cleared")
+            scraper.close()
+            return 0
             
-            # Handle login check
-            if args.login_type:
-                print("\n🔍 MOODLE LOGIN STATUS CHECK")
-                print("=" * 40)
-                print("🔄 Checking existing Moodle session...")
+        except Exception as e:
+            logger.error(f"Moodle session clearing failed: {e}")
+            print(f"❌ Error: {e}")
+            return 1
+
+    # Main Moodle login and scraping flow (when no specific flags are given)
+    if not any([args.archive_stats, args.status_report, args.delete_all_assignments, 
+                args.delete_from, args.fresh_start, args.clear_moodle_session]):
+        
+        print("\n🌐 MOODLE LOGIN & SCRAPING MODE")
+        print("=" * 40)
+        
+        if not MOODLE_SCRAPER_AVAILABLE:
+            print("❌ Moodle scraper not available!")
+            print("💡 Please install required packages:")
+            print("   pip install playwright selenium")
+            print("   playwright install chromium")
+            if MOODLE_SCRAPER_IMPORT_ERROR:
+                print("--- Import diagnostic ---")
+                print(f"Error: {MOODLE_SCRAPER_IMPORT_ERROR}")
+                if args.debug:
+                    print("Traceback:")
+                    print(MOODLE_SCRAPER_IMPORT_TRACEBACK)
+            return 1
+        
+        try:
+            scraper = MoodleDirectScraper(
+                moodle_url=args.moodle_url,
+                headless=args.headless,
+                google_email=args.email,
+                google_password=args.password
+            )
+            
+            # Check login status
+            print("🔄 Checking existing Moodle session...")
+            status = scraper.check_login_status()
+            
+            if status.get('error'):
+                print(f"❌ Error: {status['error']}")
+                scraper.close()
+                return 1
+            
+            if status['logged_in']:
+                print("✅ Status: LOGGED IN (existing session active)")
+                print(f"🌐 Moodle URL: {status['moodle_url']}")
+                print("🎉 Ready to scrape Moodle content!")
+            else:
+                print("❌ Status: NOT LOGGED IN")
+                print(f"🌐 Moodle URL: {status['moodle_url']}")
+                print(f"🔗 Login URL: {status['login_url']}")
+                print("ℹ️ No active Moodle session detected. You will need to login manually.")
                 
-                status = scraper.check_login_status()
-                
-                if status.get('error'):
-                    print(f"❌ Error: {status['error']}")
-                    return 1
-                
-                if status['logged_in']:
-                    print("✅ Status: LOGGED IN (existing session active)")
-                    print(f"🌐 Moodle URL: {status['moodle_url']}")
-                    print("🎉 Ready to scrape Moodle content!")
-                    # If user passed scrape flags, run automatically; otherwise prompt
-                    if args.scrape_assignments:
-                        try:
-                            print("\n🚀 Scraping Moodle now (auto-trigger)...")
-                            items = scraper.scrape_all_due_items(auto_merge=False)
-                            print(f"✅ Scrape complete: {len(items)} items processed (saved to scraped file).")
-                            
-                            # Sync to Todoist if requested
-                            if args.todoist and not args.skip_todoist:
-                                try:
-                                    print(f"\n✅ TODOIST SYNC")
-                                    print("=" * 20)
-                                    print("🔗 Initializing Todoist integration...")
-                                    
-                                    todoist = TodoistIntegration()
-                                    if todoist.enabled:
-                                        print(f"📊 Syncing {len(items)} scraped assignments to Todoist...")
-                                        todoist_count = todoist.sync_assignments(items)
-                                        print(f"✅ Synced {todoist_count} assignments to Todoist!")
-                                        
-                                        if args.verbose:
-                                            if todoist_count != len(items):
-                                                print(f"   ⚠️ Note: {len(items) - todoist_count} assignments may have been skipped (already exist)")
-                                            else:
-                                                print("   ✅ All assignments synced successfully")
-                                    else:
-                                        print("⚠️ Todoist integration not configured")
-                                except Exception as e:
-                                    print(f"⚠️ Todoist sync failed: {e}")
-                                    logger.error(f"Todoist sync failed after scraping: {e}")
-                        except Exception as e:
-                            print(f"❌ Scrape failed: {e}")
-                    else:
-                        choice = input("\n❓ Scrape assignments now? (y/N): ").strip().lower()
-                        if choice in ['y', 'yes']:
-                            try:
-                                print("\n🚀 Scraping Moodle now...")
-                                items = scraper.scrape_all_due_items(auto_merge=False)
-                                print(f"✅ Scrape complete: {len(items)} items processed (saved to scraped file).")
-                                
-                                # Sync to Todoist if requested
-                                if args.todoist and not args.skip_todoist:
-                                    try:
-                                        print(f"\n✅ TODOIST SYNC")
-                                        print("=" * 20)
-                                        print("🔗 Initializing Todoist integration...")
-                                        
-                                        todoist = TodoistIntegration()
-                                        if todoist.enabled:
-                                            print(f"📊 Syncing {len(items)} scraped assignments to Todoist...")
-                                            todoist_count = todoist.sync_assignments(items)
-                                            print(f"✅ Synced {todoist_count} assignments to Todoist!")
-                                            
-                                            if args.verbose:
-                                                if todoist_count != len(items):
-                                                    print(f"   ⚠️ Note: {len(items) - todoist_count} assignments may have been skipped (already exist)")
-                                                else:
-                                                    print("   ✅ All assignments synced successfully")
-                                        else:
-                                            print("⚠️ Todoist integration not configured")
-                                    except Exception as e:
-                                        print(f"⚠️ Todoist sync failed: {e}")
-                                        logger.error(f"Todoist sync failed after scraping: {e}")
-                            except Exception as e:
-                                print(f"❌ Scrape failed: {e}")
-                else:
-                    print("❌ Status: NOT LOGGED IN")
-                    print(f"🌐 Moodle URL: {status['moodle_url']}")
-                    print(f"🔗 Login URL: {status['login_url']}")
-                    print("ℹ️ No active Moodle session detected. You will need to login manually.")
+                # Offer interactive login
+                choice = input("\n❓ Proceed to browser login now? (y/N): ").strip().lower()
+                if choice in ['y', 'yes']:
+                    print("\n🚀 Starting interactive login process...")
+                    print("💡 A browser window will open - complete Moodle (and Google SSO) login")
+                    print("🔁 Re-using existing browser profile if present")
                     
-                    # Offer interactive login
-                    choice = input("\n❓ Proceed to browser login now? (y/N): ").strip().lower()
-                    if choice in ['y', 'yes']:
-                        print("\n🚀 Starting interactive login process...")
-                        print("💡 A browser window will open - complete Moodle (and Google SSO) login")
-                        print("🔁 Re-using existing browser profile if present")
-                        
-                        if scraper.interactive_login(timeout_minutes=10):  # Use internal default
-                            print("✅ Login successful (session saved). You can now scrape Moodle content.")
-                            # After successful login, auto-scrape if flags provided else prompt
-                            if args.scrape_assignments:
-                                try:
-                                    print("\n🚀 Scraping Moodle now (auto-trigger)...")
-                                    items = scraper.scrape_all_due_items(auto_merge=False)
-                                    print(f"✅ Scrape complete: {len(items)} items processed (saved to scraped file).")
-                                    
-                                    # Sync to Todoist if requested
-                                    if args.todoist and not args.skip_todoist:
-                                        try:
-                                            print(f"\n✅ TODOIST SYNC")
-                                            print("=" * 20)
-                                            print("🔗 Initializing Todoist integration...")
-                                            
-                                            todoist = TodoistIntegration()
-                                            if todoist.enabled:
-                                                print(f"📊 Syncing {len(items)} scraped assignments to Todoist...")
-                                                todoist_count = todoist.sync_assignments(items)
-                                                print(f"✅ Synced {todoist_count} assignments to Todoist!")
-                                                
-                                                if args.verbose:
-                                                    if todoist_count != len(items):
-                                                        print(f"   ⚠️ Note: {len(items) - todoist_count} assignments may have been skipped (already exist)")
-                                                    else:
-                                                        print("   ✅ All assignments synced successfully")
-                                            else:
-                                                print("⚠️ Todoist integration not configured")
-                                        except Exception as e:
-                                            print(f"⚠️ Todoist sync failed: {e}")
-                                            logger.error(f"Todoist sync failed after scraping: {e}")
-                                except Exception as e:
-                                    print(f"❌ Scrape failed: {e}")
-                            else:
-                                choice2 = input("\n❓ Scrape assignments now? (y/N): ").strip().lower()
-                                if choice2 in ['y', 'yes']:
-                                    try:
-                                        print("\n🚀 Scraping Moodle now...")
-                                        items = scraper.scrape_all_due_items(auto_merge=False)
-                                        print(f"✅ Scrape complete: {len(items)} items processed (saved to scraped file).")
-                                        
-                                        # Sync to Todoist if requested
-                                        if args.todoist and not args.skip_todoist:
-                                            try:
-                                                print(f"\n✅ TODOIST SYNC")
-                                                print("=" * 20)
-                                                print("🔗 Initializing Todoist integration...")
-                                                
-                                                todoist = TodoistIntegration()
-                                                if todoist.enabled:
-                                                    print(f"📊 Syncing {len(items)} scraped assignments to Todoist...")
-                                                    todoist_count = todoist.sync_assignments(items)
-                                                    print(f"✅ Synced {todoist_count} assignments to Todoist!")
-                                                    
-                                                    if args.verbose:
-                                                        if todoist_count != len(items):
-                                                            print(f"   ⚠️ Note: {len(items) - todoist_count} assignments may have been skipped (already exist)")
-                                                        else:
-                                                            print("   ✅ All assignments synced successfully")
-                                                else:
-                                                    print("⚠️ Todoist integration not configured")
-                                            except Exception as e:
-                                                print(f"⚠️ Todoist sync failed: {e}")
-                                                logger.error(f"Todoist sync failed after scraping: {e}")
-                                    except Exception as e:
-                                        print(f"❌ Scrape failed: {e}")
-                        else:
-                            print("❌ Login failed or timed out.")
-                            return 1
+                    if scraper.interactive_login(timeout_minutes=10):
+                        print("✅ Login successful (session saved). You can now scrape Moodle content.")
                     else:
-                        print(f"❗ Please login manually at: {status['login_url']}")
-                        print("💡 Then run this command again to verify login status.")
+                        print("❌ Login failed or timed out.")
+                        scraper.close()
                         return 1
+                else:
+                    print(f"❗ Please login manually at: {status['login_url']}")
+                    print("💡 Then run this command again to verify login status.")
+                    scraper.close()
+                    return 1
+            
+            # Always prompt for scraping
+            choice = input("\n❓ Do you want to scrape assignments now? (y/N): ").strip().lower()
+            if choice in ['y', 'yes']:
+                try:
+                    print("\n🚀 Scraping Moodle now...")
+                    items = scraper.scrape_all_due_items(auto_merge=True)
+                    print(f"✅ Scrape complete: {len(items)} items processed and saved!")
+                    
+                    # Always sync to configured platforms
+                    if args.notion and not args.skip_notion:
+                        try:
+                            print(f"\n📝 NOTION SYNC")
+                            print("=" * 20)
+                            print("🔗 Initializing Notion integration...")
+                            
+                            notion = NotionIntegration()
+                            if notion.enabled:
+                                print(f"📊 Syncing {len(items)} assignments to Notion...")
+                                notion_count = notion.sync_assignments(items)
+                                print(f"📝 Synced {notion_count} assignments to Notion!")
+                            else:
+                                print("⚠️ Notion integration not configured")
+                        except Exception as e:
+                            print(f"⚠️ Notion sync failed: {e}")
+                            logger.error(f"Notion sync failed: {e}")
+                    
+                    if args.todoist and not args.skip_todoist:
+                        try:
+                            print(f"\n✅ TODOIST SYNC")
+                            print("=" * 20)
+                            print("🔗 Initializing Todoist integration...")
+                            
+                            todoist = TodoistIntegration()
+                            if todoist.enabled:
+                                print(f"📊 Syncing {len(items)} assignments to Todoist...")
+                                todoist_count = todoist.sync_assignments(items)
+                                print(f"✅ Synced {todoist_count} assignments to Todoist!")
+                            else:
+                                print("⚠️ Todoist integration not configured")
+                        except Exception as e:
+                            print(f"⚠️ Todoist sync failed: {e}")
+                            logger.error(f"Todoist sync failed: {e}")
+                    
+                    print("\n🎉 All operations completed successfully!")
+                    
+                except Exception as e:
+                    print(f"❌ Scraping failed: {e}")
+                    logger.error(f"Scraping failed: {e}")
+                    scraper.close()
+                    return 1
+            else:
+                print("👋 No scraping requested. Exiting...")
             
             scraper.close()
             return 0
             
         except Exception as e:
-            logger.error(f"Moodle login check failed: {e}")
+            logger.error(f"Moodle login/scraping failed: {e}")
             print(f"❌ Error: {e}")
             return 1
-    
+
     # Handle archive-specific commands first
     if args.archive_stats:
         stats = archive_manager.get_archive_stats()
@@ -945,7 +895,6 @@ def main():
             try:
                 if args.verbose:
                     print("🌐 Testing Moodle connection...")
-                from moodle_direct_scraper import MoodleDirectScraper
                 scraper = MoodleDirectScraper(
                     moodle_url=args.moodle_url,
                     headless=True,
@@ -1027,94 +976,7 @@ def main():
                 print("\n🎯 All connection tests completed!")
             return 0
         
-        # Check if we should run Moodle scraping (when scraping is requested)
-        if args.scrape_assignments:
-            print(f"\n🚀 MOODLE SYNC MODE")
-            print("=" * 40)
-            print("🌐 Running Moodle scraping to sync assignments...")
-            
-            # Load current assignments first
-            current_assignments = load_assignments_from_file('data/assignments.json')
-            
-            if not current_assignments:
-                print("⚠️ No assignments found in database")
-                print("💡 Run with --login-type --scrape-assignments first to scrape data")
-                return 1
-                    
-            print(f"📊 Found {len(current_assignments)} assignments in database")
-            
-            # If Notion sync is requested, sync the scraped data
-            if args.notion and not args.skip_notion:
-                try:
-                    print(f"\n📝 NOTION SYNC (SCRAPED DATA)")
-                    print("=" * 30)
-                    print("🔗 Initializing Notion integration...")
-                    
-                    logger.info("Initializing Notion integration for scraped data...")
-                    notion = NotionIntegration()
-                    if notion.enabled:
-                        print("🔄 Syncing to Notion...")
-                        
-                        notion_count = notion.sync_assignments(current_assignments)
-                        total_assignments = len(current_assignments)
-                        skipped_count = total_assignments - notion_count
-                        
-                        print(f"📝 Notion Sync Results:")
-                        print(f"   📊 Total assignments found: {total_assignments}")
-                        print(f"   🆕 New assignments synced: {notion_count}")
-                        print(f"   ⏭️ Assignments skipped: {skipped_count} (already exist/duplicates)")
-                        
-                        if args.verbose:
-                            if notion_count == 0:
-                                print("   💡 All assignments already exist in Notion")
-                            elif notion_count < total_assignments:
-                                print("   💡 Some assignments were skipped (already exist)")
-                            else:
-                                print("   ✅ All assignments synced successfully")
-                    else:
-                        print("⚠️ Notion integration not configured")
-                        return 1
-                except Exception as e:
-                    print(f"❌ Notion sync failed: {e}")
-                    return 1
-            
-            # If Todoist sync is requested, sync the scraped data
-            if args.todoist and not args.skip_todoist:
-                try:
-                    print(f"\n✅ TODOIST SYNC (SCRAPED DATA)")
-                    print("=" * 30)
-                    print("🔗 Initializing Todoist integration...")
-                    
-                    logger.info("Initializing Todoist integration for scraped data...")
-                    todoist = TodoistIntegration()
-                    if todoist.enabled:
-                        print("🔄 Syncing to Todoist...")
-                        
-                        todoist_count = todoist.sync_assignments(current_assignments)
-                        total_assignments = len(current_assignments)
-                        skipped_count = total_assignments - todoist_count
-                        
-                        print(f"✅ Todoist Sync Results:")
-                        print(f"   📊 Total assignments found: {total_assignments}")
-                        print(f"   🆕 New assignments synced: {todoist_count}")
-                        print(f"   ⏭️ Assignments skipped: {skipped_count} (already exist/duplicates)")
-                        
-                        if args.verbose:
-                            if todoist_count == 0:
-                                print("   💡 All assignments already exist in Todoist")
-                            elif todoist_count < total_assignments:
-                                print("   💡 Some assignments were skipped (already exist)")
-                            else:
-                                print("   ✅ All assignments synced successfully")
-                    else:
-                        print("⚠️ Todoist integration not configured")
-                        return 1
-                except Exception as e:
-                    print(f"❌ Todoist sync failed: {e}")
-                    return 1
-            
-            print("💡 Use --login-type to check Moodle login status and sync")
-            return 0
+
         
         # Handle delete operations (after scraping checks)
         if args.delete_all_assignments:
@@ -1489,7 +1351,6 @@ def main():
             print(f"🌐 Starting Moodle scraping to fetch fresh assignments...")
         
         try:
-            from moodle_direct_scraper import MoodleDirectScraper
             scraper = MoodleDirectScraper(
                 moodle_url=args.moodle_url,
                 headless=args.headless,
