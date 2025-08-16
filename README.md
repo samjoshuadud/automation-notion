@@ -1,408 +1,302 @@
 # 🎓 Moodle Assignment Fetcher
 
-**Automatically fetch, organize, and manage your Moodle assignments across Gmail, Notion, and Todoist.**
+A powerful, automated system for fetching assignments directly from Moodle and syncing them to Notion and Todoist. Built with Python and modern web scraping technologies.
 
-A smart automation system that monitors your Gmail for Moodle assignment emails, extracts assignment details, and syncs them to your favorite productivity tools.
+## ✨ Features
 
----
-
-## 🤔 What is this?
-
-Ever tired of manually tracking assignments from Moodle email notifications? This tool:
-
-1. **📧 Monitors your Gmail** for Moodle assignment emails
-2. **🧠 Intelligently parses** assignment details (title, due date, course)
-3. **📝 Stores assignments** locally in organized JSON files
-4. **🔄 Syncs to Notion** database for visual management
-5. **✅ Syncs to Todoist** for task management and reminders
-6. **🗂️ Archives completed** assignments automatically
-
-**Perfect for students who want to automate their assignment workflow!**
-
----
+- **🔍 Direct Moodle Scraping**: Bypass email notifications and fetch assignments directly from Moodle
+- **📝 Notion Integration**: Automatic sync to Notion databases with smart duplicate detection
+- **✅ Todoist Integration**: Create tasks in Todoist with due dates and course information
+- **🔄 Smart Archiving**: Automatic cleanup of completed assignments with configurable retention
+- **🎯 Duplicate Prevention**: Advanced fuzzy matching to prevent duplicate assignments
+- **📊 Status Management**: Track assignment progress across all platforms
+- **🛡️ Robust Error Handling**: Comprehensive logging and error recovery
+- **⚡ Performance Optimized**: Efficient scraping with configurable timeouts and retries
 
 ## 🚀 Quick Start
 
-### 1. Setup (5 minutes)
+### 1. Clone and Setup
 
 ```bash
-# Clone and navigate
-git clone <your-repo>
+git clone <your-repo-url>
 cd automate
-
-# Install dependencies
-python3 -m venv venv
-source venv/bin/activate
+python -m venv venv
+source venv/bin/activate  # On Windows: venv\Scripts\activate
 pip install -r requirements.txt
-
-# Configure credentials (see Setup Guide below)
-cp .env.example .env
-# Edit .env with your credentials
 ```
 
-### 2. Test Everything
+### 2. Environment Configuration
+
+Create a `.env` file in the root directory:
 
 ```bash
-# Test all connections
+# Moodle Configuration
+MOODLE_URL=https://your-moodle-site.com
+MOODLE_USERNAME=your_username
+MOODLE_PASSWORD=your_password
+
+# Notion Integration (Optional)
+NOTION_TOKEN=your_notion_integration_token
+NOTION_DATABASE_ID=your_database_id
+
+# Todoist Integration (Optional)
+TODOIST_API_TOKEN=your_todoist_api_token
+TODOIST_PROJECT_NAME=Assignments
+```
+
+### 3. Test Your Setup
+
+```bash
+# Test all integrations
 ./deployment/run.sh test
-```
 
-### 3. Fetch Assignments
-
-```bash
-# Get assignments from last 7 days
-./deployment/run.sh check
-
-# Sync to Notion and Todoist
-./deployment/run.sh notion
-```
-
-**That's it! Your assignments are now organized.** 🎉
-
----
-
-## 📋 Setup Guide
-
-### Gmail Setup (Required)
-
-1. **Enable 2-Factor Authentication** on your Google account
-2. **Generate App Password**:
-   - Go to [Google Account Settings](https://myaccount.google.com/)
-   - Security → 2-Step Verification → App passwords
-   - Generate password for "Mail"
-3. **Add to `.env`**:
-   ```bash
-   GMAIL_USER=your.email@gmail.com
-   GMAIL_PASSWORD=your_app_password_here
-   ```
-
-### Notion Setup (Optional but Recommended)
-
-1. **Create Integration**: Go to [Notion Integrations](https://www.notion.so/my-integrations)
-2. **Create Database**: Add a new database with these columns:
-   - Title (Title), Course (Text), Due Date (Date), Status (Select)
-3. **Get Database ID**: From URL or use our setup script
-4. **Add to `.env`**:
-   ```bash
-   NOTION_TOKEN=your_integration_token
-   NOTION_DATABASE_ID=your_database_id
-   ```
-
-[📓 **Detailed Notion Guide**](documentation/notion-guide.md)
-
-### Todoist Setup (Optional)
-
-1. **Get API Token**: Go to [Todoist Settings](https://todoist.com/prefs/integrations)
-2. **Add to `.env`**:
-   ```bash
-   TODOIST_API_TOKEN=your_token_here
-   ```
-
-[📋 **Detailed Todoist Guide**](documentation/todoist-guide.md)
-
----
-
-## 🎯 Basic Usage
-
-### Daily Commands
-
-```bash
-# Check for new assignments
-./deployment/run.sh check
-
-# Check + sync to all platforms
-./deployment/run.sh notion
-
-# View assignment status
-./deployment/run.sh status
-
-# View recent logs
-./deployment/run.sh logs
-```
-
-### Manual Commands
-
-```bash
-# Test connections
-python run_fetcher.py --test
-
-# Fetch from last 14 days
-python run_fetcher.py --days 14
-
-# Sync to Notion only
-python run_fetcher.py --notion
-
-# Sync to Todoist only  
-python run_fetcher.py --todoist
-
-# Sync to both
-python run_fetcher.py --notion --todoist
-
-# Verbose output for debugging
-python run_fetcher.py --verbose
-```
-
-### Debug & Management Commands
-
-```bash
-# Status and analysis
-./deployment/run.sh status              # Detailed assignment status report
-./deployment/run.sh duplicates          # Show duplicate detection analysis
-./deployment/run.sh archive-stats       # Show archive statistics
-
-# Selective deletion (⚠️ Use with caution!)
-./deployment/run.sh delete-all          # Delete from both Notion and Todoist (local preserved)
-./deployment/run.sh delete-all notion   # Delete only from Notion (local preserved)
-./deployment/run.sh delete-all todoist  # Delete only from Todoist (local preserved)
-./deployment/run.sh delete-all both --include-local     # Delete from both + local database
-./deployment/run.sh delete-all notion --include-local   # Delete from Notion + local database
-./deployment/run.sh delete-all todoist --include-local  # Delete from Todoist + local database
-
-# Note: Deletion commands never touch your Gmail emails, only local storage and synced platforms
-```
-
----
-
-## 📊 Features
-
-| Feature | Description | Status |
-|---------|-------------|--------|
-| **📧 Gmail Integration** | Fetch assignment emails automatically | ✅ Ready |
-| **🧠 Smart Parsing** | Extract title, course, due date from emails | ✅ Ready |
-| **📝 Local Storage** | Store assignments in organized JSON files | ✅ Ready |
-| **🔄 Notion Sync** | Two-way sync with Notion database | ✅ Ready |
-| **✅ Todoist Sync** | Sync assignments as tasks with reminders | ✅ Ready |
-| **🔍 Duplicate Detection** | Prevent duplicate assignments | ✅ Ready |
-| **🗂️ Auto-Archiving** | Archive completed assignments | ✅ Ready |
-| **📱 Mobile Access** | Access via Notion/Todoist mobile apps | ✅ Ready |
-| **⏰ Automation** | Cron/systemd scheduling | ✅ Ready |
-
----
-
-## 🏗️ Project Structure
-
-```
-📦 automate/
-├── 🎯 Core Scripts
-│   ├── run_fetcher.py           # Main entry point
-│   ├── moodle_fetcher.py        # Gmail + parsing logic
-│   ├── notion_integration.py    # Notion API integration  
-│   ├── todoist_integration.py   # Todoist API integration
-│   └── assignment_archive.py    # Archive management
-│
-├── 📂 Data & Logs
-│   ├── data/assignments.json    # Your assignments (main database)
-│   ├── data/assignments_scraped.json # Scraped Moodle data
-│   ├── data/assignments.md      # Readable summary
-│   └── logs/moodle_fetcher.log  # System logs
-│
-├── 🧪 Testing
-│   ├── tests/setup_notion_db.py # Setup Notion database
-│   ├── tests/test_*.py          # Various test suites
-│   └── tests/test_notion_stress.py # Performance tests
-│
-├── 🚀 Deployment  
-│   ├── deployment/run.sh        # Quick command runner
-│   ├── deployment/daily_check.sh # Cron script
-│   └── deployment/*.service     # Systemd configs
-│
-└── 📋 Documentation
-    ├── documentation/notion-guide.md   # Notion setup
-    ├── documentation/todoist-guide.md  # Todoist setup
-    └── documentation/testing-guide.md  # Testing & debug
-```
-
----
-
-## 🔧 Advanced Usage
-
-### Automation (Set & Forget)
-
-```bash
-# Check for assignments every 6 hours
-echo "0 */6 * * * cd /path/to/automate && ./deployment/run.sh check" | crontab -
-
-# Daily comprehensive sync at 8 AM
-echo "0 8 * * * cd /path/to/automate && ./deployment/run.sh notion" | crontab -
-```
-
-### Bulk Operations
-
-```bash
-# Re-sync everything from last 30 days
-rm data/assignments.json
-python run_fetcher.py --days 30 --notion --todoist
-
-# Export assignments for backup
-cp data/assignments.json backups/assignments_$(date +%Y%m%d).json
-```
-
-### Scraped-Only Mode (No Gmail)
-
-If you're only using Moodle scraping and want to disable Gmail fetching:
-
-```bash
-# Switch to scraped-only mode
-python switch_to_scraped_only.py
-
-# This will:
-# - Use assignments_scraped.json as your data source
-# - Stop automatic merging with assignments.json
-# - Keep assignments.json as your main database
-```
-
-### Custom Scripts
-
-```python
-# Custom assignment processing
-from moodle_fetcher import MoodleEmailFetcher
-from notion_integration import NotionIntegration
-
-fetcher = MoodleEmailFetcher()
-notion = NotionIntegration()
-
-# Get assignments from last 3 days
-assignments = fetcher.fetch_assignments(days=3)
-print(f"Found {len(assignments)} assignments")
-
-# Sync to Notion
-if notion.enabled:
-    synced = notion.sync_assignments(assignments)
-    print(f"Synced {synced} to Notion")
-```
-
----
-
-## 🚨 Troubleshooting
-
-### Common Issues
-
-**❌ "Gmail authentication failed"**
-```bash
-# Check your app password
-python -c "
-import os
-from dotenv import load_dotenv
-load_dotenv()
-print('Gmail user:', os.getenv('GMAIL_USER'))
-print('Password set:', bool(os.getenv('GMAIL_PASSWORD')))
-"
-```
-
-**❌ "No assignments found"**
-```bash
-# Check email search
+# Or test manually
 python run_fetcher.py --test --verbose
 ```
 
-**❌ "Notion/Todoist not working"**
+### 4. Fetch Your First Assignments
+
 ```bash
-# Test individual connections
-./deployment/run.sh test
+# Basic fetch
+python run_fetcher.py
+
+# Fetch with Notion sync
+python run_fetcher.py --notion --verbose
+
+# Fetch with Todoist sync
+python run_fetcher.py --todoist --verbose
+
+# Fetch with both platforms
+python run_fetcher.py --notion --todoist --verbose
 ```
+
+## 📋 Core Commands
+
+### Basic Operations
+
+```bash
+# Fetch assignments from Moodle
+python run_fetcher.py
+
+# Fetch with specific options
+python run_fetcher.py --days 14 --headless --verbose
+
+# Test connections only
+python run_fetcher.py --test
+```
+
+### Platform Integration
+
+```bash
+# Sync to Notion
+python run_fetcher.py --notion
+
+# Sync to Todoist
+python run_fetcher.py --todoist
+
+# Sync to both platforms
+python run_fetcher.py --notion --todoist
+```
+
+### Data Management
+
+```bash
+# Archive cleanup
+python run_fetcher.py --cleanup --cleanup-days 30
+
+# Show archive statistics
+python run_fetcher.py --archive-stats
+
+# Restore from archive
+python run_fetcher.py --restore "Assignment Title"
+
+# Status report
+python run_fetcher.py --status-report
+```
+
+### Advanced Operations
+
+```bash
+# Clear Moodle session
+python run_fetcher.py --clear-moodle-session
+
+# Run in headless mode
+python run_fetcher.py --headless
+
+# Debug mode with maximum detail
+python run_fetcher.py --debug
+```
+
+## 🏗️ System Architecture
+
+```
+┌─────────────────┐    ┌──────────────────┐    ┌─────────────────┐
+│   Moodle Site  │    │  Direct Scraper  │    │  Local Storage  │
+│                 │◄───│                  │───►│  (JSON Files)   │
+└─────────────────┘    └──────────────────┘    └─────────────────┘
+                                │
+                                ▼
+                       ┌──────────────────┐
+                       │   Integration    │
+                       │     Layer        │
+                       └──────────────────┘
+                                │
+                    ┌───────────┴───────────┐
+                    ▼                       ▼
+            ┌──────────────┐      ┌──────────────┐
+            │    Notion    │      │   Todoist    │
+            │  Database    │      │    Tasks     │
+            └──────────────┘      └──────────────┘
+```
+
+## 🔧 Configuration
+
+### Moodle Settings
+
+| Setting | Description | Required |
+|---------|-------------|----------|
+| `MOODLE_URL` | Your Moodle site URL | ✅ |
+| `MOODLE_USERNAME` | Your Moodle username | ✅ |
+| `MOODLE_PASSWORD` | Your Moodle password | ✅ |
+
+### Notion Database Schema
+
+Your Notion database must have these properties:
+
+| Property | Type | Description |
+|----------|------|-------------|
+| Title | Title | Assignment title |
+| Course | Text | Course name |
+| Due Date | Date | Assignment due date |
+| Status | Select | Pending/In Progress/Completed |
+| Course Code | Text | Course code (e.g., CS101) |
+| Added Date | Date | When assignment was added |
+| Email ID | Text | Unique identifier |
+
+### Todoist Project
+
+- Creates/uses a project named "Assignments" (configurable)
+- Maps assignment fields to task properties
+- Supports due dates and descriptions
+
+## 📁 Project Structure
+
+```
+automate/
+├── run_fetcher.py              # Main application entry point
+├── moodle_direct_scraper.py    # Core Moodle scraping logic
+├── notion_integration.py       # Notion API integration
+├── todoist_integration.py      # Todoist API integration
+├── assignment_archive.py       # Archive management system
+├── shared_utils.py             # Common utilities
+├── requirements.txt            # Python dependencies
+├── .env                        # Environment configuration
+├── data/                       # Data storage
+│   ├── assignments.json        # Current assignments
+│   └── 2fa_dom_captures/      # 2FA challenge captures
+├── logs/                       # Application logs
+├── tests/                      # Test suite
+├── documentation/              # Detailed guides
+└── deployment/                 # Deployment scripts
+```
+
+## 🧪 Testing
+
+### Quick Tests
+
+```bash
+# Run all tests
+./deployment/run.sh test
+
+# Test specific integration
+python tests/test_notion_sync.py
+python tests/test_todoist.py
+
+# Run with pytest
+python -m pytest tests/ -v
+```
+
+### Manual Testing
+
+```bash
+# Test Notion connection
+python -c "from notion_integration import NotionIntegration; n = NotionIntegration(); print('✅ Connected!' if n.enabled else '❌ Failed')"
+
+# Test Todoist connection
+python -c "from todoist_integration import TodoistIntegration; t = TodoistIntegration(); print('✅ Connected!' if t.enabled else '❌ Failed')"
+```
+
+## 🔍 Troubleshooting
+
+### Common Issues
+
+#### Moodle Connection Problems
+
+```bash
+# Clear stored session data
+python run_fetcher.py --clear-moodle-session
+
+# Check with debug mode
+python run_fetcher.py --test --debug
+```
+
+#### Notion Sync Issues
+
+1. Verify your database schema matches requirements
+2. Check that the integration has access to your database
+3. Ensure your `NOTION_TOKEN` and `NOTION_DATABASE_ID` are correct
+
+#### Todoist Sync Issues
+
+1. Verify your `TODOIST_API_TOKEN` is valid
+2. Check that the "Assignments" project exists
+3. Ensure your account has API access enabled
 
 ### Debug Mode
 
 ```bash
-# Enable verbose logging
-export LOG_LEVEL=DEBUG
-python run_fetcher.py --verbose
+# Enable maximum detail logging
+python run_fetcher.py --debug
 
 # Check logs
 tail -f logs/moodle_fetcher.log
 ```
 
-### Get Help
+## 📚 Documentation
 
-- 📓 [Notion Integration Guide](documentation/notion-guide.md)
-- 📋 [Todoist Integration Guide](documentation/todoist-guide.md)  
-- 🧪 [Testing & Debug Guide](documentation/testing-guide.md)
+- **[Notion Integration Guide](documentation/notion-guide.md)** - Complete Notion setup and usage
+- **[Todoist Integration Guide](documentation/todoist-guide.md)** - Todoist configuration and features
+- **[Testing Guide](documentation/testing-guide.md)** - Comprehensive testing instructions
 
----
-
-## 🎯 Workflow Example
-
-Here's how a typical assignment flows through the system:
-
-```mermaid
-graph TD
-    A[📧 Moodle sends email] --> B[📬 Gmail receives email]
-    B --> C[🔍 System fetches email]
-    C --> D[🧠 Parse assignment details]
-    D --> E[💾 Save to assignments.json]
-    E --> F[📝 Sync to Notion database]
-    F --> G[✅ Create Todoist task]
-    G --> H[📱 Access on mobile]
-    H --> I[✅ Mark as completed]
-    I --> J[🗂️ Auto-archive after 30 days]
-```
-
-## 💡 Use Cases
-
-- **🎓 Students**: Automatically track all course assignments
-- **👥 Study Groups**: Share assignment database with team
-- **📅 Planning**: Visualize assignment timeline in Notion
-- **⏰ Reminders**: Get Todoist notifications for due dates
-- **📊 Analytics**: Track completion rates and workload
-
----
-
-## 🛠️ Development
-
-### Running Tests
-
-```bash
-# Test all components
-python -m pytest tests/ -v
-
-# Test specific integration
-python tests/test_notion_sync.py
-
-# Stress test performance
-python tests/test_notion_stress.py
-```
-
-### Contributing
+## 🤝 Contributing
 
 1. Fork the repository
 2. Create a feature branch
-3. Add tests for new functionality
-4. Submit a pull request
+3. Make your changes
+4. Add tests for new functionality
+5. Submit a pull request
+
+## 📄 License
+
+This project is licensed under the MIT License - see the LICENSE file for details.
+
+## 🆘 Support
+
+If you encounter issues:
+
+1. Check the troubleshooting section above
+2. Review the logs in `logs/moodle_fetcher.log`
+3. Run with `--debug` flag for detailed information
+4. Check the documentation in the `documentation/` folder
+
+## 🔄 Changelog
+
+### Recent Changes
+- Removed `--skip-notion` and `--skip-todoist` flags for cleaner interface
+- Enhanced direct Moodle scraping capabilities
+- Improved error handling and logging
+- Added comprehensive archive management system
 
 ---
 
-## 📞 Support
-
-### Quick Commands
-
-```bash
-./deployment/run.sh          # Show all available commands
-./deployment/run.sh test     # Test all connections  
-./deployment/run.sh status   # Check assignment counts
-./deployment/run.sh logs     # View recent activity
-```
-
-### Documentation
-
-- 🏠 **README** (this file) - Overview and quick start
-- 📓 **[Notion Guide](documentation/notion-guide.md)** - Detailed Notion setup
-- 📋 **[Todoist Guide](documentation/todoist-guide.md)** - Detailed Todoist setup
-- 🧪 **[Testing Guide](documentation/testing-guide.md)** - Testing and debugging
-
----
-
-## 🎉 Success Stories
-
-> *"Went from manually tracking 15+ assignments across 6 courses to having everything automatically organized in Notion. Game changer!"* - CS Student
-
-> *"The Todoist integration means I never miss a deadline. The system just works."* - Engineering Student
-
-> *"Set it up once, been running for 3 months without any issues. Perfect automation."* - Graduate Student
-
----
-
-**Ready to automate your assignment workflow? Start with the [Quick Start](#-quick-start) above!** 🚀
-
----
-
-<sub>Built with ❤️ for students who want to focus on learning, not assignment tracking.</sub>
+**Happy Assignment Management! 🎓✨**
