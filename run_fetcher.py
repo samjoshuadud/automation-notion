@@ -99,28 +99,26 @@ def check_remaining_assignments_after_deletion(delete_from, include_local, args)
                 remaining["local"] = local_assignments
         
         # Check Todoist (if it wasn't cleared or was only partially cleared)
-        if not args.skip_todoist:
-            try:
-                todoist = TodoistIntegration()
-                if todoist.enabled:
-                    todoist_tasks = todoist.get_school_assignments()
-                    if todoist_tasks:
-                        remaining["todoist"] = todoist_tasks
-            except Exception as e:
-                if args.verbose:
-                    print(f"⚠️ Could not check remaining Todoist tasks: {e}")
+        try:
+            todoist = TodoistIntegration()
+            if todoist.enabled:
+                todoist_tasks = todoist.get_school_assignments()
+                if todoist_tasks:
+                    remaining["todoist"] = todoist_tasks
+        except Exception as e:
+            if args.verbose:
+                print(f"⚠️ Could not check remaining Todoist tasks: {e}")
         
         # Check Notion (if it wasn't cleared or was only partially cleared)
-        if not args.skip_notion:
-            try:
-                notion = NotionIntegration()
-                if notion.enabled:
-                    notion_assignments = notion.get_all_assignments_from_notion()
-                    if notion_assignments:
-                        remaining["notion"] = notion_assignments
-            except Exception as e:
-                if args.verbose:
-                    print(f"⚠️ Could not check remaining Notion assignments: {e}")
+        try:
+            notion = NotionIntegration()
+            if notion.enabled:
+                notion_assignments = notion.get_all_assignments_from_notion()
+                if notion_assignments:
+                    remaining["notion"] = notion_assignments
+        except Exception as e:
+            if args.verbose:
+                print(f"⚠️ Could not check remaining Notion assignments: {e}")
         
         # Return all remaining assignments combined
         all_remaining = []
@@ -279,7 +277,7 @@ def delete_assignments_interactive(assignments, target_platform, args):
         
         try:
             if platform == 'todoist' or target_platform == 'all':
-                if not args.skip_todoist and (platform == 'todoist' or target_platform in ['all', 'todoist']):
+                if platform == 'todoist' or target_platform in ['all', 'todoist']:
                     todoist = TodoistIntegration()
                     if todoist.enabled:
                         if todoist.delete_assignment_task(assignment):
@@ -289,7 +287,7 @@ def delete_assignments_interactive(assignments, target_platform, args):
                                 print(f"   ✅ Deleted from Todoist: {assignment.get('title', 'Unknown')[:50]}")
             
             if platform == 'notion' or target_platform == 'all':
-                if not args.skip_notion and (platform == 'notion' or target_platform in ['all', 'notion']):
+                if platform == 'notion' or target_platform in ['all', 'notion']:
                     notion = NotionIntegration()
                     if notion.enabled:
                         if notion.delete_assignment_page(assignment):
@@ -337,10 +335,7 @@ def main():
                        help='Minimal output (only errors and final results)')
     parser.add_argument('--test', action='store_true', 
                        help='Test mode - just check connection')
-    parser.add_argument('--skip-notion', action='store_true',
-                       help='Skip Notion integration even if configured')
-    parser.add_argument('--skip-todoist', action='store_true',
-                       help='Skip Todoist integration even if configured')
+
     parser.add_argument('--cleanup', action='store_true',
                        help='Run archive cleanup for completed assignments')
     parser.add_argument('--cleanup-days', type=int, default=30,
@@ -525,7 +520,7 @@ def main():
                     print(f"✅ Scrape complete: {len(items)} items processed and saved!")
                     
                     # Always sync to configured platforms
-                    if args.notion and not args.skip_notion:
+                    if args.notion:
                         try:
                             print(f"\n📝 NOTION SYNC")
                             print("=" * 20)
@@ -542,7 +537,7 @@ def main():
                             print(f"⚠️ Notion sync failed: {e}")
                             logger.error(f"Notion sync failed: {e}")
                     
-                    if args.todoist and not args.skip_todoist:
+                    if args.todoist:
                         try:
                             print(f"\n✅ TODOIST SYNC")
                             print("=" * 20)
@@ -659,26 +654,24 @@ def main():
                         print(f"  📅 {title} (due in {days_until} days)")
             
             # Check sync status with integrations
-            if not args.skip_notion:
-                try:
-                    notion = NotionIntegration()
-                    if notion.enabled:
-                        notion_assignments = notion.get_all_assignments_from_notion()
-                        print(f"\n📝 Notion Status: {len(notion_assignments)} assignments in database")
-                        missing_in_notion = len(assignments) - len(notion_assignments)
-                        if missing_in_notion > 0:
-                            print(f"  ⚠️ {missing_in_notion} assignments may be missing from Notion")
-                except Exception as e:
-                    print(f"\n📝 Notion Status: ❌ Error checking ({e})")
+            try:
+                notion = NotionIntegration()
+                if notion.enabled:
+                    notion_assignments = notion.get_all_assignments_from_notion()
+                    print(f"\n📝 Notion Status: {len(notion_assignments)} assignments in database")
+                    missing_in_notion = len(assignments) - len(notion_assignments)
+                    if missing_in_notion > 0:
+                        print(f"  ⚠️ {missing_in_notion} assignments may be missing from Notion")
+            except Exception as e:
+                print(f"\n📝 Notion Status: ❌ Error checking ({e})")
             
-            if not args.skip_todoist:
-                try:
-                    todoist = TodoistIntegration()
-                    if todoist.enabled:
-                        print(f"\n✅ Todoist Status: Integration configured")
-                        # Could add more detailed Todoist checking here
-                except Exception as e:
-                    print(f"\n✅ Todoist Status: ❌ Error checking ({e})")
+            try:
+                todoist = TodoistIntegration()
+                if todoist.enabled:
+                    print(f"\n✅ Todoist Status: Integration configured")
+                    # Could add more detailed Todoist checking here
+            except Exception as e:
+                print(f"\n✅ Todoist Status: ❌ Error checking ({e})")
                     
         except Exception as e:
             print(f"❌ Error generating status report: {e}")
@@ -920,7 +913,7 @@ def main():
                     print(f"   ✗ Error details: {str(e)}")
                 return 1
             
-            if args.notion and not args.skip_notion:
+            if args.notion:
                 logger.info("Testing Notion connection...")
                 try:
                     if args.verbose:
@@ -946,7 +939,7 @@ def main():
                     if args.verbose:
                         print(f"   ✗ Error details: {str(e)}")
             
-            if args.todoist and not args.skip_todoist:
+            if args.todoist:
                 logger.info("Testing Todoist connection...")
                 try:
                     if args.verbose:
@@ -1038,7 +1031,6 @@ def main():
                     print()
                 
                 # Delete from Todoist first (if configured)
-                if not args.skip_todoist:
                     try:
                         print("✅ Deleting from Todoist...")
                         todoist = TodoistIntegration()
@@ -1060,7 +1052,6 @@ def main():
                             traceback.print_exc()
                 
                 # Delete from Notion (if configured)
-                if not args.skip_notion:
                     try:
                         print("📝 Deleting from Notion...")
                         notion = NotionIntegration()
@@ -1204,7 +1195,7 @@ def main():
                     print()
                 
                 # Delete from Todoist first (if configured and requested)
-                if not args.skip_todoist and delete_from in ['todoist', 'both']:
+                if delete_from in ['todoist', 'both']:
                     try:
                         print("✅ Deleting from Todoist...")
                         todoist = TodoistIntegration()
@@ -1226,7 +1217,7 @@ def main():
                             traceback.print_exc()
                 
                 # Delete from Notion (if configured and requested)
-                if not args.skip_notion and delete_from in ['notion', 'both']:
+                if delete_from in ['notion', 'both']:
                     try:
                         print("📝 Deleting from Notion...")
                         notion = NotionIntegration()
@@ -1398,8 +1389,8 @@ def main():
             print(f"✅ Successfully found {new_count} new assignments!")
             logger.info(f"Successfully added {new_count} new assignments!")
             
-            # Sync to Notion if requested and not skipped
-            if args.notion and not args.skip_notion:
+            # Sync to Notion if requested
+            if args.notion:
                 try:
                     if args.verbose:
                         print(f"\n📝 NOTION SYNC")
@@ -1442,8 +1433,8 @@ def main():
                         logger.error(traceback.format_exc())
                     logger.info("Continuing without Notion integration...")
             
-            # Sync to Todoist if requested and not skipped
-            if args.todoist and not args.skip_todoist:
+            # Sync to Todoist if requested
+            if args.todoist:
                 try:
                     if args.verbose:
                         print(f"\n✅ TODOIST SYNC")
@@ -1491,7 +1482,7 @@ def main():
             logger.info("No new assignments found")
             
             # Even if no new assignments, check if existing ones need to be synced to Notion
-            if args.notion and not args.skip_notion:
+            if args.notion:
                 try:
                     logger.info("Checking existing assignments for Notion sync...")
                     notion = NotionIntegration()
@@ -1538,7 +1529,7 @@ def main():
                     logger.info("Continuing without Notion integration...")
             
             # Even if no new assignments, check if existing ones need to be synced to Todoist
-            if args.todoist and not args.skip_todoist:
+            if args.todoist:
                 try:
                     logger.info("Checking existing assignments for Todoist sync...")
                     todoist = TodoistIntegration()
@@ -1605,7 +1596,7 @@ def main():
                 print(f"⚠️ Archive cleanup warning: {e}")
 
         # Status sync from Notion (if Notion is enabled and available)
-        if args.notion and not args.skip_notion:
+        if args.notion:
             try:
                 logger.info("Syncing assignment status from Notion...")
                 notion = NotionIntegration()
@@ -1628,7 +1619,7 @@ def main():
                 print(f"⚠️ Notion status sync warning: {e}")
 
         # Status sync from Todoist (if Todoist is enabled and available)
-        if args.todoist and not args.skip_todoist:
+        if args.todoist:
             try:
                 logger.info("Syncing assignment status from Todoist...")
                 todoist = TodoistIntegration()
