@@ -122,25 +122,16 @@ class NotionIntegration:
             today = datetime.now().date()
             days_until_due = (due_date.date() - today).days
             
-            # If we have opening date, use it; otherwise use email date as fallback
+            # If we have opening date, use it; otherwise assume assignment is open today
             if opening_date_str and opening_date_str != 'No opening date':
                 try:
                     opening_date = datetime.strptime(opening_date_str, '%Y-%m-%d').date()
                 except ValueError:
-                    # If opening date can't be parsed, use email date as fallback
-                    email_date_str = assignment.get('email_date')
-                    if email_date_str:
-                        opening_date = self._parse_email_date_for_reminder(email_date_str)
-                    else:
-                        opening_date = today
-            else:
-                # No opening date info, use email date as fallback for when assignment became available
-                email_date_str = assignment.get('email_date')
-                if email_date_str:
-                    opening_date = self._parse_email_date_for_reminder(email_date_str)
-                else:
-                    # Final fallback: assume assignment is open today
+                    # If opening date can't be parsed, assume assignment is open today
                     opening_date = today
+            else:
+                # No opening date info, assume assignment is open today
+                opening_date = today
             
             # Calculate days until assignment opens
             days_until_opens = (opening_date - today).days
@@ -252,7 +243,7 @@ class NotionIntegration:
                         "rich_text": [
                             {
                                 "text": {
-                                    "content": cleaned_assignment.get('source', 'email')
+                                    "content": cleaned_assignment.get('source', 'scrape')
                                 }
                             }
                         ]
@@ -347,35 +338,31 @@ class NotionIntegration:
                     ]
                 }
             else:
-                # For Gmail data without task_id, use email_id as fallback
-                email_id = cleaned_assignment.get('email_id')
-                if email_id:
-                    description_parts.append(f"Email ID: {email_id}")
-                    # Add as Task ID property for consistency
-                    page_data["properties"]["Task ID"] = {
-                        "rich_text": [
-                            {
-                                "text": {
-                                    "content": f"email_{email_id}"
-                                }
+                # For assignments without task_id, generate a unique ID
+                assignment_id = f"assignment_{hash(cleaned_assignment.get('title', '')) % 1000000:06d}"
+                description_parts.append(f"Assignment ID: {assignment_id}")
+                # Add as Task ID property for consistency
+                page_data["properties"]["Task ID"] = {
+                    "rich_text": [
+                        {
+                            "text": {
+                                "content": assignment_id
                             }
-                        ]
-                    }
+                        }
+                    ]
+                }
             
             # Add source information
             source = cleaned_assignment.get('source', '')
             if source:
                 description_parts.append(f"Source: {source}")
             
-            # Add email information if available
-            email_id = cleaned_assignment.get('email_id', '')
-            if email_id:
-                description_parts.append(f"Email ID: {email_id}")
+            # Add assignment metadata
+            if cleaned_assignment.get('course_code'):
+                description_parts.append(f"Course: {cleaned_assignment.get('course_code')}")
             
-            # Add email date if available
-            email_date = cleaned_assignment.get('email_date', '')
-            if email_date:
-                description_parts.append(f"Email Date: {email_date}")
+            if cleaned_assignment.get('activity_type'):
+                description_parts.append(f"Type: {cleaned_assignment.get('activity_type')}")
             
             # Add the description if we have any content
             # Note: Only add if Description property exists in database
@@ -566,16 +553,15 @@ class NotionIntegration:
             logger.warning("Invalid assignment data provided")
             return False
         
-        # Get task_id or email_id for reliable duplicate detection
+        # Get task_id or generate assignment_id for reliable duplicate detection
         task_id = assignment.get('task_id')
-        email_id = assignment.get('email_id')
+        if not task_id:
+            # Generate a unique ID based on title and course
+            title_hash = hash(assignment.get('title', '')) % 1000000
+            course_hash = hash(assignment.get('course_code', '')) % 1000000
+            task_id = f"assignment_{title_hash:06d}_{course_hash:06d}"
         
-        if not task_id and not email_id:
-            logger.warning(f"No task_id or email_id found for assignment: {assignment.get('title')}")
-            return False
-        
-        # Use task_id if available, otherwise use email_id
-        identifier = task_id if task_id else f"email_{email_id}"
+        identifier = task_id
         
         try:
             url = f'https://api.notion.com/v1/databases/{self.database_id}/query'
@@ -617,14 +603,14 @@ class NotionIntegration:
                                 rich_text_array = desc_data.get('rich_text', [])
                                 if rich_text_array:
                                     desc_text = rich_text_array[0].get('plain_text', '').lower()
-                                    # Look for task_id or email_id pattern
+                                    # Look for task_id or assignment_id pattern
                                     task_id_match = re.search(r'task id: (\w+)', desc_text)
-                                    email_id_match = re.search(r'email id: (\w+)', desc_text)
+                                    assignment_id_match = re.search(r'assignment id: (\w+)', desc_text)
                                     if task_id_match:
                                         existing_identifier = task_id_match.group(1)
                                         break
-                                    elif email_id_match:
-                                        existing_identifier = f"email_{email_id_match.group(1)}"
+                                    elif assignment_id_match:
+                                        existing_identifier = assignment_id_match.group(1)
                                         break
                     
                     # If we found a matching identifier, it's definitely the same assignment
@@ -795,18 +781,18 @@ class NotionIntegration:
             str or None: Page ID if found, None otherwise
         """
         try:
-            # Search for the assignment by formatted title and email_id (same as creation)
+            # Search for the assignment by formatted title and task_id
             formatted_title = self.format_task_content(assignment)
-            assignment_email_id = assignment.get('email_id', '').strip()
+            task_id = assignment.get('task_id')
             
-            # First try to search by email_id if available (most reliable)
-            if assignment_email_id:
+            # First try to search by task_id if available (most reliable)
+            if task_id:
                 url = f'https://api.notion.com/v1/databases/{self.database_id}/query'
                 data = {
                     "filter": {
-                        "property": "Email ID",
+                        "property": "Task ID",
                         "rich_text": {
-                            "equals": assignment_email_id
+                            "equals": task_id
                         }
                     }
                 }
@@ -818,7 +804,7 @@ class NotionIntegration:
                     if results:
                         return results[0]['id']
             
-            # If email_id search didn't work, try formatted title search
+            # If task_id search didn't work, try formatted title search
             if formatted_title:
                 url = f'https://api.notion.com/v1/databases/{self.database_id}/query'
                 data = {
@@ -857,45 +843,4 @@ class NotionIntegration:
             logger.error(f"Error finding page: {e}")
             return None
     
-    def _parse_email_date_for_reminder(self, email_date_str: str) -> date:
-        """Parse email date string to date object for reminder calculation"""
-        try:
-            # Email dates are typically in RFC 2822 format like:
-            # "Tue, 5 Aug 2025 15:34:53 +0000"
-            # "Wed, 6 Aug 2025 16:26:03 +0000"
-            
-            # Try multiple common email date formats
-            formats = [
-                '%a, %d %b %Y %H:%M:%S %z',  # Standard RFC 2822
-                '%a, %d %b %Y %H:%M:%S +0000',  # Common variant
-                '%d %b %Y %H:%M:%S %z',  # Without day name
-                '%Y-%m-%d %H:%M:%S',  # ISO format
-                '%Y-%m-%d',  # Simple date
-            ]
-            
-            for fmt in formats:
-                try:
-                    parsed_date = datetime.strptime(email_date_str, fmt)
-                    return parsed_date.date()
-                except ValueError:
-                    continue
-            
-            # If all formats fail, try parsing just the date part
-            # Extract date from strings like "Tue, 5 Aug 2025 15:34:53 +0000"
-            import re
-            date_match = re.search(r'(\d{1,2})\s+([A-Za-z]{3})\s+(\d{4})', email_date_str)
-            if date_match:
-                day, month_name, year = date_match.groups()
-                month_map = {
-                    'Jan': 1, 'Feb': 2, 'Mar': 3, 'Apr': 4, 'May': 5, 'Jun': 6,
-                    'Jul': 7, 'Aug': 8, 'Sep': 9, 'Oct': 10, 'Nov': 11, 'Dec': 12
-                }
-                if month_name in month_map:
-                    return date(int(year), month_map[month_name], int(day))
-            
-            logger.warning(f"Could not parse email date: {email_date_str}, using today as fallback")
-            return datetime.now().date()
-            
-        except Exception as e:
-            logger.warning(f"Error parsing email date {email_date_str}: {e}, using today as fallback")
-            return datetime.now().date()
+    # Email date parsing function removed - no longer needed

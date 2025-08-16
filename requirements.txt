@@ -3,9 +3,8 @@ python-dotenv>=1.0.0          # Environment variable management
 requests>=2.31.0              # HTTP requests for APIs
 email-validator>=2.0.0        # Email validation utilities
 
-# Gmail Integration
-imaplib3>=0.3.0              # IMAP client for Gmail access
-# Note: imaplib is built-in to Python, but imaplib3 provides better features
+# Gmail Integration - REMOVED
+# Note: Gmail functionality has been removed in favor of direct Moodle scraping
 
 # Date and Time Handling
 python-dateutil>=2.8.0       # Enhanced date parsing

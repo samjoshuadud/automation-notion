@@ -3025,9 +3025,8 @@ class MoodleDirectScraper:
         # Register login callback only if auto enabled
         if self.auto_scrape_on_login:
             self.session.on_login_callback = self._on_session_logged_in
-        # Storage paths
-        self.scraped_file = 'data/assignments_scraped.json'
-        self.main_file = 'data/assignments.json'
+        # Storage paths - Single file system (no more dual Gmail/scraping files)
+        self.assignments_file = 'data/assignments.json'
         # In-memory cache
         self._scraped_items: List[Dict] = []
         # Duplicate thresholds
@@ -3176,13 +3175,11 @@ class MoodleDirectScraper:
     f"🔍 DEBUG: Total items found across all courses: {
         len(all_items)}")
 
-            # Save raw scraped list separately
+            # Store scraped items in memory and save to main file
             self._scraped_items = all_items
-            self._save_json(self.scraped_file, all_items)
             logger.info(
-    f"💾 Saved {
-        len(all_items)} scraped items to {
-            self.scraped_file}")
+    f"💾 Scraped {
+        len(all_items)} items (saving to main assignments file)")
             if auto_merge:
                 try:
                     merged, new_count, updated = self.merge_into_main()
@@ -4239,8 +4236,8 @@ class MoodleDirectScraper:
             return []
 
     def merge_into_main(self) -> Tuple[List[Dict], int, int]:
-        existing = self._load_json(self.main_file)
-        scraped = self._scraped_items or self._load_json(self.scraped_file)
+        existing = self._load_json(self.assignments_file)
+        scraped = self._scraped_items or []
         new_count = 0
         updated = 0
         index = {}
@@ -4267,14 +4264,14 @@ class MoodleDirectScraper:
         None, 'No opening date']):
                     current['opening_date'] = item['opening_date']
                     changed = True
-                # Merge source label if not already present
-                if current.get('source') == 'email' and 'scrape' not in current.get('source', ''):
-                    current['source'] = 'email+scrape'
+                # Update source label
+                if 'scrape' not in current.get('source', ''):
+                    current['source'] = 'scrape'
                 if changed:
                     current['last_updated'] = datetime.now().strftime(
                         '%Y-%m-%d %H:%M:%S')
                     updated += 1
-        self._save_json(self.main_file, existing)
+        self._save_json(self.assignments_file, existing)
         return existing, new_count, updated
 
     # ---------------- Public Convenience ---------------- #

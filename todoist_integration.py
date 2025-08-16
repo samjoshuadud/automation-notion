@@ -188,14 +188,12 @@ class TodoistIntegration:
         if task_id:
             description_parts.append(f"🔗 Task ID: {task_id}")
         
-        # Add email information for tracking
-        email_id = assignment.get('email_id', '')
-        if email_id:
-            description_parts.append(f"📧 Email ID: {email_id}")
+        # Add assignment metadata for tracking
+        if assignment.get('course_code'):
+            description_parts.append(f"📚 Course: {assignment.get('course_code')}")
         
-        email_date = assignment.get('email_date', '')
-        if email_date:
-            description_parts.append(f"📬 Email Date: {email_date}")
+        if assignment.get('activity_type'):
+            description_parts.append(f"🔧 Type: {assignment.get('activity_type')}")
         
         return "\n".join(description_parts)
     
@@ -444,20 +442,14 @@ class TodoistIntegration:
                 assignments = []
                 
                 for task in tasks:
-                    # Extract task_id and email_id from description for matching
+                    # Extract task_id from description for matching
                     task_id = None
-                    email_id = None
                     description = task.get('description', '')
                     
-                    # Extract task_id (new primary identifier)
+                    # Extract task_id (primary identifier)
                     task_id_match = re.search(r'🔗 Task ID: (\w+)', description)
                     if task_id_match:
                         task_id = task_id_match.group(1)
-                    
-                    # Extract email_id (fallback for legacy tasks)
-                    email_match = re.search(r'📧 Email ID: (\w+)', description)
-                    if email_match:
-                        email_id = email_match.group(1)
                     
                     assignment = {
                         'id': task['id'],
@@ -469,8 +461,7 @@ class TodoistIntegration:
                         'description': description,
                         'created_at': task.get('created_at'),
                         'url': task.get('url'),
-                        'task_id': task_id,  # Primary identifier for matching
-                        'email_id': email_id  # Fallback for legacy tasks
+                        'task_id': task_id  # Primary identifier for matching
                     }
                     assignments.append(assignment)
                 
@@ -522,11 +513,6 @@ class TodoistIntegration:
                 if task_id:
                     todoist_lookup[task_id] = task
                     logger.debug(f"Indexed Todoist task by task_id: {task_id}")
-                # Fallback to email_id for legacy tasks
-                email_id = task.get('email_id')
-                if email_id:
-                    todoist_lookup[f"email_{email_id}"] = task
-                    logger.debug(f"Indexed Todoist task by email_id: {email_id}")
             
             updated_count = 0
             completed_assignments = []
@@ -534,16 +520,12 @@ class TodoistIntegration:
             # Check each local assignment against Todoist
             for assignment in valid_assignments:
                 task_id = assignment.get('task_id', '')
-                email_id = assignment.get('email_id', '')
                 
-                # Try to find matching Todoist task by task_id first, then email_id
+                # Try to find matching Todoist task by task_id
                 todoist_task = None
                 if task_id and task_id in todoist_lookup:
                     todoist_task = todoist_lookup[task_id]
                     logger.debug(f"Found Todoist task by task_id: {task_id}")
-                elif email_id and f"email_{email_id}" in todoist_lookup:
-                    todoist_task = todoist_lookup[f"email_{email_id}"]
-                    logger.debug(f"Found Todoist task by email_id: {email_id}")
                 
                 if todoist_task and todoist_task['completed']:
                     # Task is completed in Todoist, update local status

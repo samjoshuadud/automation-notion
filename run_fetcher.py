@@ -8,10 +8,10 @@ import os
 import traceback  # added
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 
-from moodle_fetcher import MoodleEmailFetcher
 from notion_integration import NotionIntegration
 from todoist_integration import TodoistIntegration
 from assignment_archive import AssignmentArchiveManager
+from shared_utils import load_assignments_from_file, save_assignments_to_file, is_duplicate_assignment
 
 # Try to import Moodle direct scraper (optional) with diagnostics
 try:
@@ -93,8 +93,7 @@ def check_remaining_assignments_after_deletion(delete_from, include_local, args)
     try:
         # Check local database (if it wasn't deleted)
         if not include_local and delete_from != 'both':
-            fetcher = MoodleEmailFetcher()
-            local_assignments = fetcher.load_existing_assignments()
+            local_assignments = load_assignments_from_file('data/assignments.json')
             if local_assignments:
                 remaining["local"] = local_assignments
         
@@ -259,8 +258,8 @@ def show_detailed_assignments(assignments):
         print(f"   Status: {assignment.get('status', 'Unknown')}")
         if assignment.get('source'):
             print(f"   Source: {assignment.get('source')}")
-        if assignment.get('email_id'):
-            print(f"   Email ID: {assignment.get('email_id')}")
+        if assignment.get('id'):
+            print(f"   ID: {assignment.get('id')}")
 
 def confirm_deletion(target):
     """Get user confirmation for deletion"""
@@ -301,8 +300,7 @@ def delete_assignments_interactive(assignments, target_platform, args):
             if platform == 'local' or target_platform == 'all':
                 if platform == 'local' or target_platform in ['all', 'local']:
                     # For local deletion, we need to remove from the JSON file
-                    fetcher = MoodleEmailFetcher()
-                    local_assignments = fetcher.load_existing_assignments()
+                    local_assignments = load_assignments_from_file('data/assignments.json')
                     
                     # Find and remove the assignment
                     title_to_remove = assignment.get('title', '')
@@ -324,9 +322,8 @@ def delete_assignments_interactive(assignments, target_platform, args):
     return deleted_count
 
 def main():
-    parser = argparse.ArgumentParser(description='Fetch Moodle assignments from Gmail')
-    parser.add_argument('--days', type=int, default=7, 
-                       help='Number of days back to search for emails (default: 7)')
+    parser = argparse.ArgumentParser(description='Fetch Moodle assignments using direct scraping')
+
     parser.add_argument('--notion', action='store_true', 
                        help='Sync to Notion (requires Notion credentials)')
     parser.add_argument('--todoist', action='store_true', 
@@ -358,13 +355,13 @@ def main():
     parser.add_argument('--status-report', action='store_true',
                        help='Show detailed status report of all assignments')
     parser.add_argument('--delete-all-assignments', action='store_true',
-                       help='DELETE ALL assignments from database, Todoist, and Notion (DEBUG ONLY - emails are NOT touched)')
+                       help='DELETE ALL assignments from database, Todoist, and Notion (DEBUG ONLY - Moodle data is NOT touched)')
     parser.add_argument('--delete-from', type=str, choices=['notion', 'todoist', 'both'], default=None,
                        help='Choose where to delete assignments from: notion, todoist, or both')
     parser.add_argument('--include-local', action='store_true',
                        help='Also delete assignments from local database when using selective deletion')
     parser.add_argument('--fresh-start', action='store_true',
-                       help='DELETE ALL data files and start fresh (clears assignments.json, assignments.md, archive, backups - emails are NOT touched)')
+                       help='DELETE ALL data files and start fresh (clears assignments.json, archive, backups - Moodle data is NOT touched)')
     
     # Moodle Direct Scraping Arguments
     parser.add_argument('--login-type', action='store_true',
@@ -373,22 +370,14 @@ def main():
                        help='Moodle site URL (can also set MOODLE_URL environment variable)')
     parser.add_argument('--clear-moodle-session', action='store_true',
                        help='Clear stored Moodle session data')
-    parser.add_argument('--sync-assignments', action='store_true',
-                       help='Sync scraped assignments to configured platforms (requires login)')
-    parser.add_argument('--scrape-forums', action='store_true',
-                       help='Scrape forum posts directly from Moodle (requires login)')
+    parser.add_argument('--scrape-assignments', action='store_true',
+                       help='Scrape assignments from Moodle (requires login)')
+
     parser.add_argument('--headless', action='store_true',
                        help='Run browser in headless mode (no GUI)')
-    parser.add_argument('--login-timeout', type=int, default=10,
-                       help='Timeout for manual login in minutes (default: 10)')
+
     
-    # Timing configuration for better reliability
-    parser.add_argument('--click-delay', type=int, nargs=2, default=[100, 300], metavar=('MIN', 'MAX'),
-                       help='Click delay range in milliseconds (default: 100 300)')
-    parser.add_argument('--page-wait', type=int, nargs=2, default=[2, 5], metavar=('MIN', 'MAX'),
-                       help='Page load wait range in seconds (default: 2 5)')
-    parser.add_argument('--typing-delay', type=int, nargs=2, default=[50, 150], metavar=('MIN', 'MAX'),
-                       help='Typing delay range in milliseconds (default: 50 150)')
+    # Timing configuration - using sensible internal defaults for reliability
     
     # Automated Google login
     parser.add_argument('--email', type=str,
@@ -441,11 +430,8 @@ def main():
         
         try:
             scraper = MoodleDirectScraper(
-                moodle_url=args.moodle_url, 
+                moodle_url=args.moodle_url,
                 headless=args.headless,
-                click_delay=tuple(args.click_delay),
-                page_wait=tuple(args.page_wait),
-                typing_delay=tuple(args.typing_delay),
                 google_email=args.email,
                 google_password=args.password
             )
@@ -479,8 +465,8 @@ def main():
                     print("✅ Status: LOGGED IN (existing session active)")
                     print(f"🌐 Moodle URL: {status['moodle_url']}")
                     print("🎉 Ready to scrape Moodle content!")
-                    # If user passed sync flags, run automatically; otherwise prompt
-                    if args.sync_assignments or args.scrape_forums:
+                    # If user passed scrape flags, run automatically; otherwise prompt
+                    if args.scrape_assignments:
                         try:
                             print("\n🚀 Scraping Moodle now (auto-trigger)...")
                             items = scraper.scrape_all_due_items(auto_merge=False)
@@ -557,10 +543,10 @@ def main():
                         print("💡 A browser window will open - complete Moodle (and Google SSO) login")
                         print("🔁 Re-using existing browser profile if present")
                         
-                        if scraper.interactive_login(timeout_minutes=args.login_timeout):
+                        if scraper.interactive_login(timeout_minutes=10):  # Use internal default
                             print("✅ Login successful (session saved). You can now scrape Moodle content.")
-                            # After successful login, auto-sync if flags provided else prompt
-                            if args.sync_assignments or args.scrape_forums:
+                            # After successful login, auto-scrape if flags provided else prompt
+                            if args.scrape_assignments:
                                 try:
                                     print("\n🚀 Scraping Moodle now (auto-trigger)...")
                                     items = scraper.scrape_all_due_items(auto_merge=False)
@@ -662,8 +648,7 @@ def main():
         print("\n📋 DETAILED STATUS REPORT")
         print("=" * 50)
         try:
-            fetcher = MoodleEmailFetcher()
-            assignments = fetcher.load_existing_assignments()
+            assignments = load_assignments_from_file('data/assignments.json')
             
             if not assignments:
                 print("📄 No assignments found in database")
@@ -753,8 +738,7 @@ def main():
         print("\n🔍 DUPLICATE DETECTION ANALYSIS")
         print("=" * 40)
         try:
-            fetcher = MoodleEmailFetcher()
-            assignments = fetcher.load_existing_assignments()
+            assignments = load_assignments_from_file('data/assignments.json')
             
             if not assignments:
                 print("📄 No assignments found in database")
@@ -777,30 +761,11 @@ def main():
                 for title, group in exact_duplicates.items():
                     print(f"\n  📝 '{title}' ({len(group)} instances):")
                     for assignment in group:
-                        print(f"    - Email ID: {assignment.get('email_id', 'N/A')}")
+                        print(f"    - ID: {assignment.get('id', assignment.get('title', 'N/A'))}")
                         print(f"      Due: {assignment.get('due_date', 'N/A')}")
                         print(f"      Status: {assignment.get('status', 'N/A')}")
             
-            # Check for email ID duplicates
-            email_groups = {}
-            for assignment in assignments:
-                email_id = assignment.get('email_id', '')
-                if email_id:
-                    if email_id not in email_groups:
-                        email_groups[email_id] = []
-                    email_groups[email_id].append(assignment)
-            
-            email_duplicates = {eid: group for eid, group in email_groups.items() if len(group) > 1}
-            
-            if email_duplicates:
-                print(f"\n⚠️ Found {len(email_duplicates)} duplicate email IDs:")
-                for email_id, group in email_duplicates.items():
-                    print(f"\n  📧 Email ID: {email_id} ({len(group)} instances)")
-                    for assignment in group:
-                        print(f"    - Title: {assignment.get('title', 'N/A')}")
-                        print(f"      Due: {assignment.get('due_date', 'N/A')}")
-            
-            if not exact_duplicates and not email_duplicates:
+            if not exact_duplicates:
                 print("✅ No exact duplicates found!")
             
             # Fuzzy matching for similar titles
@@ -841,13 +806,11 @@ def main():
         print("=" * 50)
         print("⚠️ WARNING: This will permanently delete:")
         print("  📄 All assignment data (assignments.json)")
-        print("  🌐 All Moodle scraping data (assignments_scraped.json)")
-        print("  📋 Assignment markdown file (assignments.md)")
         print("  📦 Archive files (assignments_archive.json)")
         print("  💾 All backup files")
         print("  📊 Any other data files in the data/ folder")
         print()
-        print("✅ Your Gmail emails will NOT be touched!")
+        print("✅ Your Moodle data will NOT be touched!")
         print("✅ Your .env configuration will NOT be touched!")
         print()
         
@@ -900,12 +863,7 @@ def main():
                 json.dump([], f, indent=2)
             print("   ✅ Created empty assignments.json")
             
-            # Empty assignments.md
-            with open('data/assignments.md', 'w') as f:
-                f.write("# Moodle Assignments\n\n")
-                f.write("| Assignment | Due Date | Course | Status | Added Date |\n")
-                f.write("|------------|----------|--------|--------|-----------|\n")
-            print("   ✅ Created empty assignments.md")
+
             
             # Empty archive file
             archive_data = {
@@ -924,12 +882,12 @@ def main():
             print("=" * 30)
             print("✅ All data files have been reset")
             print("✅ Ready for a completely fresh start")
-            print("📧 Your Gmail emails are completely untouched")
+            print("🌐 Your Moodle data is completely untouched")
             print("⚙️ Your .env configuration is preserved")
             print()
             print("💡 Next steps:")
-            print("  1. Run './deployment/run.sh check' to fetch assignments from Gmail")
-            print("  2. Run '--sync-assignments' to fetch assignments from Moodle")
+            print("  1. Run './deployment/run.sh check' to fetch assignments from Moodle")
+            print("  2. Run '--scrape-assignments' to scrape assignments from Moodle")
             print("  3. Run './deployment/run.sh notion' to sync to Notion")
             print("  4. Run './deployment/run.sh todoist' to sync to Todoist")
             print()
@@ -977,28 +935,37 @@ def main():
         logger.info("MOODLE ASSIGNMENT FETCHER STARTED")
         logger.info("=" * 50)
         
-        # Initialize fetcher
-        logger.info("Initializing Moodle email fetcher...")
-        fetcher = MoodleEmailFetcher()
-        
         if args.test:
             # Test connections with verbose feedback
             if args.verbose:
                 print("\n🧪 TESTING ALL CONNECTIONS")
                 print("=" * 40)
             
-            logger.info("Testing Gmail connection...")
+            logger.info("Testing Moodle connection...")
             try:
                 if args.verbose:
-                    print("📧 Testing Gmail IMAP connection...")
-                mail = fetcher.connect_to_gmail()
-                mail.logout()
-                print("✅ Gmail connection successful!")
-                if args.verbose:
-                    print("   ✓ IMAP authentication working")
-                    print("   ✓ Connection established and closed properly")
+                    print("🌐 Testing Moodle connection...")
+                from moodle_direct_scraper import MoodleDirectScraper
+                scraper = MoodleDirectScraper(
+                    moodle_url=args.moodle_url,
+                    headless=True,
+                    google_email=args.email,
+                    google_password=args.password
+                )
+                status = scraper.check_login_status()
+                scraper.close()
+                
+                if status.get('logged_in'):
+                    print("✅ Moodle connection successful!")
+                    if args.verbose:
+                        print("   ✓ Login status working")
+                        print("   ✓ Connection established and closed properly")
+                else:
+                    print("⚠️ Moodle connection status unclear")
+                    if args.verbose:
+                        print(f"   ⚠️ Status: {status}")
             except Exception as e:
-                print(f"❌ Gmail connection failed: {e}")
+                print(f"❌ Moodle connection failed: {e}")
                 if args.verbose:
                     print(f"   ✗ Error details: {str(e)}")
                 return 1
@@ -1060,35 +1027,21 @@ def main():
                 print("\n🎯 All connection tests completed!")
             return 0
         
-        # Check if we should skip Gmail fetching (when syncing is requested)
-        if args.sync_assignments or args.scrape_forums:
+        # Check if we should run Moodle scraping (when scraping is requested)
+        if args.scrape_assignments:
             print(f"\n🚀 MOODLE SYNC MODE")
             print("=" * 40)
-            print("⏭️ Skipping Gmail fetching (sync mode enabled)")
+            print("🌐 Running Moodle scraping to sync assignments...")
             
-            # Load scraped assignments first
-            scraped_file = "data/assignments_scraped.json"
-            scraped_assignments = []
+            # Load current assignments first
+            current_assignments = load_assignments_from_file('data/assignments.json')
             
-            try:
-                import json
-                with open(scraped_file, 'r') as f:
-                    scraped_assignments = json.load(f)
-                
-                if not scraped_assignments:
-                    print("⚠️ No scraped assignments found")
-                    print("💡 Run with --login-type --sync-assignments first to scrape data")
-                    return 1
+            if not current_assignments:
+                print("⚠️ No assignments found in database")
+                print("💡 Run with --login-type --scrape-assignments first to scrape data")
+                return 1
                     
-                print(f"📊 Found {len(scraped_assignments)} scraped assignments")
-                
-            except FileNotFoundError:
-                print("⚠️ No scraped assignments file found")
-                print("💡 Run with --login-type --sync-assignments first to scrape data")
-                return 1
-            except Exception as e:
-                print(f"❌ Error loading scraped assignments: {e}")
-                return 1
+            print(f"📊 Found {len(current_assignments)} assignments in database")
             
             # If Notion sync is requested, sync the scraped data
             if args.notion and not args.skip_notion:
@@ -1102,8 +1055,8 @@ def main():
                     if notion.enabled:
                         print("🔄 Syncing to Notion...")
                         
-                        notion_count = notion.sync_assignments(scraped_assignments)
-                        total_assignments = len(scraped_assignments)
+                        notion_count = notion.sync_assignments(current_assignments)
+                        total_assignments = len(current_assignments)
                         skipped_count = total_assignments - notion_count
                         
                         print(f"📝 Notion Sync Results:")
@@ -1137,8 +1090,8 @@ def main():
                     if todoist.enabled:
                         print("🔄 Syncing to Todoist...")
                         
-                        todoist_count = todoist.sync_assignments(scraped_assignments)
-                        total_assignments = len(scraped_assignments)
+                        todoist_count = todoist.sync_assignments(current_assignments)
+                        total_assignments = len(current_assignments)
                         skipped_count = total_assignments - todoist_count
                         
                         print(f"✅ Todoist Sync Results:")
@@ -1172,10 +1125,9 @@ def main():
             # Show what will be deleted
             print("⚠️ WARNING: This will delete assignments from:")
             print("  📄 Local database (assignments.json)")
-            print("  🌐 Moodle scraping data (assignments_scraped.json)")
             print("  ✅ Todoist (if configured)")
             print("  📝 Notion (if configured)")
-            print("  ✅ Your Gmail emails will NOT be touched!")
+            print("  ✅ Your Moodle data will NOT be touched!")
             print("  ✅ Your .env configuration will NOT be touched!")
             print()
             print("🎯 FULL MODE: Deleting from both platforms + local database")
@@ -1194,39 +1146,22 @@ def main():
             deleted_counts = {"local": 0, "todoist": 0, "notion": 0}
             
             try:
-                # Get assignments from both possible sources (Gmail and Moodle scraping)
+                # Get assignments from database
                 assignments = []
                 source_files = []
                 
-                # Try to load from assignments.json (Gmail source)
+                # Load from assignments.json (single source)
                 try:
-                    fetcher = MoodleEmailFetcher()
-                    gmail_assignments = fetcher.load_existing_assignments()
-                    if gmail_assignments:
-                        assignments.extend(gmail_assignments)
+                    assignments = load_assignments_from_file('data/assignments.json')
+                    if assignments:
                         source_files.append("assignments.json")
-                        print(f"📧 Loaded {len(gmail_assignments)} assignments from Gmail source")
+                        print(f"📚 Loaded {len(assignments)} assignments from database")
                 except Exception as e:
                     logger.debug(f"Could not load from assignments.json: {e}")
                 
-                # Try to load from assignments_scraped.json (Moodle scraping source)
-                try:
-                    import json
-                    import os
-                    scraped_file = "data/assignments_scraped.json"
-                    if os.path.exists(scraped_file):
-                        with open(scraped_file, 'r') as f:
-                            scraped_assignments = json.load(f)
-                        if scraped_assignments:
-                            assignments.extend(scraped_assignments)
-                            source_files.append("assignments_scraped.json")
-                            print(f"🌐 Loaded {len(scraped_assignments)} assignments from Moodle scraping source")
-                except Exception as e:
-                    logger.debug(f"Could not load from assignments_scraped.json: {e}")
-                
                 if not assignments:
                     print("❌ No assignments found in any data source")
-                    print("💡 Run './deployment/run.sh check' or '--scrape-assignments' first to populate the database")
+                    print("💡 Run './deployment/run.sh check' first to populate the database")
                     return 0
                 
                 print(f"\n📋 Found {len(assignments)} total assignments to delete from: {', '.join(source_files)}")
@@ -1305,31 +1240,7 @@ def main():
                     with open('data/assignments.json', 'w') as f:
                         json.dump([], f, indent=2)
                     
-                    # Clear assignments_scraped.json if it exists
-                    scraped_file = "data/assignments_scraped.json"
-                    if os.path.exists(scraped_file):
-                        try:
-                            with open(scraped_file, 'r') as f:
-                                scraped_assignments = json.load(f)
-                            if scraped_assignments:
-                                # Backup scraped assignments
-                                scraped_backup = f"data/assignments_scraped_backup_before_delete_{timestamp}.json"
-                                with open(scraped_backup, 'w') as f:
-                                    json.dump(scraped_assignments, f, indent=2)
-                                print(f"💾 Scraped assignments backup created: {scraped_backup}")
-                                
-                                # Clear scraped file
-                                with open(scraped_file, 'w') as f:
-                                    json.dump([], f, indent=2)
-                                print(f"🌐 Cleared assignments_scraped.json")
-                        except Exception as e:
-                            print(f"⚠️ Warning: Could not backup/clear scraped assignments: {e}")
-                    
-                    # Clear markdown file
-                    with open('data/assignments.md', 'w') as f:
-                        f.write("# Moodle Assignments\n\n")
-                        f.write("| Assignment | Due Date | Course | Status | Added Date |\n")
-                        f.write("|------------|----------|--------|--------|-----------|\n")
+
                     
                     deleted_counts["local"] = len(assignments)
                     print(f"📄 Deleted {deleted_counts['local']} assignments from local database")
@@ -1345,9 +1256,9 @@ def main():
                 print(f"📝 Notion: {deleted_counts['notion']} deleted")
                 print()
                 print("✅ All assignments deleted successfully!")
-                print("💡 Your Gmail emails are completely untouched")
-                print("🔄 Run './deployment/run.sh check' to fetch fresh assignments from Gmail")
-                print("🔄 Run '--sync-assignments' to fetch fresh assignments from Moodle")
+                print("💡 Your Moodle data is completely untouched")
+                print("🔄 Run './deployment/run.sh check' to fetch fresh assignments from Moodle")
+                print("🔄 Run '--scrape-assignments' to fetch fresh assignments from Moodle")
                 
             except Exception as e:
                 print(f"❌ Error during deletion: {e}")
@@ -1369,12 +1280,11 @@ def main():
             print("⚠️ WARNING: This will delete assignments from:")
             if include_local:
                 print("  📄 Local database (assignments.json)")
-                print("  🌐 Moodle scraping data (assignments_scraped.json)")
             if delete_from in ['todoist', 'both']:
                 print("  ✅ Todoist (if configured)")
             if delete_from in ['notion', 'both']:
                 print("  📝 Notion (if configured)")
-            print("  ✅ Your Gmail emails will NOT be touched!")
+            print("  ✅ Your Moodle data will NOT be touched!")
             print("  ✅ Your .env configuration will NOT be touched!")
             print()
             
@@ -1401,39 +1311,22 @@ def main():
             deleted_counts = {"local": 0, "todoist": 0, "notion": 0}
             
             try:
-                # Get assignments from both possible sources (Gmail and Moodle scraping)
+                # Get assignments from database
                 assignments = []
                 source_files = []
                 
-                # Try to load from assignments.json (Gmail source)
+                # Load from assignments.json (single source)
                 try:
-                    fetcher = MoodleEmailFetcher()
-                    gmail_assignments = fetcher.load_existing_assignments()
-                    if gmail_assignments:
-                        assignments.extend(gmail_assignments)
+                    assignments = load_assignments_from_file('data/assignments.json')
+                    if assignments:
                         source_files.append("assignments.json")
-                        print(f"📧 Loaded {len(gmail_assignments)} assignments from Gmail source")
+                        print(f"📚 Loaded {len(assignments)} assignments from database")
                 except Exception as e:
                     logger.debug(f"Could not load from assignments.json: {e}")
                 
-                # Try to load from assignments_scraped.json (Moodle scraping source)
-                try:
-                    import json
-                    import os
-                    scraped_file = "data/assignments_scraped.json"
-                    if os.path.exists(scraped_file):
-                        with open(scraped_file, 'r') as f:
-                            scraped_assignments = json.load(f)
-                        if scraped_assignments:
-                            assignments.extend(scraped_assignments)
-                            source_files.append("assignments_scraped.json")
-                            print(f"🌐 Loaded {len(scraped_assignments)} assignments from Moodle scraping source")
-                except Exception as e:
-                    logger.debug(f"Could not load from assignments_scraped.json: {e}")
-                
                 if not assignments:
                     print("❌ No assignments found in any data source")
-                    print("💡 Run './deployment/run.sh check' or '--scrape-assignments' first to populate the database")
+                    print("💡 Run './deployment/run.sh check' first to populate the database")
                     return 0
                 
                 print(f"\n📋 Found {len(assignments)} total assignments to delete from: {', '.join(source_files)}")
@@ -1513,29 +1406,7 @@ def main():
                         with open('data/assignments.json', 'w') as f:
                             json.dump([], f, indent=2)
                         
-                        # Clear assignments_scraped.json if it exists
-                        scraped_file = "data/assignments_scraped.json"
-                        if os.path.exists(scraped_file):
-                            try:
-                                with open(scraped_file, 'r') as f:
-                                    scraped_assignments = json.load(f)
-                                if scraped_assignments:
-                                    # Backup scraped assignments
-                                    scraped_backup = f"data/assignments_scraped_backup_before_delete_{timestamp}.json"
-                                    with open(scraped_backup, 'w') as f:
-                                        json.dump(scraped_assignments, f, indent=2)
-                                    print(f"💾 Scraped assignments backup created: {scraped_backup}")
-                                    
-                                    # Clear scraped file
-                                    with open(scraped_file, 'w') as f:
-                                        json.dump([], f, indent=2)
-                                    print(f"🌐 Cleared assignments_scraped.json")
-                            except Exception as e:
-                                print(f"⚠️ Warning: Could not backup/clear scraped assignments: {e}")
-                        
-                        # Clear markdown file
-                        with open('data/assignments.md', 'w') as f:
-                            f.write("# Moodle Assignments\n\n")
+
                             f.write("| Assignment | Due Date | Course | Status | Added Date |\n")
                             f.write("|------------|----------|--------|--------|-----------|\n")
                         
@@ -1572,9 +1443,9 @@ def main():
                     if include_local:
                         mode_text += " + LOCAL DATABASE"
                     print(f"✅ Assignments deleted from {mode_text} successfully!")
-                print("💡 Your Gmail emails are completely untouched")
-                print("🔄 Run './deployment/run.sh check' to fetch fresh assignments from Gmail")
-                print("🔄 Run '--sync-assignments' to fetch fresh assignments from Moodle")
+                print("💡 Your Moodle data is completely untouched")
+                print("🔄 Run './deployment/run.sh check' to fetch fresh assignments from Moodle")
+                print("🔄 Run '--scrape-assignments' to fetch fresh assignments from Moodle")
                 
                 # Check for remaining assignments and offer interactive deletion
                 remaining_assignments = check_remaining_assignments_after_deletion(delete_from, include_local, args)
@@ -1594,13 +1465,13 @@ def main():
         if args.verbose:
             print(f"\n🔍 FETCHING ASSIGNMENTS")
             print("=" * 40)
-            print(f"📅 Searching emails from last {args.days} days")
-            print(f"📧 Connecting to Gmail...")
+            print(f"📅 Fetching assignments from Moodle")
+            print(f"🌐 Connecting to Moodle...")
         
-        logger.info(f"Checking for assignments from the past {args.days} days...")
+        logger.info("Fetching assignments from Moodle...")
         
         # Load existing assignments first for comparison
-        existing_assignments = fetcher.load_existing_assignments()
+        existing_assignments = load_assignments_from_file('data/assignments.json')
         existing_count = len(existing_assignments)
         
         if args.verbose:
@@ -1613,12 +1484,33 @@ def main():
                     status_counts[status] = status_counts.get(status, 0) + 1
                 print("   Status breakdown:", ", ".join([f"{status}: {count}" for status, count in status_counts.items()]))
         
-        # Run the check
-        new_count = fetcher.run_check(args.days)
+        # Run Moodle scraping to fetch assignments
+        if args.verbose:
+            print(f"🌐 Starting Moodle scraping to fetch fresh assignments...")
         
-        # Reload assignments to see what was added
-        updated_assignments = fetcher.load_existing_assignments()
-        final_count = len(updated_assignments)
+        try:
+            from moodle_direct_scraper import MoodleDirectScraper
+            scraper = MoodleDirectScraper(
+                moodle_url=args.moodle_url,
+                headless=args.headless,
+                google_email=args.email,
+                google_password=args.password
+            )
+            
+            # Scrape assignments
+            scraped_assignments = scraper.scrape_all_due_items(auto_merge=True)
+            new_count = len(scraped_assignments) - existing_count if scraped_assignments else 0
+            
+            # Reload assignments to see what was added
+            updated_assignments = load_assignments_from_file('data/assignments.json')
+            final_count = len(updated_assignments)
+            
+            scraper.close()
+            
+        except Exception as e:
+            logger.error(f"Moodle scraping failed: {e}")
+            print(f"❌ Moodle scraping failed: {e}")
+            return 1
         
         if args.verbose and new_count > 0:
             print(f"\n📊 PROCESSING RESULTS")
@@ -1635,7 +1527,7 @@ def main():
                 print(f"      Due: {assignment.get('due_date', 'Unknown')}")
                 print(f"      Status: {assignment.get('status', 'Pending')}")
                 if args.debug:
-                    print(f"      Email ID: {assignment.get('email_id', 'N/A')}")
+                    print(f"      ID: {assignment.get('id', 'N/A')}")
                 print()
         
         if new_count > 0:
@@ -1653,7 +1545,7 @@ def main():
                     logger.info("Initializing Notion integration...")
                     notion = NotionIntegration()
                     if notion.enabled:
-                        assignments = fetcher.load_existing_assignments()
+                        assignments = load_assignments_from_file('data/assignments.json')
                         # Only sync recent assignments (avoid duplicates)
                         recent_assignments = assignments[-new_count:] if new_count <= len(assignments) else assignments
                         
@@ -1696,8 +1588,8 @@ def main():
                     
                     logger.info("Initializing Todoist integration...")
                     todoist = TodoistIntegration()
-                    if todoist.enabled:
-                        assignments = fetcher.load_existing_assignments()
+                    if                     todoist.enabled:
+                        assignments = load_assignments_from_file('data/assignments.json')
                         # Only sync recent assignments (avoid duplicates)
                         recent_assignments = assignments[-new_count:] if new_count <= len(assignments) else assignments
                         
@@ -1740,7 +1632,7 @@ def main():
                     logger.info("Checking existing assignments for Notion sync...")
                     notion = NotionIntegration()
                     if notion.enabled:
-                        assignments = fetcher.load_existing_assignments()
+                        assignments = load_assignments_from_file('data/assignments.json')
                         if assignments:
                             logger.info(f"Checking {len(assignments)} existing assignments against Notion...")
                             print(f"🔍 Checking {len(assignments)} assignments against Notion database...")
@@ -1787,7 +1679,7 @@ def main():
                     logger.info("Checking existing assignments for Todoist sync...")
                     todoist = TodoistIntegration()
                     if todoist.enabled:
-                        assignments = fetcher.load_existing_assignments()
+                        assignments = load_assignments_from_file('data/assignments.json')
                         if assignments:
                             logger.info(f"Checking {len(assignments)} existing assignments against Todoist...")
                             print(f"🔍 Checking {len(assignments)} assignments against Todoist...")
@@ -1878,8 +1770,7 @@ def main():
                 todoist = TodoistIntegration()
                 if todoist.enabled:
                     # Get current local assignments
-                    fetcher = MoodleEmailFetcher()
-                    local_assignments = fetcher.load_existing_assignments()
+                    local_assignments = load_assignments_from_file('data/assignments.json')
                     
                     if local_assignments:
                         # Sync status from Todoist
@@ -1887,7 +1778,7 @@ def main():
                         
                         if todoist_sync_result['updated'] > 0:
                             # Save updated assignments back to file
-                            fetcher.save_assignments(local_assignments)
+                            save_assignments_to_file('data/assignments.json', local_assignments)
                             print(f"🔄 Todoist sync: Updated {todoist_sync_result['updated']} assignments to Completed")
                             logger.info(f"Todoist status sync: Updated {todoist_sync_result['updated']} assignments")
                             
