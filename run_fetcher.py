@@ -6,6 +6,7 @@ Enhanced Moodle Assignment Fetcher with Notion Integration
 import sys
 import os
 import traceback  # added
+import json
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 
 from notion_integration import NotionIntegration
@@ -837,7 +838,7 @@ def main():
             print()
             print("💡 Next steps:")
             print("  1. Run './deployment/run.sh check' to fetch assignments from Moodle")
-            print("  2. Run '--scrape-assignments' to scrape assignments from Moodle")
+            print("  2. Run 'python run_fetcher.py' to scrape assignments from Moodle")
             print("  3. Run './deployment/run.sh notion' to sync to Notion")
             print("  4. Run './deployment/run.sh todoist' to sync to Todoist")
             print()
@@ -1089,6 +1090,7 @@ def main():
                     backup_file = f"data/assignments_backup_before_delete_{timestamp}.json"
                     
                     try:
+                        import json
                         with open('data/assignments.json', 'r') as f:
                             current_assignments = json.load(f)
                         if current_assignments:
@@ -1120,7 +1122,7 @@ def main():
                 print("✅ All assignments deleted successfully!")
                 print("💡 Your Moodle data is completely untouched")
                 print("🔄 Run './deployment/run.sh check' to fetch fresh assignments from Moodle")
-                print("🔄 Run '--scrape-assignments' to fetch fresh assignments from Moodle")
+                print("🔄 Run 'python run_fetcher.py' to fetch fresh assignments from Moodle")
                 
             except Exception as e:
                 print(f"❌ Error during deletion: {e}")
@@ -1255,6 +1257,7 @@ def main():
                         backup_file = f"data/assignments_backup_before_delete_{timestamp}.json"
                         
                         try:
+                            import json
                             with open('data/assignments.json', 'r') as f:
                                 current_assignments = json.load(f)
                             if current_assignments:
@@ -1307,7 +1310,7 @@ def main():
                     print(f"✅ Assignments deleted from {mode_text} successfully!")
                 print("💡 Your Moodle data is completely untouched")
                 print("🔄 Run './deployment/run.sh check' to fetch fresh assignments from Moodle")
-                print("🔄 Run '--scrape-assignments' to fetch fresh assignments from Moodle")
+                print("🔄 Run 'python run_fetcher.py' to fetch fresh assignments from Moodle")
                 
                 # Check for remaining assignments and offer interactive deletion
                 remaining_assignments = check_remaining_assignments_after_deletion(delete_from, include_local, args)
