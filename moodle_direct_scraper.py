@@ -3037,12 +3037,21 @@ class MoodleDirectScraper:
         # Configuration for URL module handling
         self.include_lesson_links = os.getenv('MOODLE_INCLUDE_LESSON_LINKS', 'false').lower() in ['true', '1', 'yes', 'on']
         
+        # Configuration for enhanced assignment status checking
+        self.enable_assignment_status_check = os.getenv('MOODLE_ENABLE_ASSIGNMENT_STATUS_CHECK', 'true').lower() in ['true', '1', 'yes', 'on']
+        
         if not self.auto_scrape_on_login and headless:
             logger.info(
                 "ℹ️ Headless mode without auto-scrape: remember to call scrape_all_due_items() manually.")
         if self.auto_scrape_on_login and not headless:
             logger.info(
                 "ℹ️ Auto-scrape enabled in non-headless mode (override default).")
+        
+        # Log configuration status
+        if self.enable_assignment_status_check:
+            logger.info("🔍 Enhanced assignment status checking enabled (will click into assignments)")
+        else:
+            logger.info("⚠️ Enhanced assignment status checking disabled (only manual completion buttons)")
 
         # Initialize filtered items summary for logging
         self.filtered_items_summary = []
@@ -3668,7 +3677,7 @@ class MoodleDirectScraper:
                     modtype = self._detect_url_module_type(raw_title, course.get('code', ''))
                 
                 # Extract completion status and task ID
-                completion_status = self._extract_completion_status(cont)
+                completion_status = self._extract_completion_status(cont, modtype.lower(), link)
                 task_id = self._extract_task_id(link)
                 
                 assignment = {
@@ -3728,84 +3737,184 @@ class MoodleDirectScraper:
             course.get('code')}")
         return results
 
-    def _extract_completion_status(self, cont) -> str:
-        """Extract completion status from activity container"""
+    def _extract_completion_status(self, cont, activity_type: str = None, origin_url: str = None) -> str:
+        """Extract completion status from activity container with enhanced detection for assignments"""
         try:
-            # Look for completion info region
+            # First try manual completion button detection (existing logic)
             completion_info = cont.select_one('[data-region="completion-info"]')
-            if not completion_info:
-                return 'Pending'
+            if completion_info:
+                completion_button = completion_info.select_one('button[data-action="toggle-manual-completion"]')
+                if completion_button:
+                    # Use existing button-based logic
+                    button_text = completion_button.get_text(strip=True).lower()
+                    toggle_type = completion_button.get('data-toggletype', '')
+                    
+                    # Check if it's marked as done - prioritize "mark as done" over "done"
+                    if 'mark as done' in button_text or 'manual:mark' in toggle_type:
+                        return 'Pending'
+                    elif 'done' in button_text or 'undo' in toggle_type:
+                        return 'Completed'
+                    
+                    # Fallback: check button title attribute
+                    button_title = completion_button.get('title', '').lower()
+                    if 'marked as done' in button_title or 'press to undo' in button_title:
+                        return 'Completed'
+                    elif 'mark as done' in button_title:
+                        return 'Pending'
             
-            # Look for the completion button
-            completion_button = completion_info.select_one('button[data-action="toggle-manual-completion"]')
-            if not completion_button:
-                return 'Pending'
+            # If no manual completion button found, try enhanced detection for assignments
+            if activity_type == 'assign' and origin_url and self.enable_assignment_status_check:
+                return self._check_assignment_submission_status(origin_url)
             
-            # Check the button text and attributes to determine status
-            button_text = completion_button.get_text(strip=True).lower()
-            toggle_type = completion_button.get('data-toggletype', '')
-            
-            # Check if it's marked as done - prioritize "mark as done" over "done"
-            if 'mark as done' in button_text or 'manual:mark' in toggle_type:
-                return 'Pending'
-            elif 'done' in button_text or 'undo' in toggle_type:
-                return 'Completed'
-            
-            # Fallback: check button title attribute
-            button_title = completion_button.get('title', '').lower()
-            if 'marked as done' in button_title or 'press to undo' in button_title:
-                return 'Completed'
-            elif 'mark as done' in button_title:
-                return 'Pending'
-            
+            # For other activity types without manual completion, return Pending
             return 'Pending'
             
         except Exception as e:
             logger.debug(f"Error extracting completion status: {e}")
             return 'Pending'
 
-    def _extract_completion_status_regex(self, html_block: str) -> str:
-        """Extract completion status from HTML block using regex patterns"""
+    def _check_assignment_submission_status(self, assignment_url: str) -> str:
+        """Check assignment submission status by clicking into the assignment page"""
+        try:
+            logger.debug(f"Checking submission status for assignment: {assignment_url}")
+            
+            # Navigate to assignment page
+            page = self.session.page
+            if not page:
+                logger.warning("No page available for assignment status check")
+                return 'Pending'
+            
+            # Store current page for later return
+            current_url = page.url
+            
+            try:
+                # Navigate to assignment page
+                page.goto(assignment_url, wait_until='networkidle', timeout=10000)
+                
+                # Wait for page to load and look for submission status
+                page.wait_for_load_state('networkidle', timeout=5000)
+                
+                # Additional wait for content to be visible
+                try:
+                    page.wait_for_selector('table', timeout=3000)
+                except:
+                    logger.debug("No table found, continuing with content search")
+                
+                # Look for submission status indicators
+                submission_status = self._extract_submission_status_from_page(page)
+                
+                logger.debug(f"Assignment submission status: {submission_status}")
+                return submission_status
+                
+            finally:
+                # Return to original page
+                if current_url != page.url:
+                    try:
+                        page.goto(current_url, wait_until='networkidle', timeout=10000)
+                        logger.debug("Returned to original page after assignment status check")
+                    except Exception as e:
+                        logger.warning(f"Error returning to original page: {e}")
+                    
+        except Exception as e:
+            logger.warning(f"Error checking assignment submission status: {e}")
+            return 'Pending'
+
+    def _extract_submission_status_from_page(self, page) -> str:
+        """Extract submission status from assignment page content"""
+        try:
+            # Look for submission status in table cells
+            status_selectors = [
+                'td.submissionstatussubmitted',  # Submitted for grading
+                'td:has-text("Submitted for grading")',
+                'td:has-text("No submissions have been made yet")',
+                'td:has-text("Draft (not submitted)")',
+                'td:has-text("Submitted")',
+                'td:has-text("Graded")',
+                'td:has-text("Marking workflow")',
+                'td:has-text("Released")',
+                'td:has-text("Not submitted")',
+                'td:has-text("Overdue")',
+                'td:has-text("Extension granted")'
+            ]
+            
+            for selector in status_selectors:
+                try:
+                    status_element = page.locator(selector).first
+                    if status_element.count() > 0:
+                        status_text = status_element.text_content().strip().lower()
+                        logger.debug(f"Found submission status: {status_text}")
+                        
+                        # Determine completion based on status text
+                        if any(phrase in status_text for phrase in ['submitted', 'graded', 'complete', 'released', 'marking workflow']):
+                            return 'Completed'
+                        elif any(phrase in status_text for phrase in ['no submissions', 'draft', 'not submitted', 'overdue']):
+                            return 'Pending'
+                        
+                        # Default to Pending for unknown statuses
+                        return 'Pending'
+                except Exception:
+                    continue
+            
+            # Fallback: look for any text containing submission status
+            page_content = page.content()
+            
+            # Check for submitted status
+            if any(phrase in page_content.lower() for phrase in ['submitted for grading', 'graded', 'released', 'marking workflow']):
+                return 'Completed'
+            elif any(phrase in page_content.lower() for phrase in ['no submissions have been made yet', 'draft (not submitted)', 'not submitted', 'overdue']):
+                return 'Pending'
+            
+            # If we can't determine, assume Pending
+            logger.debug("Could not determine submission status, assuming Pending")
+            return 'Pending'
+            
+        except Exception as e:
+            logger.warning(f"Error extracting submission status from page: {e}")
+            return 'Pending'
+
+    def _extract_completion_status_regex(self, html_block: str, activity_type: str = None, origin_url: str = None) -> str:
+        """Extract completion status from HTML block using regex patterns with enhanced assignment detection"""
         try:
             # Look for completion info region
             completion_pattern = r'<div[^>]*data-region="completion-info"[^>]*>.*?</div>'
             completion_match = re.search(completion_pattern, html_block, re.DOTALL | re.IGNORECASE)
-            if not completion_match:
-                return 'Pending'
+            if completion_match:
+                completion_html = completion_match.group(0)
+                
+                # Look for the completion button
+                button_pattern = r'<button[^>]*data-action="toggle-manual-completion"[^>]*>.*?</button>'
+                button_match = re.search(button_pattern, completion_html, re.DOTALL | re.IGNORECASE)
+                if button_match:
+                    button_html = button_match.group(0)
+                    
+                    # Check button text
+                    button_text = re.sub(r'<[^>]+>', '', button_html).lower().strip()
+                    
+                    # Check data-toggletype attribute
+                    toggle_match = re.search(r'data-toggletype="([^"]*)"', button_html, re.IGNORECASE)
+                    toggle_type = toggle_match.group(1) if toggle_match else ''
+                    
+                    # Check title attribute
+                    title_match = re.search(r'title="([^"]*)"', button_html, re.IGNORECASE)
+                    button_title = title_match.group(1).lower() if title_match else ''
+                    
+                    # Determine status based on patterns - prioritize "mark as done" over "done"
+                    if 'mark as done' in button_text or 'manual:mark' in toggle_type:
+                        return 'Pending'
+                    elif 'done' in button_text or 'undo' in toggle_type:
+                        return 'Completed'
+                    
+                    # Fallback: check button title attribute
+                    if 'marked as done' in button_title or 'press to undo' in button_title:
+                        return 'Completed'
+                    elif 'mark as done' in button_title:
+                        return 'Pending'
             
-            completion_html = completion_match.group(0)
+            # If no manual completion button found, try enhanced detection for assignments
+            if activity_type == 'assign' and origin_url and self.enable_assignment_status_check:
+                return self._check_assignment_submission_status(origin_url)
             
-            # Look for the completion button
-            button_pattern = r'<button[^>]*data-action="toggle-manual-completion"[^>]*>.*?</button>'
-            button_match = re.search(button_pattern, completion_html, re.DOTALL | re.IGNORECASE)
-            if not button_match:
-                return 'Pending'
-            
-            button_html = button_match.group(0)
-            
-            # Check button text
-            button_text = re.sub(r'<[^>]+>', '', button_html).lower().strip()
-            
-            # Check data-toggletype attribute
-            toggle_match = re.search(r'data-toggletype="([^"]*)"', button_html, re.IGNORECASE)
-            toggle_type = toggle_match.group(1) if toggle_match else ''
-            
-            # Check title attribute
-            title_match = re.search(r'title="([^"]*)"', button_html, re.IGNORECASE)
-            button_title = title_match.group(1).lower() if title_match else ''
-            
-            # Determine status based on patterns - prioritize "mark as done" over "done"
-            if 'mark as done' in button_text or 'manual:mark' in toggle_type:
-                return 'Pending'
-            elif 'done' in button_text or 'undo' in toggle_type:
-                return 'Completed'
-            
-            # Fallback: check button title attribute
-            if 'marked as done' in button_title or 'press to undo' in button_title:
-                return 'Completed'
-            elif 'mark as done' in button_title:
-                return 'Pending'
-            
+            # For other activity types without manual completion, return Pending
             return 'Pending'
             
         except Exception as e:
@@ -3994,7 +4103,7 @@ class MoodleDirectScraper:
                 formatted = self._format_assignment_title(
                     raw_title, course_code)
                 # Extract completion status and task ID from li block
-                completion_status = self._extract_completion_status_regex(li_block)
+                completion_status = self._extract_completion_status_regex(li_block, modtype.lower(), link)
                 task_id = self._extract_task_id(link)
                 
                 assignment = {
@@ -4070,7 +4179,7 @@ class MoodleDirectScraper:
                     if modtype == 'url':
                         modtype = self._detect_url_module_type(raw_title, course.get('code', ''))
                     # Extract completion status and task ID from div block
-                    completion_status = self._extract_completion_status_regex(block)
+                    completion_status = self._extract_completion_status_regex(block, modtype.lower(), link)
                     task_id = self._extract_task_id(link)
                     
                     assignment = {
