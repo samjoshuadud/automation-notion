@@ -331,6 +331,8 @@ def main():
                        help='Enable detailed progress logging with real-time status')
     parser.add_argument('--debug', '-d', action='store_true', 
                        help='Enable debug mode with maximum detail (includes --verbose)')
+    parser.add_argument('--sync-only', action='store_true',
+                       help='Only sync existing local database to Todoist/Notion (no Moodle scraping)')
     parser.add_argument('--quiet', '-q', action='store_true', 
                        help='Minimal output (only errors and final results)')
     parser.add_argument('--test', action='store_true', 
@@ -445,6 +447,74 @@ def main():
             print(f"❌ Error: {e}")
             return 1
 
+    # Handle sync-only mode (no Moodle scraping, just sync existing data)
+    if args.sync_only:
+        print("\n🔄 SYNC-ONLY MODE")
+        print("=" * 30)
+        print("📊 Syncing existing local database to Todoist/Notion...")
+        
+        # Load existing assignments
+        try:
+            assignments = load_assignments_from_file('data/assignments.json')
+            if not assignments:
+                print("❌ No assignments found in local database")
+                print("💡 Run the scraper first to generate assignment data")
+                return 1
+            
+            print(f"📚 Found {len(assignments)} assignments in local database")
+            
+            # Sync to Todoist if requested
+            if args.todoist:
+                try:
+                    print(f"\n✅ TODOIST SYNC")
+                    print("=" * 20)
+                    todoist = TodoistIntegration()
+                    if todoist.enabled:
+                        print(f"📊 Syncing {len(assignments)} assignments to Todoist...")
+                        sync_result = todoist.sync_assignments(assignments)
+                        
+                        if sync_result['total_processed'] > 0:
+                            print(f"✅ Todoist sync completed:")
+                            if sync_result['new_created'] > 0:
+                                print(f"   ➕ {sync_result['new_created']} new tasks created")
+                            if sync_result['existing_updated'] > 0:
+                                print(f"   🔄 {sync_result['existing_updated']} existing tasks updated")
+                        else:
+                            print("✅ Todoist sync completed: No changes needed")
+                    else:
+                        print("⚠️ Todoist integration not configured")
+                except Exception as e:
+                    print(f"⚠️ Todoist sync failed: {e}")
+                    logger.error(f"Todoist sync failed: {e}")
+            
+            # Sync to Notion if requested
+            if args.notion:
+                try:
+                    print(f"\n✅ NOTION SYNC")
+                    print("=" * 20)
+                    notion = NotionIntegration()
+                    if notion.enabled:
+                        print(f"📊 Syncing {len(assignments)} assignments to Notion...")
+                        notion_count = notion.sync_assignments(assignments)
+                        print(f"✅ Successfully synced {notion_count} assignments to Notion!")
+                    else:
+                        print("⚠️ Notion integration not configured")
+                except Exception as e:
+                    print(f"⚠️ Notion sync failed: {e}")
+                    logger.error(f"Notion sync failed: {e}")
+            
+            if not args.todoist and not args.notion:
+                print("⚠️ No sync targets specified. Use --todoist and/or --notion")
+                print("💡 Example: --sync-only --todoist")
+            
+            print("\n🎉 Sync-only operation completed!")
+            return 0
+            
+        except Exception as e:
+            print(f"❌ Sync-only operation failed: {e}")
+            logger.error(f"Sync-only operation failed: {e}")
+            return 1
+    
     # Main Moodle login and scraping flow (when no specific flags are given)
     if not any([args.archive_stats, args.status_report, args.delete_all_assignments, 
                 args.delete_from, args.fresh_start, args.clear_moodle_session]):
@@ -546,8 +616,17 @@ def main():
                             todoist = TodoistIntegration()
                             if todoist.enabled:
                                 print(f"📊 Syncing {len(items)} assignments to Todoist...")
-                                todoist_count = todoist.sync_assignments(items)
-                                print(f"✅ Synced {todoist_count} assignments to Todoist!")
+                                sync_result = todoist.sync_assignments(items)
+                                
+                                # Display detailed breakdown
+                                if sync_result['total_processed'] > 0:
+                                    print(f"✅ Todoist sync completed:")
+                                    if sync_result['new_created'] > 0:
+                                        print(f"   ➕ {sync_result['new_created']} new tasks created")
+                                    if sync_result['existing_updated'] > 0:
+                                        print(f"   🔄 {sync_result['existing_updated']} existing tasks updated")
+                                else:
+                                    print("✅ Todoist sync completed: No changes needed")
                             else:
                                 print("⚠️ Todoist integration not configured")
                         except Exception as e:
@@ -1454,14 +1533,21 @@ def main():
                                 print(f"   {i}. Creating task: {assignment.get('title', 'Unknown')[:50]}...")
                         
                         logger.info(f"Syncing {len(recent_assignments)} new assignments to Todoist...")
-                        todoist_count = todoist.sync_assignments(recent_assignments)
+                        sync_result = todoist.sync_assignments(recent_assignments)
                         
-                        print(f"✅ Synced {todoist_count} assignments to Todoist!")
-                        logger.info(f"Successfully synced {todoist_count} assignments to Todoist")
+                        if sync_result['total_processed'] > 0:
+                            print(f"✅ Todoist sync completed:")
+                            if sync_result['new_created'] > 0:
+                                print(f"   ➕ {sync_result['new_created']} new tasks created")
+                            if sync_result['existing_updated'] > 0:
+                                print(f"   🔄 {sync_result['existing_updated']} existing tasks updated")
+                            logger.info(f"Successfully synced {sync_result['total_processed']} assignments to Todoist")
+                        else:
+                            print("✅ Todoist sync completed: No changes needed")
                         
                         if args.verbose:
-                            if todoist_count != len(recent_assignments):
-                                print(f"   ⚠️ Note: {len(recent_assignments) - todoist_count} assignments may have been skipped (already exist)")
+                            if sync_result['total_processed'] != len(recent_assignments):
+                                print(f"   ⚠️ Note: {len(recent_assignments) - sync_result['total_processed']} assignments may have been skipped (already exist)")
                             else:
                                 print("   ✅ All assignments synced successfully")
                     else:
@@ -1558,9 +1644,16 @@ def main():
                             if assignments_to_sync:
                                 logger.info(f"Found {len(assignments_to_sync)} assignments missing from Todoist")
                                 print(f"✅ Syncing {len(assignments_to_sync)} missing assignments to Todoist...")
-                                todoist_count = todoist.sync_assignments(assignments_to_sync)
-                                print(f"✅ Successfully synced {todoist_count} assignments to Todoist!")
-                                logger.info(f"Successfully synced {todoist_count} assignments to Todoist")
+                                sync_result = todoist.sync_assignments(assignments_to_sync)
+                                if sync_result['total_processed'] > 0:
+                                    print(f"✅ Todoist sync completed:")
+                                    if sync_result['new_created'] > 0:
+                                        print(f"   ➕ {sync_result['new_created']} new tasks created")
+                                    if sync_result['existing_updated'] > 0:
+                                        print(f"   🔄 {sync_result['existing_updated']} existing tasks updated")
+                                    logger.info(f"Successfully synced {sync_result['total_processed']} assignments to Todoist")
+                                else:
+                                    print("✅ Todoist sync completed: No changes needed")
                             else:
                                 print("✅ All assignments already exist in Todoist")
                                 logger.info("All assignments already exist in Todoist")

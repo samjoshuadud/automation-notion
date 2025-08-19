@@ -3191,6 +3191,19 @@ class MoodleDirectScraper:
         len(all_items)} items (saving to main assignments file)")
             if auto_merge:
                 try:
+                    # Show preview of changes before merging
+                    if self.debug_scrape:
+                        comparison = self.compare_scraped_with_existing(all_items)
+                        logger.info(f"🔍 Change preview: {comparison['summary']['new_count']} new, {comparison['summary']['updated_count']} updated")
+                        if comparison['summary']['updated_count'] > 0:
+                            logger.info("📝 Tasks that will be updated:")
+                            for update_info in comparison['updated_tasks'][:3]:  # Show first 3
+                                task = update_info['item']
+                                changes = update_info['changes']
+                                logger.info(f"   • {task.get('title', 'Unknown')}: {', '.join(changes[:2])}")  # Show first 2 changes
+                            if comparison['summary']['updated_count'] > 3:
+                                logger.info(f"   ... and {comparison['summary']['updated_count'] - 3} more")
+                    
                     merged, new_count, updated = self.merge_into_main()
                     logger.info(
     f"🔄 Merge summary: new={new_count} updated={updated} total_main={
@@ -4350,42 +4363,176 @@ class MoodleDirectScraper:
         new_count = 0
         updated = 0
         index = {}
+        
+        # Create index by task_id first (most reliable), then fallback to title+course
         for a in existing:
-            key = (a.get('title_normalized') or a.get('title', '')).lower(), a.get('course_code','')
-            index[key] = a
+            # Primary key: task_id if available
+            if a.get('task_id'):
+                index[a['task_id']] = a
+            # Fallback key: title + course_code
+            fallback_key = (a.get('title_normalized') or a.get('title', '')).lower(), a.get('course_code','')
+            index[fallback_key] = a
+        
         for item in scraped:
-            key = (item.get('title_normalized') or item.get('title', '')).lower(), item.get('course_code','')
-            current = index.get(key)
+            current = None
+            changed = False
+            change_details = []
+            
+            # First try to find by task_id (most reliable for detecting changes)
+            if item.get('task_id'):
+                current = index.get(item['task_id'])
+                if current:
+                    logger.debug(f"Found existing task by task_id: {item['task_id']}")
+            
+            # If not found by task_id, try fallback method
             if not current:
+                fallback_key = (item.get('title_normalized') or item.get('title', '')).lower(), item.get('course_code','')
+                current = index.get(fallback_key)
+                if current:
+                    logger.debug(f"Found existing task by fallback key: {fallback_key}")
+            
+            if not current:
+                # New task - add it
                 existing.append(item)
-                index[key] = item
+                # Add to index for future lookups
+                if item.get('task_id'):
+                    index[item['task_id']] = item
+                fallback_key = (item.get('title_normalized') or item.get('title', '')).lower(), item.get('course_code','')
+                index[fallback_key] = item
                 new_count += 1
+                logger.info(f"➕ Added new task: {item.get('title', 'Unknown')} (ID: {item.get('task_id', 'N/A')})")
             else:
-                changed = False
-                # Update due date if changed
-                if item.get('due_date') and item.get(
-                    'due_date') != current.get('due_date'):
+                # Existing task - check for changes
+                logger.debug(f"Checking for changes in existing task: {current.get('title', 'Unknown')} (ID: {current.get('task_id', 'N/A')})")
+                
+                # Check title changes
+                if (item.get('title') and current.get('title') and 
+                    item['title'] != current['title']):
+                    old_title = current['title']
+                    current['title'] = item['title']
+                    current['title_normalized'] = item.get('title_normalized', item['title'].lower())
+                    changed = True
+                    change_details.append(f"title: '{old_title}' → '{item['title']}'")
+                
+                # Check due date changes
+                if (item.get('due_date') and current.get('due_date') and 
+                    item['due_date'] != current['due_date']):
+                    old_due = current['due_date']
                     current['due_date'] = item['due_date']
                     changed = True
-                # Add opening date if current lacks it or has placeholder
-                if item.get('opening_date') and (
-    not current.get('opening_date') or current.get('opening_date') in [
-        None, 'No opening date']):
+                    change_details.append(f"due_date: '{old_due}' → '{item['due_date']}'")
+                
+                # Check opening date changes
+                if (item.get('opening_date') and 
+                    (not current.get('opening_date') or 
+                     current.get('opening_date') in [None, 'No opening date'] or
+                     item['opening_date'] != current['opening_date'])):
+                    old_opening = current.get('opening_date', 'None')
                     current['opening_date'] = item['opening_date']
                     changed = True
-                # Update source label
+                    change_details.append(f"opening_date: '{old_opening}' → '{item['opening_date']}'")
+                
+                # Check status changes
+                if (item.get('status') and current.get('status') and 
+                    item['status'] != current['status']):
+                    old_status = current['status']
+                    current['status'] = item['status']
+                    changed = True
+                    change_details.append(f"status: '{old_status}' → '{item['status']}'")
+                
+                # Check activity type changes
+                if (item.get('activity_type') and current.get('activity_type') and 
+                    item['activity_type'] != current['activity_type']):
+                    old_type = current['activity_type']
+                    current['activity_type'] = item['activity_type']
+                    changed = True
+                    change_details.append(f"activity_type: '{old_type}' → '{item['activity_type']}'")
+                
+                # Check origin URL changes (in case the URL structure changes)
+                if (item.get('origin_url') and current.get('origin_url') and 
+                    item['origin_url'] != current['origin_url']):
+                    current['origin_url'] = item['origin_url']
+                    changed = True
+                    change_details.append("origin_url updated")
+                
+                # Update source label to indicate it was recently scraped (but don't mark as changed)
                 if 'scrape' not in current.get('source', ''):
                     current['source'] = 'scrape'
+                    # Don't mark as changed - this is just internal metadata
+                
+                # Update task_id if it was missing before
+                if (item.get('task_id') and not current.get('task_id')):
+                    current['task_id'] = item['task_id']
+                    changed = True
+                    change_details.append("task_id added")
+                
                 if changed:
-                    current['last_updated'] = datetime.now().strftime(
-                        '%Y-%m-%d %H:%M:%S')
+                    current['last_updated'] = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
                     updated += 1
+                    logger.info(f"🔄 Updated task: {current.get('title', 'Unknown')} (ID: {current.get('task_id', 'N/A')})")
+                    logger.info(f"   Changes: {', '.join(change_details)}")
+                else:
+                    logger.debug(f"✅ No changes detected for task: {current.get('title', 'Unknown')} (ID: {current.get('task_id', 'N/A')})")
+        
         self._save_json(self.assignments_file, existing)
+        
+        # Record summary for monitoring
+        all_change_details = []
+        if updated > 0:
+            all_change_details.append(f"{updated} tasks updated")
+        if new_count > 0:
+            all_change_details.append(f"{new_count} new tasks added")
+        
+        self._record_merge_summary(new_count, updated, all_change_details)
+        
+        # Log final summary
+        if new_count > 0 or updated > 0:
+            logger.info(f"📊 Merge completed: {new_count} new, {updated} updated")
+        else:
+            logger.info("📊 Merge completed: No changes detected")
+        
         return existing, new_count, updated
 
     # ---------------- Public Convenience ---------------- #
-    def manual_scrape(self, merge: bool = False):
+    def manual_scrape(self, merge: bool = False, show_changes: bool = True):
+        """Manually scrape assignments and optionally show what changes would be made.
+        
+        Args:
+            merge: If True, automatically merge scraped items
+            show_changes: If True, show preview of changes before merging
+            
+        Returns:
+            List of scraped items
+        """
         items = self.scrape_all_due_items(auto_merge=False)
+        
+        if show_changes and items:
+            logger.info("🔍 Preview of changes that would be made:")
+            comparison = self.compare_scraped_with_existing(items)
+            summary = comparison['summary']
+            logger.info(f"   • New tasks: {summary['new_count']}")
+            logger.info(f"   • Updated tasks: {summary['updated_count']}")
+            logger.info(f"   • Unchanged tasks: {summary['unchanged_count']}")
+            
+            if summary['updated_count'] > 0:
+                logger.info("📝 Tasks that would be updated:")
+                for update_info in comparison['updated_tasks'][:5]:  # Show first 5
+                    task = update_info['item']
+                    changes = update_info['changes']
+                    logger.info(f"   • {task.get('title', 'Unknown')} (ID: {task.get('task_id', 'N/A')})")
+                    for change in changes[:3]:  # Show first 3 changes
+                        logger.info(f"     - {change}")
+                    if len(changes) > 3:
+                        logger.info(f"     ... and {len(changes) - 3} more changes")
+        
+        if merge and items:
+            logger.info("🔄 Merging scraped items...")
+            try:
+                merged, new_count, updated = self.merge_into_main()
+                logger.info(f"✅ Merge completed: {new_count} new, {updated} updated")
+            except Exception as e:
+                logger.error(f"Merge failed: {e}")
+        
         return items
 
     def check_login_status(self) -> Dict[str, any]:
@@ -4469,3 +4616,206 @@ class MoodleDirectScraper:
             logger.debug(f"URL item '{title}': quiz_keywords={has_quiz_keywords}, due_date={has_due_date}, time_window={has_time_window}, time_patterns={has_time_patterns} -> fetch={should_fetch}")
         
         return should_fetch
+
+    def get_change_summary(self) -> Dict[str, any]:
+        """Get a summary of changes detected in the last merge operation.
+        Useful for monitoring what the system is detecting and updating."""
+        if not hasattr(self, '_last_merge_summary'):
+            return {
+                'new_tasks': 0,
+                'updated_tasks': 0,
+                'change_details': [],
+                'last_merge_time': None
+            }
+        return self._last_merge_summary
+
+    def _record_merge_summary(self, new_count: int, updated: int, change_details: List[str] = None):
+        """Record the summary of the last merge operation for later reference."""
+        self._last_merge_summary = {
+            'new_tasks': new_count,
+            'updated_tasks': updated,
+            'change_details': change_details or [],
+            'last_merge_time': datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+        }
+
+    def compare_scraped_with_existing(self, scraped_items: List[Dict] = None) -> Dict[str, any]:
+        """Compare scraped items with existing items to show what would be changed.
+        Useful for debugging and understanding change detection before merging."""
+        if scraped_items is None:
+            scraped_items = self._scraped_items or []
+        
+        existing = self._load_json(self.assignments_file)
+        
+        comparison = {
+            'new_tasks': [],
+            'updated_tasks': [],
+            'unchanged_tasks': [],
+            'summary': {
+                'total_scraped': len(scraped_items),
+                'total_existing': len(existing),
+                'new_count': 0,
+                'updated_count': 0,
+                'unchanged_count': 0
+            }
+        }
+        
+        # Create index by task_id first, then fallback
+        index = {}
+        for a in existing:
+            if a.get('task_id'):
+                index[a['task_id']] = a
+            fallback_key = (a.get('title_normalized') or a.get('title', '')).lower(), a.get('course_code','')
+            index[fallback_key] = a
+        
+        for item in scraped_items:
+            current = None
+            
+            # Try to find by task_id first
+            if item.get('task_id'):
+                current = index.get(item['task_id'])
+            
+            # Fallback to title + course
+            if not current:
+                fallback_key = (item.get('title_normalized') or item.get('title', '')).lower(), item.get('course_code','')
+                current = index.get(fallback_key)
+            
+            if not current:
+                # New task
+                comparison['new_tasks'].append({
+                    'item': item,
+                    'reason': 'Not found in existing tasks'
+                })
+                comparison['summary']['new_count'] += 1
+            else:
+                # Check for changes
+                changes = self._detect_changes(item, current)
+                if changes:
+                    comparison['updated_tasks'].append({
+                        'item': item,
+                        'existing': current,
+                        'changes': changes
+                    })
+                    comparison['summary']['updated_count'] += 1
+                else:
+                    comparison['unchanged_tasks'].append({
+                        'item': item,
+                        'existing': current
+                    })
+                    comparison['summary']['unchanged_count'] += 1
+        
+        return comparison
+
+    def _detect_changes(self, new_item: Dict, existing_item: Dict) -> List[str]:
+        """Detect what changes exist between a new scraped item and existing item."""
+        changes = []
+        
+        # Check title changes - use case-insensitive comparison
+        if (new_item.get('title') and existing_item.get('title') and 
+            new_item['title'].lower() != existing_item['title'].lower()):
+            changes.append(f"title: '{existing_item['title']}' → '{new_item['title']}'")
+        
+        # Check due date changes
+        if (new_item.get('due_date') and existing_item.get('due_date') and 
+            new_item['due_date'] != existing_item['due_date']):
+            changes.append(f"due_date: '{existing_item['due_date']}' → '{new_item['due_date']}'")
+        
+        # Check opening date changes - only if there's a meaningful difference
+        new_opening = new_item.get('opening_date')
+        existing_opening = existing_item.get('opening_date')
+        
+        if new_opening and existing_opening:
+            # Both have opening dates - check if they're different
+            if new_opening != existing_opening:
+                changes.append(f"opening_date: '{existing_opening}' → '{new_opening}'")
+        elif new_opening and not existing_opening:
+            # New has opening date, existing doesn't
+            if existing_opening not in [None, 'No opening date']:
+                changes.append(f"opening_date: '{existing_opening}' → '{new_opening}'")
+        elif not new_opening and existing_opening:
+            # New doesn't have opening date, existing does
+            if existing_opening not in [None, 'No opening date']:
+                changes.append(f"opening_date: '{existing_opening}' → 'None'")
+        
+        # Check status changes
+        if (new_item.get('status') and existing_item.get('status') and 
+            new_item['status'] != existing_item['status']):
+            changes.append(f"status: '{existing_item['status']}' → '{new_item['status']}'")
+        
+        # Check activity type changes
+        if (new_item.get('activity_type') and existing_item.get('activity_type') and 
+            new_item['activity_type'] != existing_item['activity_type']):
+            changes.append(f"activity_type: '{existing_item['activity_type']}' → '{new_item['activity_type']}'")
+        
+        # Check origin URL changes
+        if (new_item.get('origin_url') and existing_item.get('origin_url') and 
+            new_item['origin_url'] != existing_item['origin_url']):
+            changes.append("origin_url updated")
+        
+        # Check if task_id was missing
+        if (new_item.get('task_id') and not existing_item.get('task_id')):
+            changes.append("task_id added")
+        
+        return changes
+
+    def check_for_changes(self, auto_update: bool = False) -> Dict[str, any]:
+        """Check for changes in existing tasks by re-scraping and comparing.
+        This is useful for monitoring changes without the full scraping workflow.
+        
+        Args:
+            auto_update: If True, automatically update changed tasks
+            
+        Returns:
+            Dictionary with change information and summary
+        """
+        logger.info("🔍 Checking for changes in existing tasks...")
+        
+        # Re-scrape to get current data
+        try:
+            current_items = self.scrape_all_due_items(auto_merge=False)
+        except Exception as e:
+            logger.error(f"Failed to scrape for change detection: {e}")
+            return {
+                'error': str(e),
+                'summary': {'total_scraped': 0, 'new_count': 0, 'updated_count': 0, 'unchanged_count': 0}
+            }
+        
+        # Compare with existing
+        comparison = self.compare_scraped_with_existing(current_items)
+        
+        # Log summary
+        summary = comparison['summary']
+        logger.info(f"📊 Change detection summary:")
+        logger.info(f"   • Total scraped: {summary['total_scraped']}")
+        logger.info(f"   • New tasks: {summary['new_count']}")
+        logger.info(f"   • Updated tasks: {summary['updated_count']}")
+        logger.info(f"   • Unchanged tasks: {summary['unchanged_count']}")
+        
+        # Show detailed changes if any
+        if summary['updated_count'] > 0:
+            logger.info("📝 Tasks with changes detected:")
+            for update_info in comparison['updated_tasks']:
+                task = update_info['item']
+                changes = update_info['changes']
+                logger.info(f"   • {task.get('title', 'Unknown')} (ID: {task.get('task_id', 'N/A')})")
+                for change in changes:
+                    logger.info(f"     - {change}")
+        
+        # Auto-update if requested
+        if auto_update and (summary['new_count'] > 0 or summary['updated_count'] > 0):
+            logger.info("🔄 Auto-updating changed tasks...")
+            try:
+                merged, new_count, updated = self.merge_into_main()
+                logger.info(f"✅ Auto-update completed: {new_count} new, {updated} updated")
+                comparison['auto_update_result'] = {
+                    'success': True,
+                    'new_count': new_count,
+                    'updated_count': updated
+                }
+            except Exception as e:
+                logger.error(f"Auto-update failed: {e}")
+                comparison['auto_update_result'] = {
+                    'success': False,
+                    'error': str(e)
+                }
+        
+        return comparison

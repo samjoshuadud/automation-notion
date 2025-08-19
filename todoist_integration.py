@@ -52,8 +52,11 @@ class TodoistIntegration:
             logger.error(f"Todoist connection error: {e}")
             return False
     
-    def calculate_reminder_date(self, due_date_str: str) -> Optional[str]:
-        """Calculate smart reminder date based on how far the due date is"""
+    def calculate_reminder_date(self, assignment: Dict) -> Optional[str]:
+        """Calculate smart reminder date based on opening date (if available) or due date"""
+        due_date_str = assignment.get('due_date', '')
+        opening_date_str = assignment.get('opening_date', '')
+        
         if not due_date_str:
             return None
             
@@ -62,35 +65,73 @@ class TodoistIntegration:
             due_date = datetime.strptime(due_date_str, '%Y-%m-%d').date()
             today = datetime.now().date()
             
-            # Calculate days until due
-            days_until_due = (due_date - today).days
+            # Determine the reference date for reminder calculation
+            # If opening date exists and is valid, use it; otherwise use due date
+            reference_date = due_date
+            reference_type = "due date"
             
-            if days_until_due <= 0:
-                # Already due or overdue, set reminder for today
+            if opening_date_str and opening_date_str not in [None, 'No opening date']:
+                try:
+                    opening_date = datetime.strptime(opening_date_str, '%Y-%m-%d').date()
+                    if opening_date > today:  # Only use if opening date is in the future
+                        reference_date = opening_date
+                        reference_type = "opening date"
+                        logger.debug(f"Using opening date {opening_date_str} as reference for reminder calculation")
+                    else:
+                        logger.debug(f"Opening date {opening_date_str} is in the past, using due date instead")
+                except ValueError:
+                    logger.debug(f"Invalid opening date format: {opening_date_str}, using due date instead")
+            
+            # Calculate days until reference date
+            days_until_reference = (reference_date - today).days
+            
+            if days_until_reference <= 0:
+                # Already due/opened or overdue, set reminder for today
+                logger.debug(f"Reference date ({reference_type}) is today or in the past, setting reminder for today")
                 return today.strftime('%Y-%m-%d')
-            elif days_until_due <= 3:
-                # 1-3 days: remind 1 day before (or today if due tomorrow)
-                reminder_days_before = max(1, days_until_due - 1)
-            elif days_until_due <= 7:
-                # 4-7 days: remind 3 days before
-                reminder_days_before = 3
-            elif days_until_due <= 14:
-                # 8-14 days: remind 5 days before  
-                reminder_days_before = 5
-            elif days_until_due <= 30:
-                # 15-30 days: remind 1 week before
-                reminder_days_before = 7
+            elif reference_type == "opening date":
+                # For opening dates, use more intuitive timing
+                if days_until_reference <= 1:
+                    # Opening today or tomorrow: remind today
+                    reminder_days_before = 0
+                elif days_until_reference <= 3:
+                    # 2-3 days: remind 1 day before
+                    reminder_days_before = 1
+                elif days_until_reference <= 7:
+                    # 4-7 days: remind 2 days before
+                    reminder_days_before = 2
+                elif days_until_reference <= 14:
+                    # 8-14 days: remind 3 days before
+                    reminder_days_before = 3
+                else:
+                    # 15+ days: remind 1 week before opening
+                    reminder_days_before = 7
             else:
-                # 30+ days: remind 2 weeks before
-                reminder_days_before = 14
+                # For due dates, use the original logic
+                if days_until_reference <= 3:
+                    # 1-3 days: remind 1 day before (or today if due tomorrow)
+                    reminder_days_before = max(1, days_until_reference - 1)
+                elif days_until_reference <= 7:
+                    # 4-7 days: remind 3 days before
+                    reminder_days_before = 3
+                elif days_until_reference <= 14:
+                    # 8-14 days: remind 5 days before  
+                    reminder_days_before = 5
+                elif days_until_reference <= 30:
+                    # 15-30 days: remind 1 week before
+                    reminder_days_before = 7
+                else:
+                    # 30+ days: remind 2 weeks before
+                    reminder_days_before = 14
             
             # Calculate reminder date
-            reminder_date = due_date - timedelta(days=reminder_days_before)
+            reminder_date = reference_date - timedelta(days=reminder_days_before)
             
             # Don't set reminder in the past
             if reminder_date < today:
                 reminder_date = today
                 
+            logger.debug(f"Calculated reminder: {reminder_date} ({reminder_days_before} days before {reference_type} {reference_date})")
             return reminder_date.strftime('%Y-%m-%d')
             
         except ValueError as e:
@@ -293,12 +334,6 @@ class TodoistIntegration:
                     logger.error("Could not get/create Todoist project")
                     return False
             
-            # Check if task already exists
-            existing_task_id = self.task_exists_in_todoist(assignment)
-            if existing_task_id:
-                logger.info(f"Task already exists for: {assignment.get('title', 'Unknown')}")
-                return True
-            
             # Format task content using the new format
             task_content = self.format_task_content(assignment)
             
@@ -324,7 +359,7 @@ class TodoistIntegration:
                     datetime.strptime(due_date, '%Y-%m-%d')
                     
                     # Calculate smart reminder date
-                    reminder_date = self.calculate_reminder_date(due_date)
+                    reminder_date = self.calculate_reminder_date(assignment)
                     
                     if reminder_date:
                         # Set reminder date instead of due date
@@ -361,6 +396,78 @@ class TodoistIntegration:
             logger.error(f"Error creating Todoist task: {e}")
             return False
     
+    def update_assignment_task(self, assignment: Dict, todoist_task_id: str) -> bool:
+        """Update an existing task in Todoist for the assignment"""
+        if not self.enabled:
+            return False
+            
+        try:
+            # Format task content using the new format
+            task_content = self.format_task_content(assignment)
+            
+            # Format task description with deadline and details
+            description = self.format_task_description(assignment)
+            
+            # Get course code for labels
+            course_code = assignment.get('course_code', '')
+            
+            # Prepare basic task data for update
+            task_data = {
+                'content': task_content,
+                'description': description,
+                'priority': 2  # Normal priority (1=lowest, 4=highest)
+            }
+            
+            # Handle due date and reminder
+            due_date = assignment.get('due_date', '')
+            if due_date:
+                try:
+                    # Validate due date format
+                    datetime.strptime(due_date, '%Y-%m-%d')
+                    
+                    # Calculate smart reminder date
+                    reminder_date = self.calculate_reminder_date(assignment)
+                    
+                    if reminder_date:
+                        # Set reminder date instead of due date
+                        task_data['due_date'] = reminder_date
+                        logger.debug(f"Set reminder date: {reminder_date} (due: {due_date})")
+                    else:
+                        # Fallback to due date if reminder calculation fails
+                        task_data['due_date'] = due_date
+                        logger.debug(f"Set due date: {due_date}")
+                        
+                except ValueError:
+                    logger.warning(f"Invalid due date format: {due_date}")
+            
+            # Add labels for course code if available
+            labels = []
+            if course_code:
+                labels.append(course_code.lower())
+            if labels:
+                task_data['labels'] = labels
+            
+            # Update the task
+            url = f'{self.base_url}/tasks/{todoist_task_id}'
+            logger.debug(f"Updating task with URL: {url}")
+            logger.debug(f"Update data: {task_data}")
+            
+            response = requests.post(url, headers=self.headers, json=task_data, timeout=10)
+            
+            logger.debug(f"Update response status: {response.status_code}")
+            logger.debug(f"Update response text: {response.text}")
+            
+            if response.status_code == 200:
+                logger.info(f"Updated Todoist task: {task_content}")
+                return True
+            else:
+                logger.error(f"Failed to update task: {response.status_code} - {response.text}")
+                return False
+                
+        except Exception as e:
+            logger.error(f"Error updating Todoist task: {e}")
+            return False
+
     def sync_assignments(self, assignments: List[Dict]) -> int:
         """Sync assignments to Todoist, return number of synced assignments"""
         if not self.enabled:
@@ -396,30 +503,113 @@ class TodoistIntegration:
             skipped = len(valid_assignments) - len(filtered_assignments)
             logger.info(f"Skipped {skipped} completed assignments")
         
-        # Further filter out assignments already completed in Todoist
-        final_assignments = self.prevent_duplicate_sync(filtered_assignments)
+        # Separate assignments into new (to create) and existing (to update)
+        assignment_groups = self.prevent_duplicate_sync(filtered_assignments)
+        new_assignments = assignment_groups['new']
+        existing_assignments = assignment_groups['existing']
         
-        if len(final_assignments) < len(filtered_assignments):
-            skipped = len(filtered_assignments) - len(final_assignments)
-            logger.info(f"Skipped {skipped} already completed assignments in Todoist")
-        
-        if not final_assignments:
-            logger.info("No new assignments to sync after filtering")
+        if not new_assignments and not existing_assignments:
+            logger.info("No assignments to sync after filtering")
             return 0
         
         synced_count = 0
+        updated_count = 0
         project_id = self.get_or_create_project()
         
         if not project_id:
             logger.error("Could not get/create Todoist project for assignments")
             return 0
         
-        for assignment in final_assignments:
+        # Handle existing tasks (updates) - only if there are meaningful changes
+        for assignment in existing_assignments:
+            todoist_task_id = assignment.get('_todoist_task_id')
+            if todoist_task_id:
+                # Check if there are meaningful changes before updating
+                has_changes = self._has_meaningful_changes(assignment, todoist_task_id)
+                logger.info(f"Checking changes for '{assignment.get('title', 'Unknown')}': {'CHANGES DETECTED' if has_changes else 'No changes'}")
+                
+                if has_changes:
+                    if self.update_assignment_task(assignment, todoist_task_id):
+                        updated_count += 1
+                        logger.info(f"Updated existing Todoist task: {assignment.get('title', 'Unknown')}")
+                    else:
+                        logger.warning(f"Failed to update existing Todoist task: {assignment.get('title', 'Unknown')}")
+                else:
+                    logger.info(f"No meaningful changes for task: {assignment.get('title', 'Unknown')} - skipping update")
+            else:
+                logger.warning(f"No Todoist task ID found for assignment: {assignment.get('title', 'Unknown')}")
+        
+        # Handle new tasks (creations)
+        for assignment in new_assignments:
             if self.create_assignment_task(assignment, project_id):
                 synced_count += 1
+                logger.info(f"Created new Todoist task: {assignment.get('title', 'Unknown')}")
+            else:
+                logger.warning(f"Failed to create new Todoist task: {assignment.get('title', 'Unknown')}")
             
-        logger.info(f"Synced {synced_count} new assignments to Todoist")
-        return synced_count
+        total_processed = synced_count + updated_count
+        if total_processed > 0:
+            if synced_count > 0 and updated_count > 0:
+                logger.info(f"✅ Todoist sync completed:")
+                logger.info(f"   ➕ {synced_count} new tasks created")
+                logger.info(f"   🔄 {updated_count} existing tasks updated")
+            elif synced_count > 0:
+                logger.info(f"✅ Todoist sync completed: {synced_count} new tasks created")
+            elif updated_count > 0:
+                logger.info(f"✅ Todoist sync completed: {updated_count} existing tasks updated")
+        else:
+            logger.info("No tasks were synced to Todoist")
+            
+        return {
+            'total_processed': total_processed,
+            'new_created': synced_count,
+            'existing_updated': updated_count
+        }
+    
+    def _has_meaningful_changes(self, assignment: Dict, todoist_task_id: str) -> bool:
+        """Check if there are meaningful changes between local assignment and Todoist task"""
+        try:
+            # Get the current Todoist task
+            url = f'{self.base_url}/tasks/{todoist_task_id}'
+            response = requests.get(url, headers=self.headers, timeout=10)
+            
+            if response.status_code != 200:
+                logger.warning(f"Could not fetch Todoist task {todoist_task_id} for comparison")
+                return True  # Assume changes if we can't check
+            
+            todoist_task = response.json()
+            
+            # Compare the full formatted title (course code + title) to match Todoist format
+            # Check if title already starts with course code to avoid duplication
+            local_title = assignment.get('title', '').lower().strip()
+            course_code = assignment.get('course_code', '').lower().strip()
+            
+            if local_title.startswith(course_code + ' - '):
+                # Title already includes course code
+                local_full_title = local_title
+            else:
+                # Add course code prefix
+                local_full_title = (course_code + ' - ' + local_title).strip()
+            
+            todoist_title = todoist_task.get('content', '').lower().strip()
+            
+            logger.info(f"  Comparing full titles:")
+            logger.info(f"    Local:  '{local_full_title}'")
+            logger.info(f"    Todoist: '{todoist_title}'")
+            logger.info(f"    Match: {local_full_title == todoist_title}")
+            
+            # Only return True if titles are actually different
+            if local_full_title != todoist_title:
+                logger.info(f"  Title change detected: '{todoist_title}' → '{local_full_title}'")
+                return True
+            
+            # No changes detected
+            logger.info(f"  No changes detected - titles match")
+            return False
+            
+        except Exception as e:
+            logger.warning(f"Error checking for meaningful changes: {e}")
+            return True  # Assume changes if we can't check
     
     def get_all_assignments_from_todoist(self, project_name: str = "School Assignments") -> List[Dict]:
         """Get all assignments from Todoist project with status information"""
@@ -545,50 +735,53 @@ class TodoistIntegration:
             logger.error(f"Error syncing status from Todoist: {e}")
             return {'updated': 0, 'completed_in_todoist': []}
     
-    def prevent_duplicate_sync(self, assignments_to_sync: List[Dict]) -> List[Dict]:
-        """Filter out assignments that already exist in Todoist (both active and completed)"""
+    def prevent_duplicate_sync(self, assignments_to_sync: List[Dict]) -> Dict[str, List[Dict]]:
+        """Separate assignments into new (to create) and existing (to update)"""
         if not self.enabled:
-            return assignments_to_sync
+            return {'new': assignments_to_sync, 'existing': []}
             
         try:
             # Get ALL existing tasks from Todoist (both active and completed)
             todoist_assignments = self.get_all_assignments_from_todoist()
             
             if not todoist_assignments:
-                return assignments_to_sync
+                return {'new': assignments_to_sync, 'existing': []}
             
-            # Create lookup for existing tasks using task_id
-            existing_lookup = set()
+            # Create lookup for existing tasks using task_id and their Todoist IDs
+            existing_lookup = {}
             for task in todoist_assignments:
                 # Extract task_id from description
                 task_desc = task.get('description', '').lower()
                 task_id_match = re.search(r'task id: (\w+)', task_desc)
                 if task_id_match:
                     task_id = task_id_match.group(1)
-                    existing_lookup.add(task_id)
-                    logger.debug(f"Added existing task_id to lookup: {task_id}")
+                    existing_lookup[task_id] = task['id']  # Store Todoist task ID
+                    logger.debug(f"Added existing task_id to lookup: {task_id} -> Todoist ID: {task['id']}")
             
-            # Filter out assignments that already exist in Todoist
-            filtered_assignments = []
+            # Separate assignments into new and existing
+            new_assignments = []
+            existing_assignments = []
+            
             for assignment in assignments_to_sync:
                 task_id = assignment.get('task_id', '')
                 
-                # Skip if already exists in Todoist (regardless of completion status)
                 if task_id and task_id in existing_lookup:
-                    logger.info(f"Skipping already existing task: {assignment.get('title')} (task_id: {task_id})")
-                    continue
-                    
-                filtered_assignments.append(assignment)
+                    # Task exists in Todoist - mark for update
+                    todoist_task_id = existing_lookup[task_id]
+                    assignment['_todoist_task_id'] = todoist_task_id  # Store Todoist ID for update
+                    existing_assignments.append(assignment)
+                    logger.debug(f"Marked existing task for update: {assignment.get('title')} (task_id: {task_id}, Todoist ID: {todoist_task_id})")
+                else:
+                    # New task - mark for creation
+                    new_assignments.append(assignment)
+                    logger.debug(f"Marked new task for creation: {assignment.get('title')} (task_id: {task_id})")
             
-            skipped_count = len(assignments_to_sync) - len(filtered_assignments)
-            if skipped_count > 0:
-                logger.info(f"Filtered out {skipped_count} already existing assignments")
-            
-            return filtered_assignments
+            logger.info(f"Separated assignments: {len(new_assignments)} new, {len(existing_assignments)} existing")
+            return {'new': new_assignments, 'existing': existing_assignments}
             
         except Exception as e:
-            logger.error(f"Error filtering completed assignments: {e}")
-            return assignments_to_sync
+            logger.error(f"Error separating assignments: {e}")
+            return {'new': assignments_to_sync, 'existing': []}
     
     def update_task_status(self, task_id: str, completed: bool) -> bool:
         """Update task completion status"""

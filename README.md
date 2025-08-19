@@ -8,7 +8,8 @@ A powerful, automated system for fetching assignments directly from Moodle and s
 - **📝 Notion Integration**: Automatically syncs assignments to your Notion database with smart duplicate detection
 - **✅ Todoist Integration**: Creates tasks in Todoist with due dates and course information
 - **🔄 Smart Archiving**: Automatically cleans up completed assignments with configurable retention
-- **🎯 Duplicate Prevention**: Uses advanced fuzzy matching to prevent duplicate assignments
+- **🎯 Smart Change Detection**: Detects and updates existing tasks instead of creating duplicates
+- **🔄 Intelligent Updates**: Monitors for deadline changes, title updates, and other modifications
 - **📊 Status Management**: Tracks assignment progress across all platforms
 - **🛡️ Robust Error Handling**: Comprehensive logging and error recovery
 
@@ -65,6 +66,39 @@ python run_fetcher.py --todoist --verbose
 
 # Fetch with both platforms
 python run_fetcher.py --notion --todoist --verbose
+```
+
+## 🔄 Smart Change Detection
+
+The system now intelligently detects changes in existing Moodle tasks and updates them instead of creating duplicates. This handles common scenarios like:
+
+- **📅 Deadline Changes**: Professors extend or shorten assignment due dates
+- **✏️ Title Updates**: Assignment names are modified or corrected
+- **📊 Status Changes**: Completion status updates from Moodle
+- **🔗 URL Changes**: Moodle structure updates affecting assignment links
+- **📝 Activity Type Changes**: Quizzes converted to assignments or vice versa
+
+### How It Works
+
+1. **Smart Matching**: Uses `task_id` as primary identifier, falls back to title + course matching
+2. **Change Detection**: Compares all relevant fields between scraped and existing data
+3. **Selective Updates**: Only updates fields that have actually changed
+4. **Comprehensive Logging**: Records all changes for monitoring and debugging
+
+### Change Detection Methods
+
+```python
+# Preview changes before merging
+scraper.manual_scrape(show_changes=True)
+
+# Check for changes and optionally auto-update
+scraper.check_for_changes(auto_update=True)
+
+# Compare scraped vs existing tasks
+comparison = scraper.compare_scraped_with_existing()
+
+# Get summary of last merge operation
+summary = scraper.get_change_summary()
 ```
 
 ## 📋 Available Commands
