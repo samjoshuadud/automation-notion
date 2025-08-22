@@ -15,3 +15,5 @@ tests/
 .ruff_cache/
 .mypy_cache/
 .coverage
+data/
+logs/
