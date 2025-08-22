@@ -1,12 +1,12 @@
 venv/
 __pycache__/
 .env
-logs/
+# logs/
 # Gmail data files (removed)
 # data/assignments.md
 # Keep main data file and Moodle scraping files
-data/assignments.json
-data/moodle_session/
+# data/assignments.json
+# data/moodle_session/
 tests/
 .DS_Store
 .vscode/
