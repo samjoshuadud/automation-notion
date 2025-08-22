@@ -20,16 +20,29 @@ class AssignmentArchiveManager:
     
     def _initialize_archive(self):
         """Initialize archive file if it doesn't exist"""
-        if not os.path.exists(self.archive_file):
-            initial_archive = {
-                "created_date": datetime.now().isoformat(),
-                "last_cleanup": None,
-                "total_archived": 0,
-                "assignments": []
-            }
-            with open(self.archive_file, 'w') as f:
-                json.dump(initial_archive, f, indent=2)
-            logger.info(f"Created new archive file: {self.archive_file}")
+        try:
+            # Ensure directory exists
+            os.makedirs(os.path.dirname(self.archive_file), exist_ok=True)
+            
+            if not os.path.exists(self.archive_file):
+                initial_archive = {
+                    "created_date": datetime.now().isoformat(),
+                    "last_cleanup": None,
+                    "total_archived": 0,
+                    "assignments": []
+                }
+                with open(self.archive_file, 'w') as f:
+                    json.dump(initial_archive, f, indent=2)
+                logger.info(f"Created new archive file: {self.archive_file}")
+        except Exception as e:
+            logger.error(f"Failed to initialize archive file {self.archive_file}: {e}")
+            # Create minimal fallback
+            try:
+                os.makedirs(os.path.dirname(self.archive_file), exist_ok=True)
+                with open(self.archive_file, 'w') as f:
+                    json.dump({"assignments": [], "total_archived": 0}, f, indent=2)
+            except Exception as fallback_e:
+                logger.error(f"Failed to create fallback archive file: {fallback_e}")
     
     def load_assignments(self) -> List[Dict]:
         """Load active assignments"""

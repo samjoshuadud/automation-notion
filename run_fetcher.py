@@ -29,6 +29,53 @@ import argparse
 import logging
 import time
 
+def ensure_critical_directories():
+    """Ensure all critical directories exist"""
+    import os
+    critical_dirs = [
+        'logs',
+        'data',
+        'data/moodle_session',
+        'data/moodle_session/2fa_debug'
+    ]
+    
+    for directory in critical_dirs:
+        try:
+            os.makedirs(directory, exist_ok=True)
+        except Exception as e:
+            print(f"⚠️ Warning: Could not create directory {directory}: {e}")
+
+def ensure_critical_files():
+    """Ensure all critical files exist with proper structure"""
+    import os
+    import json
+    
+    # Ensure assignments.json exists
+    assignments_file = 'data/assignments.json'
+    if not os.path.exists(assignments_file):
+        try:
+            with open(assignments_file, 'w') as f:
+                json.dump([], f, indent=2)
+            print(f"✅ Created {assignments_file}")
+        except Exception as e:
+            print(f"⚠️ Warning: Could not create {assignments_file}: {e}")
+    
+    # Ensure assignments_archive.json exists
+    archive_file = 'data/assignments_archive.json'
+    if not os.path.exists(archive_file):
+        try:
+            initial_archive = {
+                "created_date": time.strftime("%Y-%m-%d %H:%M:%S"),
+                "last_cleanup": None,
+                "total_archived": 0,
+                "assignments": []
+            }
+            with open(archive_file, 'w') as f:
+                json.dump(initial_archive, f, indent=2)
+            print(f"✅ Created {archive_file}")
+        except Exception as e:
+            print(f"⚠️ Warning: Could not create {archive_file}: {e}")
+
 def setup_logging(verbose: bool = False, debug: bool = False):
     """Set up enhanced logging configuration"""
     if debug:
@@ -44,6 +91,10 @@ def setup_logging(verbose: bool = False, debug: bool = False):
     # Clear any existing handlers
     for handler in logging.root.handlers[:]:
         logging.root.removeHandler(handler)
+    
+    # Ensure logs directory exists
+    import os
+    os.makedirs('logs', exist_ok=True)
     
     # File handler (always debug level for logs)
     file_handler = logging.FileHandler('logs/moodle_fetcher.log')
@@ -388,6 +439,12 @@ def main():
     # Quiet mode overrides verbose/debug for console output (but not file logging)
     setup_logging(verbose=args.verbose and not args.quiet, debug=args.debug and not args.quiet)
     logger = logging.getLogger(__name__)
+    
+    # Ensure all critical directories exist
+    ensure_critical_directories()
+    
+    # Ensure all critical files exist
+    ensure_critical_files()
     
     if args.verbose and not args.quiet:
         print("🔍 VERBOSE MODE ENABLED - Detailed logging active")

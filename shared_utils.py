@@ -23,7 +23,13 @@ def load_assignments_from_file(file_path: str) -> List[Dict]:
             return []
     except Exception as e:
         logger.error(f"Error loading assignments from {file_path}: {e}")
-        return []
+        # Try to create empty file as fallback
+        try:
+            save_assignments_to_file(file_path, [])
+            return []
+        except Exception as fallback_e:
+            logger.error(f"Failed to create fallback file {file_path}: {fallback_e}")
+            return []
 
 def save_assignments_to_file(file_path: str, assignments: List[Dict]):
     """Save assignments to a JSON file"""
