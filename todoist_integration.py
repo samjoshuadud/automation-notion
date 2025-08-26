@@ -66,19 +66,20 @@ class TodoistIntegration:
             today = datetime.now().date()
             
             # Determine the reference date for reminder calculation
-            # If opening date exists and is valid, use it; otherwise use due date
+            # Use the later of due date and opening date (if available and valid)
             reference_date = due_date
             reference_type = "due date"
-            
+
             if opening_date_str and opening_date_str not in [None, 'No opening date']:
                 try:
                     opening_date = datetime.strptime(opening_date_str, '%Y-%m-%d').date()
-                    if opening_date > today:  # Only use if opening date is in the future
+                    # Choose the later of due_date vs opening_date as reference
+                    if opening_date > reference_date:
                         reference_date = opening_date
                         reference_type = "opening date"
-                        logger.debug(f"Using opening date {opening_date_str} as reference for reminder calculation")
+                        logger.debug(f"Using opening date {opening_date_str} as reference for reminder calculation (later than due date)")
                     else:
-                        logger.debug(f"Opening date {opening_date_str} is in the past, using due date instead")
+                        logger.debug(f"Using due date {due_date_str} as reference (later than or equal to opening date)")
                 except ValueError:
                     logger.debug(f"Invalid opening date format: {opening_date_str}, using due date instead")
             

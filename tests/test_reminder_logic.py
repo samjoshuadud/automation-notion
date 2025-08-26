@@ -8,7 +8,6 @@ import os
 # Add parent directory to path so we can import from the main project
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from notion_integration import NotionIntegration
 from todoist_integration import TodoistIntegration
 from datetime import datetime, timedelta
 
@@ -16,7 +15,6 @@ def test_reminder_calculation():
     """Test the reminder calculation with different scenarios"""
     
     # Create integration instances (even if not fully configured, the methods should work)
-    notion = NotionIntegration()
     todoist = TodoistIntegration()
     
     today = datetime.now().date()
@@ -94,39 +92,9 @@ def test_reminder_calculation():
             assignment['email_date'] = test_case['email_date']
         
         # Calculate reminders
-        notion_reminder = notion.calculate_smart_reminder_date(assignment)
         todoist_reminder = todoist.calculate_reminder_date(assignment)
         
-        print(f"   📅 Notion Reminder: {notion_reminder}")
         print(f"   📋 Todoist Reminder: {todoist_reminder}")
-        
-        # Analysis for Notion
-        if notion_reminder:
-            reminder_dt = datetime.strptime(notion_reminder, '%Y-%m-%d').date()
-            days_until_reminder = (reminder_dt - today).days
-            due_dt = datetime.strptime(test_case['due_date'], '%Y-%m-%d').date()
-            days_until_due = (due_dt - today).days
-            
-            print(f"   ⏰ Notion: Reminder in {days_until_reminder} days ({days_until_due - days_until_reminder} days before due)")
-            
-            # Check if reminder respects opening date when available
-            if test_case['opening_date'] != "No opening date":
-                opening_dt = datetime.strptime(test_case['opening_date'], '%Y-%m-%d').date()
-                if reminder_dt >= opening_dt:
-                    print(f"   ✅ Notion: Reminder respects opening date")
-                else:
-                    print(f"   ❌ Notion: ERROR: Reminder before opening date!")
-            
-            # Check if reminder respects email date when no opening date
-            elif 'email_date' in test_case:
-                try:
-                    email_dt = datetime.strptime(test_case['email_date'], '%a, %d %b %Y %H:%M:%S %z').date()
-                    if reminder_dt >= email_dt:
-                        print(f"   ✅ Notion: Reminder respects email date ({email_dt})")
-                    else:
-                        print(f"   ❌ Notion: ERROR: Reminder before email date!")
-                except ValueError:
-                    print(f"   ⚠️ Notion: Could not parse email date for validation")
         
         # Analysis for Todoist
         if todoist_reminder:

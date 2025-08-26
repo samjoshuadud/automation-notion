@@ -9,7 +9,13 @@ import traceback  # added
 import json
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 
-from notion_integration import NotionIntegration
+try:
+    from notion_integration import NotionIntegration
+except Exception:
+    # Notion integration removed: provide a disabled stub to keep CLI paths working
+    class NotionIntegration:  # type: ignore
+        def __init__(self, *args, **kwargs):
+            self.enabled = False
 from todoist_integration import TodoistIntegration
 from assignment_archive import AssignmentArchiveManager
 from shared_utils import load_assignments_from_file, save_assignments_to_file, is_duplicate_assignment

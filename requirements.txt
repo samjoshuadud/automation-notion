@@ -24,8 +24,7 @@ selenium>=4.15.0              # Alternative web automation (fallback)
 jsonschema>=4.17.0            # JSON schema validation
 tabulate>=0.9.0               # Pretty table formatting
 
-# Notion Integration
-notion-client>=2.0.0          # Official Notion API client
+# Notion Integration (removed)
 
 # Todoist Integration  
 todoist-api-python>=2.1.0     # Official Todoist API client
