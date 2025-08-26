@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Enhanced Moodle Assignment Fetcher with Notion Integration
+Enhanced Moodle Assignment Fetcher (Todoist only)
 """
 
 import sys
@@ -146,7 +146,7 @@ def setup_logging(verbose: bool = False, debug: bool = False):
 
 def check_remaining_assignments_after_deletion(delete_from, include_local, args):
     """Check for remaining assignments after deletion and return them"""
-    remaining = {"todoist": [], "notion": [], "local": []}
+    remaining = {"todoist": [], "local": []}
     
     try:
         # Check local database (if it wasn't deleted)
@@ -166,16 +166,7 @@ def check_remaining_assignments_after_deletion(delete_from, include_local, args)
             if args.verbose:
                 print(f"⚠️ Could not check remaining Todoist tasks: {e}")
         
-        # Check Notion (if it wasn't cleared or was only partially cleared)
-        try:
-            notion = NotionIntegration()
-            if notion.enabled:
-                notion_assignments = notion.get_all_assignments_from_notion()
-                if notion_assignments:
-                    remaining["notion"] = notion_assignments
-        except Exception as e:
-            if args.verbose:
-                print(f"⚠️ Could not check remaining Notion assignments: {e}")
+        # Notion integration removed
         
         # Return all remaining assignments combined
         all_remaining = []
@@ -226,7 +217,7 @@ def interactive_deletion_menu(remaining_assignments, args):
         print("🎯 OPTIONS:")
         print("  [1-N]     Delete specific assignment by number")
         print("  all       Delete ALL remaining assignments")
-        print("  notion    Delete all from Notion only")
+        # Notion option removed
         print("  todoist   Delete all from Todoist only")
         print("  local     Delete all from local database only")
         print("  show      Show full details of all assignments")
@@ -253,7 +244,7 @@ def interactive_deletion_menu(remaining_assignments, args):
                         print("🎉 No more assignments remaining!")
                         break
             
-            elif choice in ['notion', 'todoist', 'local']:
+            elif choice in ['todoist', 'local']:
                 platform_assignments = [a for a in remaining_assignments if a.get('_platform') == choice]
                 if platform_assignments:
                     if confirm_deletion(f"all assignments from {choice.upper()}"):
@@ -343,15 +334,7 @@ def delete_assignments_interactive(assignments, target_platform, args):
                             if args.verbose:
                                 print(f"   ✅ Deleted from Todoist: {assignment.get('title', 'Unknown')[:50]}")
             
-            if platform == 'notion' or target_platform == 'all':
-                if platform == 'notion' or target_platform in ['all', 'notion']:
-                    notion = NotionIntegration()
-                    if notion.enabled:
-                        if notion.delete_assignment_page(assignment):
-                            deleted_count += 1
-                            assignment['_deleted'] = True
-                            if args.verbose:
-                                print(f"   📝 Deleted from Notion: {assignment.get('title', 'Unknown')[:50]}")
+            # Notion deletion removed
             
             if platform == 'local' or target_platform == 'all':
                 if platform == 'local' or target_platform in ['all', 'local']:
@@ -380,8 +363,7 @@ def delete_assignments_interactive(assignments, target_platform, args):
 def main():
     parser = argparse.ArgumentParser(description='Fetch Moodle assignments using direct scraping')
 
-    parser.add_argument('--notion', action='store_true', 
-                       help='Sync to Notion (requires Notion credentials)')
+    # Notion CLI flag removed
     parser.add_argument('--todoist', action='store_true', 
                        help='Sync to Todoist (requires Todoist API token)')
     parser.add_argument('--verbose', '-v', action='store_true', 
@@ -389,7 +371,7 @@ def main():
     parser.add_argument('--debug', '-d', action='store_true', 
                        help='Enable debug mode with maximum detail (includes --verbose)')
     parser.add_argument('--sync-only', action='store_true',
-                       help='Only sync existing local database to Todoist/Notion (no Moodle scraping)')
+                       help='Only sync existing local database to Todoist (no Moodle scraping)')
     parser.add_argument('--quiet', '-q', action='store_true', 
                        help='Minimal output (only errors and final results)')
     parser.add_argument('--test', action='store_true', 
@@ -410,9 +392,9 @@ def main():
     parser.add_argument('--status-report', action='store_true',
                        help='Show detailed status report of all assignments')
     parser.add_argument('--delete-all-assignments', action='store_true',
-                       help='DELETE ALL assignments from database, Todoist, and Notion (DEBUG ONLY - Moodle data is NOT touched)')
-    parser.add_argument('--delete-from', type=str, choices=['notion', 'todoist', 'both'], default=None,
-                       help='Choose where to delete assignments from: notion, todoist, or both')
+                       help='DELETE ALL assignments from database and Todoist (DEBUG ONLY - Moodle data is NOT touched)')
+    parser.add_argument('--delete-from', type=str, choices=['todoist'], default=None,
+                       help='Choose where to delete assignments from: todoist')
     parser.add_argument('--include-local', action='store_true',
                        help='Also delete assignments from local database when using selective deletion')
     parser.add_argument('--fresh-start', action='store_true',
@@ -514,7 +496,7 @@ def main():
     if args.sync_only:
         print("\n🔄 SYNC-ONLY MODE")
         print("=" * 30)
-        print("📊 Syncing existing local database to Todoist/Notion...")
+        print("📊 Syncing existing local database to Todoist...")
         
         # Load existing assignments
         try:
@@ -550,24 +532,10 @@ def main():
                     print(f"⚠️ Todoist sync failed: {e}")
                     logger.error(f"Todoist sync failed: {e}")
             
-            # Sync to Notion if requested
-            if args.notion:
-                try:
-                    print(f"\n✅ NOTION SYNC")
-                    print("=" * 20)
-                    notion = NotionIntegration()
-                    if notion.enabled:
-                        print(f"📊 Syncing {len(assignments)} assignments to Notion...")
-                        notion_count = notion.sync_assignments(assignments)
-                        print(f"✅ Successfully synced {notion_count} assignments to Notion!")
-                    else:
-                        print("⚠️ Notion integration not configured")
-                except Exception as e:
-                    print(f"⚠️ Notion sync failed: {e}")
-                    logger.error(f"Notion sync failed: {e}")
+            # Notion sync removed
             
-            if not args.todoist and not args.notion:
-                print("⚠️ No sync targets specified. Use --todoist and/or --notion")
+            if not args.todoist:
+                print("⚠️ No sync targets specified. Use --todoist")
                 print("💡 Example: --sync-only --todoist")
             
             print("\n🎉 Sync-only operation completed!")
@@ -653,22 +621,7 @@ def main():
                     print(f"✅ Scrape complete: {len(items)} items processed and saved!")
                     
                     # Always sync to configured platforms
-                    if args.notion:
-                        try:
-                            print(f"\n📝 NOTION SYNC")
-                            print("=" * 20)
-                            print("🔗 Initializing Notion integration...")
-                            
-                            notion = NotionIntegration()
-                            if notion.enabled:
-                                print(f"📊 Syncing {len(items)} assignments to Notion...")
-                                notion_count = notion.sync_assignments(items)
-                                print(f"📝 Synced {notion_count} assignments to Notion!")
-                            else:
-                                print("⚠️ Notion integration not configured")
-                        except Exception as e:
-                            print(f"⚠️ Notion sync failed: {e}")
-                            logger.error(f"Notion sync failed: {e}")
+                    # Notion sync removed
                     
                     if args.todoist:
                         try:
@@ -796,16 +749,7 @@ def main():
                         print(f"  📅 {title} (due in {days_until} days)")
             
             # Check sync status with integrations
-            try:
-                notion = NotionIntegration()
-                if notion.enabled:
-                    notion_assignments = notion.get_all_assignments_from_notion()
-                    print(f"\n📝 Notion Status: {len(notion_assignments)} assignments in database")
-                    missing_in_notion = len(assignments) - len(notion_assignments)
-                    if missing_in_notion > 0:
-                        print(f"  ⚠️ {missing_in_notion} assignments may be missing from Notion")
-            except Exception as e:
-                print(f"\n📝 Notion Status: ❌ Error checking ({e})")
+            # Notion status check removed
             
             try:
                 todoist = TodoistIntegration()
@@ -1055,31 +999,7 @@ def main():
                     print(f"   ✗ Error details: {str(e)}")
                 return 1
             
-            if args.notion:
-                logger.info("Testing Notion connection...")
-                try:
-                    if args.verbose:
-                        print("\n📝 Testing Notion integration...")
-                    notion = NotionIntegration()
-                    if notion.enabled:
-                        print("✅ Notion integration configured and connected!")
-                        if args.verbose:
-                            print("   ✓ API token valid")
-                            print("   ✓ Database accessible")
-                            # Test actual API call
-                            try:
-                                test_assignments = notion.get_all_assignments_from_notion()
-                                print(f"   ✓ Found {len(test_assignments)} assignments in database")
-                            except Exception as e:
-                                print(f"   ⚠️ Database query warning: {e}")
-                    else:
-                        print("⚠️ Notion integration not configured")
-                        if args.verbose:
-                            print("   ✗ Missing NOTION_TOKEN or NOTION_DATABASE_ID in .env")
-                except Exception as e:
-                    print(f"❌ Notion connection failed: {e}")
-                    if args.verbose:
-                        print(f"   ✗ Error details: {str(e)}")
+            # Notion connection test removed
             
             if args.todoist:
                 logger.info("Testing Todoist connection...")
@@ -1124,7 +1044,6 @@ def main():
             print("⚠️ WARNING: This will delete assignments from:")
             print("  📄 Local database (assignments.json)")
             print("  ✅ Todoist (if configured)")
-            print("  📝 Notion (if configured)")
             print("  ✅ Your Moodle data will NOT be touched!")
             print("  ✅ Your .env configuration will NOT be touched!")
             print()
@@ -1141,7 +1060,7 @@ def main():
                 print("\n❌ Deletion cancelled.")
                 return 0
             
-            deleted_counts = {"local": 0, "todoist": 0, "notion": 0}
+            deleted_counts = {"local": 0, "todoist": 0}
             
             try:
                 # Get assignments from database
@@ -1250,7 +1169,6 @@ def main():
                 print("=" * 30)
                 print(f"📄 Local database: {deleted_counts['local']} deleted")
                 print(f"✅ Todoist: {deleted_counts['todoist']} deleted")
-                print(f"📝 Notion: {deleted_counts['notion']} deleted")
                 print()
                 print("✅ All assignments deleted successfully!")
                 print("💡 Your Moodle data is completely untouched")
@@ -1279,8 +1197,6 @@ def main():
                 print("  📄 Local database (assignments.json)")
             if delete_from in ['todoist', 'both']:
                 print("  ✅ Todoist (if configured)")
-            if delete_from in ['notion', 'both']:
-                print("  📝 Notion (if configured)")
             print("  ✅ Your Moodle data will NOT be touched!")
             print("  ✅ Your .env configuration will NOT be touched!")
             print()
@@ -1305,7 +1221,7 @@ def main():
                 print("\n❌ Deletion cancelled.")
                 return 0
             
-            deleted_counts = {"local": 0, "todoist": 0, "notion": 0}
+            deleted_counts = {"local": 0, "todoist": 0}
             
             try:
                 # Get assignments from database
@@ -1427,10 +1343,7 @@ def main():
                     print(f"✅ Todoist: {deleted_counts['todoist']} deleted")
                 else:
                     print(f"✅ Todoist: skipped (not requested)")
-                if delete_from in ['notion', 'both']:
-                    print(f"📝 Notion: {deleted_counts['notion']} deleted")
-                else:
-                    print(f"📝 Notion: skipped (not requested)")
+                # Notion summary removed
                 print()
                 if delete_from == 'both' and include_local:
                     print("✅ All assignments deleted successfully!")

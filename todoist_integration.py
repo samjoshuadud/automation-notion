@@ -599,13 +599,32 @@ class TodoistIntegration:
             logger.info(f"    Todoist: '{todoist_title}'")
             logger.info(f"    Match: {local_full_title == todoist_title}")
             
-            # Only return True if titles are actually different
+            # If titles differ, we should update
             if local_full_title != todoist_title:
                 logger.info(f"  Title change detected: '{todoist_title}' → '{local_full_title}'")
                 return True
-            
-            # No changes detected
-            logger.info(f"  No changes detected - titles match")
+
+            # Check due/reminder date change as well
+            current_due_in_todoist = None
+            try:
+                current_due_in_todoist = todoist_task.get('due', {}).get('date') if todoist_task.get('due') else None
+            except Exception:
+                current_due_in_todoist = None
+
+            # Compute expected reminder date using our logic
+            expected_reminder_date = self.calculate_reminder_date(assignment)
+            expected_due_to_set = expected_reminder_date or assignment.get('due_date')
+
+            logger.info(f"  Comparing due/reminder dates:")
+            logger.info(f"    Current in Todoist: {current_due_in_todoist}")
+            logger.info(f"    Expected (local):  {expected_due_to_set}")
+
+            if expected_due_to_set and expected_due_to_set != current_due_in_todoist:
+                logger.info(f"  Due/reminder date change detected → update required")
+                return True
+
+            # No meaningful changes detected
+            logger.info(f"  No changes detected - titles and due/reminder date match")
             return False
             
         except Exception as e:
